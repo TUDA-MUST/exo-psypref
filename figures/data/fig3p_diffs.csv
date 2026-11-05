@@ -1,0 +1,14 @@
+setting,family,minus,recomputed,report_est,report_lo,report_hi
+wide,schaefer_ii,psypref,-6.136344912,-6.1,-7.8,-4.6
+wide,schaefer_ii,cmaes_sch4,18.76206409,+18.8,+14.7,+22.8
+wide,franks,psypref,-0.5862934759,-0.6,-1.5,+0.2
+wide,franks,cmaes_sch4,24.31211553,+24.3,+20.3,+28.3
+wide,pchip_ii,psypref,-1.100185698,-1.1,-2.0,-0.4
+wide,pchip_ii,cmaes_sch4,23.7982233,+23.8,+19.8,+27.9
+fixed 12,schaefer_i,psypref,-9.250752857,-9.3,-11.1,-7.4
+fixed 12,schaefer_i,cmaes_sch4,9.000344862,+9.0,+6.1,+11.9
+fixed 12,franks,psypref,-3.389322748,-3.4,-5.2,-1.6
+fixed 12,franks,cmaes_sch4,14.86177497,+14.9,+11.7,+17.7
+fixed 12,pchip,psypref,-9.785737202,-9.8,-11.9,-7.9
+fixed 12,pchip,cmaes_sch4,8.465360518,+8.5,+5.2,+11.7
+verdicts,PFM1 failed; PFM2 held; PFM3 held; PFM4 held; PFM5 failed; PFM6 held,,nan,,,

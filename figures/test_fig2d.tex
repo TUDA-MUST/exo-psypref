@@ -1,0 +1,18 @@
+% test_fig2d.tex: Fig. 2 at its printed size in the paper's document class. Compile here: pdflatex test_fig2d.tex (twice).
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{arrows.meta}
+\input{icorr_style.tex}
+\newcommand{\icorrtikzdata}{data/}
+\input{data/fig3p_text.tex}
+\input{data/fig4m_text.tex}
+\begin{document}
+\begin{figure*}[t]
+\centering
+\input{fig2d.tex}
+\end{figure*}
+\end{document}

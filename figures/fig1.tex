@@ -1,0 +1,285 @@
+% fig1.tex: Fig. 1 of the amplitude-free paper (the method diagram), in TikZ: 0.95 x 252 = 239.4 pt
+% wide and 177.84 pt + \WEd in = 186.05 pt tall, for
+%   \input{figures/tikz_v2/fig1.tex}
+% The simulated users' box shows a worked answer: the pair the loop asks, its distances to the
+% preferred profile and the probability they give.
+% Preamble: the paper's (pgfplots, compat 1.18, arrows.meta, fillbetween) plus
+% \input{icorr_style.tex}; colours are icorr_style.tex's names only.
+% Data: \icorrtikzdata (default figures/tikz_v2/data/), fig1_*.csv (scripts/paper_v2_fig1.py,
+% amp-free worktree): one PsyPref-T session in the wide setting (3-35 Nm) for the lower of the two
+% middle users of FULL's 200 by distance after 24 comparisons (rank 100 of 200), rerun as FULL's
+% run_one builds it and checked against FULL's stored distances; belief particles and the delivered
+% profile at k = 0, 6, 24, the preferred profile, generic assistance, 30 draws of the walking-data
+% shape prior (unit peaks), the answer model's sigmoid and the walker silhouette. fig1j_*.csv
+% (scripts/paper_v2_fig1j.py, the same session): the pair, by rule the one of the first 24
+% comparisons with d(A) < d(B) whose d(B) - d(A) lies closest to 1 JND; its distances and
+% P(choose A). The CSV columns keep pair1 and pair2 for A and B, and fig1_sigmoid.csv's p is the
+% probability of the first profile.
+% Layout: the old Fig. 1's coordinates in inches of the script (3.5 x 2.6 in), scaled as the
+% paper scales it: 1 in = 0.95 x 72 pt = \mdu; line widths scaled alike (\mds).
+\providecommand{\icorrtikzdata}{figures/tikz_v2/data/}%
+\makeatletter
+\providecommand{\icorrload}[2]{% \icorrload{name}{file.csv}: every cell as \icv{name}{row}{column}%
+  \pgfplotstableread[col sep=comma]{\icorrtikzdata #2}\ic@table
+  \pgfplotstableforeachcolumn\ic@table\as\ic@col{%
+    \pgfplotstableforeachcolumnelement{\ic@col}\of\ic@table\as\ic@cell{%
+      \expandafter\global\expandafter\let\csname ic@#1@\pgfplotstablerow @\ic@col\endcsname
+        \ic@cell}}}%
+\providecommand{\icv}[3]{\csname ic@#1@#2@#3\endcsname}%
+% the walker: \icfwalker{x}{y}{height}{last part}: hip at x, ground at y, height, all three
+% lengths; last part 5 draws the walker alone, 11 with the hip exoskeleton. Geometry from
+% fig1_walker_part<i>.csv (units of the height), style and colour names from
+% fig1_walker_parts.csv.
+\providecommand{\icfwalker}[4]{%
+  \begin{axis}[at={({#1},{#2})}, anchor=origin, x=#3, y=#3, hide axis, clip=false,%
+               xmin=-0.3, xmax=0.3, ymin=0, ymax=1]%
+    \pgfplotsinvokeforeach{0,...,#4}{\icf@walkerpart{##1}{#3}}%
+  \end{axis}}%
+\def\icf@none{none}\def\icf@line{line}%
+\providecommand{\icf@walkerpart}[2]{%
+  \edef\icf@edge{\icv{fwk}{#1}{edge}}\edef\icf@fill{\icv{fwk}{#1}{fill}}%
+  \edef\icf@kind{\icv{fwk}{#1}{kind}}%
+  \ifx\icf@edge\icf@none\else\colorlet{icfwe#1}{\icf@edge}\fi
+  \ifx\icf@fill\icf@none\else\colorlet{icfwf#1}{\icf@fill}\fi
+  \ifx\icf@kind\icf@line
+    \addplot[draw=icfwe#1, line width=\icv{fwk}{#1}{lw_per_height}*#2,%
+             line cap=\icv{fwk}{#1}{cap}, line join=round, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \else\ifx\icf@edge\icf@none
+    \addplot[fill=icfwf#1, draw=none, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \else
+    \addplot[fill=icfwf#1, draw=icfwe#1, line width=\icv{fwk}{#1}{lw_per_height}*#2, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \fi\fi}%
+\makeatother
+\begin{tikzpicture}[x=68.4pt, y=68.4pt, font=\scriptsize]
+\scriptsize% the type the legend row is measured in
+\def\mdu{68.4pt}% 1 in of the script, as printed
+\def\mds{0.95}% the paper's scale: line widths
+\icorrload{fm}{fig1_meta.csv}\icorrload{fwk}{fig1_walker_parts.csv}\icorrload{fj}{fig1j_meta.csv}%
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_curves.csv}\mdcurves
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1j_pair.csv}\mdpair
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_prior.csv}\mdprior
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_fan_k0.csv}\mdfanA
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_fan_k6.csv}\mdfanB
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_fan_k24.csv}\mdfanC
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig1_sigmoid.csv}\mdsigmoid
+\pgfplotstablegetcolsof{\mdfanA}\pgfmathtruncatemacro\mdlastdraw{\pgfplotsretval-2}% d0..dN
+\pgfplotstablegetcolsof{\mdprior}\pgfmathtruncatemacro\mdlastprior{\pgfplotsretval-3}% s0..sN
+\tikzset{
+  % a line of text centred on the given y (its baseline 0.257 em below)
+  md text/.style={inner sep=0pt, icInk, anchor=base west, yshift=-0.257*7pt*\mds},
+  md head/.style={inner sep=0pt, icInk, anchor=base west, yshift=-0.257*8pt*\mds,
+                  font=\footnotesize\bfseries},
+  % several lines, centred on y
+  md block/.style={inner sep=0pt, icInk, anchor=west, align=left,
+                   font=\fontsize{7}{7.7}\selectfont},
+  md box/.style={draw=icMuted, fill=white, line width=\mds*0.6pt, rounded corners=0.05*\mdu},
+  md arrow/.style={draw=#1, line width=\mds*0.8pt,
+                   -{Triangle[length=\mds*2.8pt, width=\mds*2.8pt]}},
+  md arrow/.default=icMuted,
+  md generic/.style={icGeneric, line width=\mds*1.0pt},
+}
+\pgfplotsset{
+  md mini/.style={anchor=south west, scale only axis, hide axis, clip=false,
+    xmin=\icv{fm}{0}{xmin}, xmax=\icv{fm}{0}{xmax},
+    ymin=\icv{fm}{0}{ymin}, ymax=\icv{fm}{0}{ymax}},
+  md line/.style={line cap=round, line join=round, mark=none},
+}
+% a small bare axes: gait cycle on x, torque on y, a zero line; #1, #2 lower-left corner,
+% #3, #4 width and height (in), #5 its curves; the style md extra: further axis options
+\pgfplotsset{md extra/.style={}}
+\def\mdmini#1#2#3#4#5{%
+  \begin{axis}[md mini, at={({(#1)*\mdu},{(#2)*\mdu})}, width=(#3)*\mdu, height=(#4)*\mdu,
+               md extra]
+    \draw[icRule, line width=\mds*0.5pt]
+      (axis cs:\icv{fm}{0}{xmin},0) -- (axis cs:\icv{fm}{0}{xmax},0);
+    #5
+    \draw[icContext, line width=\mds*0.6pt]
+      (rel axis cs:0,1) -- (rel axis cs:0,0) -- (rel axis cs:1,0);
+  \end{axis}}
+% a fan of posterior particles (#1 the table, #2 colour, #3 opacity)
+\def\mdfan#1#2#3{%
+  \pgfplotsinvokeforeach{0,...,\mdlastdraw}{%
+    \addplot[md line, #2, line width=\mds*0.4pt, draw opacity=#3] table[x=phase, y=d##1] {#1};}}
+% the prior's shape draws
+\def\mdpriorfan{%
+  \pgfplotsinvokeforeach{0,...,\mdlastprior}{%
+    \addplot[md line, icContext, line width=\mds*0.35pt, draw opacity=0.7]
+      table[x=phase, y=s##1] {\mdprior};}}
+\def\mdpreferred#1{\addplot[md line, icInk, line width=\mds*#1pt] table[x=phase, y=preferred]
+  {\mdcurves};}
+\def\mdestimate#1#2{\addplot[md line, icBlue, line width=\mds*#2pt] table[x=phase, y=#1]
+  {\mdcurves};}
+\def\mdgeneric{\addplot[md generic, md line] table[x=phase, y=generic] {\mdcurves};}
+% a profile of the pair (#1 its column, #2 colour), the preferred profile, the gap between them
+\def\mdgap#1#2{%
+  \addplot[name path=mdgapA, draw=none, mark=none] table[x=phase, y=#1] {\mdpair};
+  \addplot[name path=mdgapB, draw=none, mark=none] table[x=phase, y=preferred] {\mdpair};
+  \addplot[#2, fill opacity=0.25, draw=none] fill between[of=mdgapA and mdgapB];
+  \addplot[md line, icInk, line width=\mds*0.8pt] table[x=phase, y=preferred] {\mdpair};
+  \addplot[md line, #2, line width=\mds*1.1pt] table[x=phase, y=#1] {\mdpair};}
+% columns and rows (in)
+\def\LXa{0.03}\def\LXb{0.77}\def\MXa{0.86}\def\MXb{2.58}\def\RXa{2.67}\def\RXb{3.47}
+\def\TYa{0.80}\def\TYb{2.46}
+\pgfmathsetmacro\lc{(\LXa+\LXb)/2}\pgfmathsetmacro\rc{(\RXa+\RXb)/2}
+% ---- legend: one centred row (0.18 in lines, 0.05 in pad, 0.16 in gaps), widths of the labels
+% measured in this type
+\pgfmathsetmacro\lwa{width("PsyPref")/68.4}
+\pgfmathsetmacro\lwb{width("preferred profile")/68.4}
+\pgfmathsetmacro\lwc{width("generic assistance")/68.4}
+\pgfmathsetmacro\lxa{(3.5-(3*(0.18+0.05)+\lwa+\lwb+\lwc+2*0.16))/2}
+\pgfmathsetmacro\lxb{\lxa+0.18+0.05+\lwa+0.16}
+\pgfmathsetmacro\lxc{\lxb+0.18+0.05+\lwb+0.16}
+\def\LGy{2.548}
+\draw[icBlue, line width=\mds*1.2pt] (\lxa,\LGy) -- ++(0.18,0);
+\node[md text] at (\lxa+0.23,\LGy) {PsyPref};
+\draw[icInk, line width=\mds*0.9pt] (\lxb,\LGy) -- ++(0.18,0);
+\node[md text] at (\lxb+0.23,\LGy) {Preferred profile};
+\draw[md generic] (\lxc,\LGy) -- ++(0.18,0);
+\node[md text] at (\lxc+0.23,\LGy) {Generic assistance};
+% ---- left: what the prior is built from <- the study's peak-torque range; italics: where prior
+% knowledge enters
+\draw[md box] (\LXa,2.07) rectangle (\LXb,\TYb);
+\node[md block, anchor=center, align=center] at (\lc,2.19) {Walking data\\\textit{or other curves}};
+\draw[md arrow] (\lc,2.065) -- (\lc,1.985);
+\draw[md box] (\LXa,1.25) rectangle (\LXb,1.98);
+\node[md block, anchor=center, align=center] at (\lc,1.835) {Profile-shape\\prior, \textit{width}};
+\node[md text, anchor=base] at (\LXa+0.15+0.27,1.315) {Gait cycle};
+\node[inner sep=0pt, icInk, rotate=90, anchor=center] at (\LXa+0.075,1.40+0.14) {Torque};
+\draw[icMuted, line width=\mds*0.6pt, {Triangle[length=\mds*2.2pt, width=\mds*2.2pt]}-{Triangle[length=\mds*2.2pt, width=\mds*2.2pt]}]
+  (\LXb-0.033,1.42) -- (\LXb-0.033,1.68);
+\draw[md arrow] (\lc,1.195) -- (\lc,1.245);
+\draw[md box] (\LXa,\TYa) rectangle (\LXb,1.19);
+\node[md block, anchor=center, align=center] at (\lc,0.995)
+  {Peak torque\\range or level\\\textit{device, protocol}};
+\draw[md arrow] (\LXb+0.005,1.89) -- (\MXa-0.005,1.89);
+% ---- middle top: PsyPref's belief
+\draw[md box, fill=icTintBlue, draw=icBlue, line width=\mds*0.9pt] (\MXa,1.70) rectangle (\MXb,\TYb);
+\node[md head, text=icBlue] at (\MXa+0.07,2.375) {PsyPref:};
+\node[md text] at (\MXa+0.07,2.258) {belief over the preferred profile $\mathbf z^\ast$,};
+\node[md text] at (\MXa+0.07,2.146) {discrimination scale $\ell$, lapse rate $\lambda$};
+\pgfmathsetmacro\pxa{(\MXa+\MXb)/2-(3*0.46+2*0.115)/2}
+\pgfmathsetmacro\pxb{\pxa+0.46+0.115}\pgfmathsetmacro\pxc{\pxb+0.46+0.115}
+\def\SNy{1.835}\def\SNh{0.24}% the belief insets: bottom and height
+\node[md text, anchor=base] at (\pxa+0.23,1.77) {$k = \icv{fm}{0}{k0}$};
+\node[md text, anchor=base] at (\pxb+0.23,1.77) {$k = \icv{fm}{0}{k1}$};
+\node[md text, anchor=base] at (\pxc+0.23,1.77) {$k = \icv{fm}{0}{k2}$};
+\draw[md arrow=icContext, line width=\mds*0.7pt]
+  (\pxb-0.115+0.025,\SNy+\SNh/2) -- (\pxb-0.025,\SNy+\SNh/2);
+\draw[md arrow=icContext, line width=\mds*0.7pt]
+  (\pxc-0.115+0.025,\SNy+\SNh/2) -- (\pxc-0.025,\SNy+\SNh/2);
+% ---- middle bottom: the user
+\draw[md box, fill=icTintBlue] (\MXa,\TYa) rectangle (\MXb,1.40);
+\pgfmathsetmacro\qx{\MXa+0.06+0.44+0.08}
+\node[md block, font=\fontsize{7}{8}\selectfont\bfseries] at (\qx,1.27)
+  {Profile A, B or\\no preference?};
+% ---- the loop's two edges
+\pgfmathsetmacro\xl{\MXa+0.10}\pgfmathsetmacro\xr{\MXb-0.10}
+\draw[md arrow=icInk] (\xr,1.695) -- (\xr,1.405);
+\node[md block, anchor=east, align=right] at (\xr-0.05,1.55) {Most informative\\pair};
+\draw[md arrow=icInk] (\xl,1.405) -- (\xl,1.695);
+\node[md block] at (\xl+0.05,1.55) {Belief\\update};
+% ---- right: identified assistance -> validation
+\draw[md arrow] (\MXb+0.005,2.01) -- (\RXa-0.005,2.01);
+\draw[md box] (\RXa,1.70) rectangle (\RXb,\TYb);
+\node[md block] at (\RXa+0.06,2.2024)
+  {\textcolor{icBlue}{Identified}\\\textcolor{icBlue}{assistance}\\after $k$\\comparisons};
+\draw[md arrow] (\rc,1.695) -- (\rc,1.615);
+\draw[md box] (\RXa,\TYa) rectangle (\RXb,1.61);
+\node[md text, font=\scriptsize\bfseries] at (\RXa+0.06,1.515) {Validation:};
+\node[md block] at (\RXa+0.06,1.30) {identified vs.\\generic\\assistance};
+% ---- bottom: this paper's simulated users
+% the worked answer: the plots' bottom and height, the pair's left edges and width, the answer
+% model's left edge and width, the row of labels below them, how far the box grows downward (in)
+\def\WEy{0.07}\def\WEh{0.34}\def\WEa{1.07}\def\WEb{1.68}\def\WEw{0.52}
+\def\SGx{2.38}\def\SGw{0.54}\def\SGy{\WEy}\def\SGh{\WEh}
+\def\WEl{-0.025}\def\WEd{0.12}
+\draw[draw=icMuted, line width=\mds*0.8pt, dash pattern=on \mds*2.4pt off \mds*1.6pt,
+      rounded corners=0.06*\mdu] (\LXa,0.03-\WEd) rectangle (\RXb,0.70);
+\node[md head] at (\LXa+0.07,0.615) {This paper: simulated users};
+% who the users are; how they answer: the pair's distances, then the probability they give
+\node[md block, anchor=north west] at (\LXa+0.07,0.535)
+  {\textbf{Preferred profile}\\\textit{Shape:} walker not\\\phantom{\textit{Shape:} }in the prior\\\textit{Peaks:} study's range};
+\node[md block, anchor=north west] at (\WEa,0.535) {\textbf{Distance} $d$ (Nm)};
+\node[md block, anchor=north west] at (2.12,0.535) {\textbf{Answer model:} $P$(choose A)};
+\node[md text, anchor=base] at (\WEa+\WEw/2,\WEl) {$d(\mathrm{A})\!=\!\icv{fj}{0}{d1_txt}$};
+\node[md text, anchor=base] at (\WEb+\WEw/2,\WEl) {$d(\mathrm{B})\!=\!\icv{fj}{0}{d2_txt}$};
+\node[md text, anchor=base] at (\SGx+\SGw/2,\WEl) {$d(\mathrm{B}) - d(\mathrm{A})$};
+\draw[md arrow] (\WEb+\WEw+0.03,\WEy+\WEh/2) -- (\SGx-0.05,\WEy+\WEh/2);
+\draw[md arrow] (\MXa+0.28,0.705) -- (\MXa+0.28,0.795);
+% ---- the walkers: three without, the user with the hip exoskeleton
+\icfwalker{(\LXa+0.20)*\mdu}{2.315*\mdu}{0.12*\mdu}{5}
+\icfwalker{(\LXa+0.38)*\mdu}{2.315*\mdu}{0.12*\mdu}{5}
+\icfwalker{(\LXa+0.56)*\mdu}{2.315*\mdu}{0.12*\mdu}{5}
+\icfwalker{(\MXa+0.06+0.22-0.02)*\mdu}{(\TYa+0.05+0.02)*\mdu}{0.46*\mdu}{11}
+% ---- the small axes
+% the prior's shapes at unit peaks: limits of their own
+\pgfplotsset{md extra/.style={ymin=\icv{fm}{0}{prior_ymin}, ymax=\icv{fm}{0}{prior_ymax}}}
+\mdmini{\LXa+0.15}{1.40}{0.54}{0.29}{%
+  \mdpriorfan\addplot[md generic, md line] table[x=phase, y=generic_shape] {\mdprior};}
+\pgfplotsset{md extra/.style={}}
+\mdmini{\pxa}{\SNy}{0.46}{\SNh}{%
+  \mdfan{\mdfanA}{icBlueLight}{0.55}\mdestimate{mean_k0}{1.0}\mdpreferred{0.8}}
+\mdmini{\pxb}{\SNy}{0.46}{\SNh}{%
+  \mdfan{\mdfanB}{icBlueLight}{0.55}\mdestimate{mean_k6}{1.0}\mdpreferred{0.8}}
+\mdmini{\pxc}{\SNy}{0.46}{\SNh}{%
+  \mdfan{\mdfanC}{icBlueLight}{0.55}\mdestimate{mean_k24}{1.0}\mdpreferred{0.8}}
+% the pair: each label inside its plot's top-left corner, clear of the other plot
+\mdmini{\qx}{0.87}{0.46}{0.27}{%
+  \addplot[md line, icPairA, line width=\mds*1.2pt] table[x=phase, y=pair1] {\mdpair};
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=\mds*2.5pt,
+        yshift=\mds*1.5pt] at (rel axis cs:0,1) {A};}
+\mdmini{\qx+0.60}{0.87}{0.46}{0.27}{%
+  \addplot[md line, icPairB, line width=\mds*1.2pt] table[x=phase, y=pair2] {\mdpair};
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=\mds*2.5pt,
+        yshift=\mds*1.5pt] at (rel axis cs:0,1) {B};}
+% the same pair with the preferred profile: limits of its own, so that the gaps fill the plots
+\pgfplotsset{md extra/.style={ymin=\icv{fj}{0}{ymin}, ymax=\icv{fj}{0}{ymax}}}
+\mdmini{\WEa}{\WEy}{\WEw}{\WEh}{%
+  \mdgap{pair1}{icPairA}
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=\mds*2.5pt,
+        yshift=\mds*1.5pt] at (rel axis cs:0,1) {A};}
+\mdmini{\WEb}{\WEy}{\WEw}{\WEh}{%
+  \mdgap{pair2}{icPairB}
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=\mds*2.5pt,
+        yshift=\mds*1.5pt] at (rel axis cs:0,1) {B};}
+\pgfplotsset{md extra/.style={}}
+\mdmini{\RXa+0.06}{1.75}{\RXb-\RXa-0.12}{0.21}{%
+  \mdpreferred{0.9}\mdestimate{mean_k24}{1.2}
+  \node[inner sep=0pt, anchor=south east, icMuted]
+    at (rel axis cs:0.99,0.02) {$k = \icv{fm}{0}{k_id}$};}
+\mdmini{\RXa+0.06}{\TYa+0.05}{\RXb-\RXa-0.12}{0.27}{%
+  \mdgeneric\mdestimate{mean_k24}{1.2}}
+% ---- the answer model: lapse floor and ceiling, ticks on the right
+\pgfmathsetmacro\mdlo{\icv{fm}{0}{lapse}/2}\pgfmathsetmacro\mdhi{1-\icv{fm}{0}{lapse}/2}
+\begin{axis}[at={(\SGx*\mdu,\SGy*\mdu)}, anchor=south west, scale only axis,
+  width=\SGw*\mdu, height=\SGh*\mdu, clip=false,
+  xmin=\icv{fm}{0}{sig_xmin}, xmax=\icv{fm}{0}{sig_xmax},
+  ymin=\icv{fm}{0}{sig_ymin}, ymax=\icv{fm}{0}{sig_ymax},
+  axis x line*=bottom, axis y line*=right, axis line style={-, icMuted, line width=\mds*0.6pt},
+  tick align=outside, major tick length=\mds*2pt, tick style={icMuted, line width=\mds*0.6pt},
+  xtick={0}, xticklabels={}, ytick={\mdlo,0.5,\mdhi},
+  yticklabels={$\lambda$/2, 0.5, 1\,$-$\,$\lambda$/2}, yticklabel pos=right,
+  yticklabel style={icInk, font=\scriptsize, inner sep=0pt, xshift=\mds*1.5pt},
+]
+\draw[icContext, line width=\mds*0.6pt, dash pattern=on \mds*0.6pt off \mds*0.9pt]
+  (axis cs:\icv{fm}{0}{sig_xmin},\mdlo) -- (axis cs:\icv{fm}{0}{sig_xmax},\mdlo);
+\draw[icContext, line width=\mds*0.6pt, dash pattern=on \mds*0.6pt off \mds*0.9pt]
+  (axis cs:\icv{fm}{0}{sig_xmin},\mdhi) -- (axis cs:\icv{fm}{0}{sig_xmax},\mdhi);
+\draw[icRule, line width=\mds*0.5pt]
+  (axis cs:0,\icv{fm}{0}{sig_ymin}) -- (axis cs:0,\icv{fm}{0}{sig_ymax});
+\addplot[icInk, line width=\mds*1.2pt, mark=none, line join=round] table[x=delta, y=p]
+  {\mdsigmoid};
+% the pair's reading: its distance difference, the probability it gives
+\draw[icMuted, line width=\mds*0.6pt, dash pattern=on \mds*0.9pt off \mds*0.9pt]
+  (axis cs:\icv{fj}{0}{delta},\icv{fm}{0}{sig_ymin}) -- (axis cs:\icv{fj}{0}{delta},\icv{fj}{0}{p})
+  -- (axis cs:\icv{fm}{0}{sig_xmin},\icv{fj}{0}{p});
+\fill[icInk] (axis cs:\icv{fj}{0}{delta},\icv{fj}{0}{p}) circle[radius=\mds*1.3pt];
+\node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, yshift=-\mds*1.2pt]
+  at (axis cs:\icv{fm}{0}{sig_xmin},\icv{fj}{0}{p}) {\icv{fj}{0}{p_txt}};
+\end{axis}
+\pgfresetboundingbox
+\useasboundingbox (0,-\WEd) rectangle (3.5,2.6);
+\end{tikzpicture}%

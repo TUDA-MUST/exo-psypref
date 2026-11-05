@@ -1,0 +1,2 @@
+sec_per_comparison,n_comp,n_users,n_boot,seed,s_nm,lapse,ymin,ymax,k_users,jnd_nm,users_ci_pm
+50,40,200,2000,20271029,1,0.1,40,100,24,0.6744897502,4

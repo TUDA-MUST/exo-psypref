@@ -1,0 +1,13 @@
+part,name,kind,lw_per_height,edge,fill,closed,cap
+0,arm_back,line,0.065,icContext,none,0,round
+1,leg_back,line,0.08,icContext,none,0,round
+2,torso,line,0.105,icGeneric,none,0,round
+3,leg_front,line,0.08,icGeneric,none,0,round
+4,arm_front,line,0.065,icGeneric,none,0,round
+5,head,patch,0,none,icGeneric,1,round
+6,belt,line,0.035,icInk,none,0,butt
+7,back_unit,patch,0,none,icInk,1,round
+8,strut,line,0.03,icInk,none,0,round
+9,cuff,line,0.05,icInk,none,0,butt
+10,actuator,patch,0.02,icInk,white,1,round
+11,actuator_dot,patch,0,none,icInk,1,round

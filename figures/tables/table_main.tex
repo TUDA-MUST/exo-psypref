@@ -1,0 +1,37 @@
+% table_main.tex: Table I of the ICORR paper. Written by the amp-free worktree's
+% scripts/paper_v2_table_main.py from out/icorr/amp_free; do not edit by hand. Post hoc tabulation.
+% Markers: Fig. 2's hollow orange square (CMA-ES) and triangle (Arens' GP), defined inside the float.
+\begin{table}[t]
+\providecommand{\icTabMark}[3]{\begin{pgfpicture}\pgfsetlinewidth{0.6pt}\pgfsetstrokecolor{icOrange}\pgfsetfillcolor{white}\pgfsetplotmarksize{#2}\pgfuseplotmark{#1}\pgfsetbaseline{#3}\end{pgfpicture}}%
+\providecommand{\icTabSq}{\icTabMark{square*}{1.7pt}{-1.9pt}}%
+\providecommand{\icTabTri}{\icTabMark{triangle*}{2.1pt}{-1.3pt}}%
+\caption{Results After 24 Comparisons}
+\label{tab:main}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lccc@{}}
+\toprule
+ & 3--12\,Nm & 3--35\,Nm & Fixed 12\,Nm \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{$P_\mathrm{g}$ (\%), and median distance from the preferred profile (Nm)}} \\
+Generic assistance & 50 (2.6) & 50 (5.4) & 50 (4.2) \\
+PsyPref & 80.5 (1.4) & 92.5 (2.5) & 84.0 (2.5) \\
+GP-BALD$^{\mathrm{a}}$ & 77.0 (1.6) & 86.7 (3.4) & 81.5 (2.7) \\
+CMA-ES\,\icTabSq{} or Arens' GP\,\icTabTri$^{\mathrm{b}}$ & 65.8 (2.0)\rlap{\,\icTabSq} & 79.4 (3.9)\rlap{\,\icTabTri} & 75.3 (3.1)\rlap{\,\icTabSq} \\
+CMA-ES, 4--6 param.$^{\mathrm{c}}$ & 54.6 (2.3) & 67.6 (4.9) & 65.8 (3.3) \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{PsyPref's profile chosen over (\%)}} \\
+The comparator's & 68.8\rlap{\,\icTabSq} & 80.8\rlap{\,\icTabTri} & 67.4\rlap{\,\icTabSq} \\
+CMA-ES, 4--6 param.'s & 75.8 & 83.4 & 71.6 \\
+\midrule
+First $k$ at comparator's $k = 40$ & 3 [2, 4]\rlap{\,\icTabSq} & 5 [4, 6]\rlap{\,\icTabTri} & 8 [7, 10]\rlap{\,\icTabSq} \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Change against PsyPref (points)}} \\
+Prior 2$\times$ wider & $-$5.8 & $-$3.8 & $-$6.9 \\
+Prior 3$\times$ wider & $-$21.4 & $-$17.2 & $-$15.4 \\
+Random pairs & $-$15.7 & $-$14.3 & $-$16.6 \\
+\bottomrule
+\end{tabular*}
+\\[2pt]
+\parbox{\columnwidth}{\scriptsize Means ($P_\mathrm{g}$) over $n = 200$ simulated users per setting ($\sigma = 1$\,Nm, $\lambda = 0.1$); 95\,\% intervals of $P_\mathrm{g}$ $\pm$1--4 points; 1~JND: 0.67\,Nm. Post hoc: the comparator's choice, the distances, direct choices, first $k$. Changes are not additive. $^{\mathrm{a}}$Prior and informative pairs without the psychometric answer model; not a published configuration. $^{\mathrm{b}}$Highest of eight configurations of five published optimizers, with PsyPref's prior; the others reached 53.9--64.8, 43.3--79.3 and 63.8--73.9\,\%. $^{\mathrm{c}}$On Sch\"afer et al.'s family.}
+\end{table}

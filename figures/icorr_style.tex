@@ -1,0 +1,56 @@
+% icorr_style.tex: shared colours and line styles of the amplitude-free paper's figures
+% (paper/notes/story_concept.md section 7a, scheme C). \input once in the preamble, after
+% \usepackage{pgfplots}. Every figure uses these names; no figure defines its own colours.
+%
+% Roles:
+%   PsyPref (all variants) ............ icBlue, solid
+%   best published comparator ......... icOrange, solid, hollow marker: square CMA-ES, triangle Arens' GP
+%   GP-BALD (same prior) .............. icGrey, dashed
+%   CMA-ES on Schaefer's family ....... icDark, dash-dot
+%   generic assistance (50 %) ......... icGeneric, solid thin
+%   best K-weight profile (ceiling, floor) icContext, dotted
+%   K = 8 / 16 / 24 (or k = 24 / 40 / 150) icBlueLight / icBlue / icBlueDark
+%   settings as markers ............... circle 3-35 Nm, square fixed 12 Nm, diamond 3-12 Nm
+%   robustness: filled = fixed yardstick (post hoc), hollow = registered scoring
+\definecolor{icBlue}{HTML}{1845FB}
+\definecolor{icBlueLight}{HTML}{8FA4FD}
+\definecolor{icBlueDark}{HTML}{0F2C9E}
+\definecolor{icOrange}{HTML}{F89C20}
+\definecolor{icOrangeText}{HTML}{B86E00}% text in the comparator's hue (contrast 4.0 on white)
+\definecolor{icGrey}{HTML}{7A7A7A}
+\definecolor{icDark}{HTML}{333333}
+\definecolor{icGeneric}{HTML}{9C9CA1}
+\definecolor{icContext}{HTML}{BBBBBB}
+\definecolor{icRule}{HTML}{DDDDDD}
+\definecolor{icInk}{HTML}{222222}
+\definecolor{icMuted}{HTML}{666666}
+% Fig. 1 only: the pair shown to the user (author's choice, 2026-10-29: distinct hues read
+% stronger than two blues; gold was dropped because it equals the comparator's orange)
+\definecolor{icTintBlue}{HTML}{F1F3F8}% Fig. 1: the loop, PsyPref's and the user's box (author's choice)
+\definecolor{icPairA}{HTML}{BB5566}
+\definecolor{icPairB}{HTML}{33BBEE}
+\tikzset{
+  ic psypref/.style={icBlue, line width=1.5pt, line cap=round, line join=round},
+  ic best/.style={icOrange, line width=1.2pt, line cap=round, line join=round},
+  ic gpbald/.style={icGrey, line width=0.9pt, dash pattern=on 3.2pt off 1.6pt},
+  ic sch/.style={icDark, line width=0.9pt, dash pattern=on 3.6pt off 1.4pt on 0.9pt off 1.4pt},
+  ic generic/.style={icGeneric, line width=0.6pt},
+  ic context/.style={icContext, line width=0.8pt, dash pattern=on 0.9pt off 1.5pt},
+  ic rule/.style={icRule, line width=0.5pt},
+  ic label/.style={inner sep=0.6pt, font=\scriptsize, align=left},
+  ic note/.style={inner sep=0.8pt, font=\scriptsize, icInk, fill=white, fill opacity=0.85,
+                  text opacity=1, align=right},
+  ic band/.style={fill=#1, fill opacity=0.15, draw=none},
+}
+\pgfplotsset{
+  ic axis/.style={
+    axis line style={icMuted, line width=0.5pt},
+    tick style={icMuted, line width=0.5pt},
+    tick label style={font=\scriptsize, icMuted},
+    label style={font=\footnotesize, icInk},
+    title style={font=\footnotesize, icInk},
+    axis x line*=bottom, axis y line*=left,
+    tick align=outside, major tick length=2pt,
+    clip=false,
+  },
+}

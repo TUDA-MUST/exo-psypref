@@ -1,0 +1,156 @@
+% fig4m.tex: Fig. 4, variant 4M (4L as a measurement engineer would read it: saturation marked, the known
+% systematic part shown, intervals that hold for all cells at once). One column, 252 pt wide.
+%   \input{figures/tikz_v2/fig4m.tex}   inside \begin{figure}[t]\centering ... \end{figure}
+% Preamble: \usepackage{pgfplots}\pgfplotsset{compat=1.18}\input{icorr_style.tex}
+% Data: \icorrtikzdata (default figures/tikz_v2/data/), written by scripts/paper_v2_fig4m.py (amp-free
+% worktree): fig4m_rows.csv (one line per group header or row: y in row units; per setting the light and
+% the blue five values, nan where the cell has the other colour or does not exist; the cap marker; the
+% label), fig4m_meta.csv (axis limits and the layout in pt).
+% Forest plot: PsyPref minus the strongest optimizer of that row, picked again in every bootstrap draw,
+% paired by user, chosen over generic assistance after 24 comparisons, in points, each user rated with their
+% own noise level and lapse rate at the session's end. Circle 3-35 Nm (0.25 rows above the row's centre),
+% square fixed 12 Nm (0.25 below). Thick bar: 95 % interval of that row and setting. Thin bar: 95 % for the 73
+% cells jointly. Blue with its value where the thin bar reaches 0, else icBlueLight. Open circle with "both
+% at 95 %": PsyPref and the comparator at the measure's maximum in every draw. "(n)": the smallest lead of n
+% conditions per setting; dagger: PsyPref with tie handling (n = 160). The first and the last row are
+% bold, no header; the second row is the main condition against Fig. 2's comparator. Row labels give a
+% deviation's size where one number suffices.
+\providecommand{\icorrtikzdata}{figures/tikz_v2/data/}%
+\makeatletter
+\providecommand{\icorrload}[2]{% \icorrload{name}{file.csv}: every cell as \icv{name}{row}{column}%
+  \pgfplotstableread[col sep=comma]{\icorrtikzdata #2}\ic@table
+  \pgfplotstableforeachcolumn\ic@table\as\ic@col{%
+    \pgfplotstableforeachcolumnelement{\ic@col}\of\ic@table\as\ic@cell{%
+      \expandafter\global\expandafter\let\csname ic@#1@\pgfplotstablerow @\ic@col\endcsname
+        \ic@cell}}}%
+\providecommand{\icv}[3]{\csname ic@#1@#2@#3\endcsname}%
+\def\fmlabel#1#2{\expandafter\def\csname fm@lab@#1\endcsname{#2}}%
+\def\fmlab#1{\csname fm@lab@#1\endcsname}%
+\makeatother
+% the row labels, by key (fig4m_rows.csv's column key); condition values from fig4m_meta.csv
+\fmlabel{MAIN}{Main condition (Fig.~2)}%
+\fmlabel{G1}{How they answer}%
+\fmlabel{R1}{Noise level $\sigma$ = \pgfmathprintnumber{\icv{fmm}{0}{s_r1}}\,Nm}%
+\fmlabel{R2}{Noise level $\sigma$ = \pgfmathprintnumber{\icv{fmm}{0}{s_r2}}, \pgfmathprintnumber{\icv{fmm}{0}{s_r3}}\,Nm}%
+\fmlabel{AL}{Lapse rate $\lambda$ = \pgfmathprintnumber{\icv{fmm}{0}{lapse_a2}}, \pgfmathprintnumber{\icv{fmm}{0}{lapse_r3}}}%
+\fmlabel{A1}{$\sigma$ differs per user (log SD \icv{fmm}{0}{a1_logsd})}%
+\fmlabel{A6}{Other answer-curve shapes}%
+\fmlabel{A3}{Device noise \icv{fmm}{0}{a3_noise}\,Nm}%
+\fmlabel{A4}{Bias toward first profile, \icv{fmm}{0}{a4_bias}\,$\sigma$}%
+\fmlabel{A5T}{``No preference'' below \icv{fmm}{0}{a5_nopref}\,JND}%
+\fmlabel{G2}{How they change}%
+\fmlabel{A7}{Fatigue: $\lambda$ from \icv{fmm}{0}{a7_from} to \icv{fmm}{0}{a7_to}}%
+\fmlabel{A8}{$\sigma$ \icv{fmm}{0}{a8_from} to \icv{fmm}{0}{a8_to}\,Nm, and reverse}%
+\fmlabel{B4}{Preferred profile drifts \icv{fmm}{0}{b4_a}, \icv{fmm}{0}{b4_b}\,JND}%
+\fmlabel{B3}{Familiarity}%
+\fmlabel{G3}{What they judge and prefer}%
+\fmlabel{B1}{Weber's law}%
+\fmlabel{B2}{Over-assistance counts double}%
+\fmlabel{B5}{Judging single features}%
+\fmlabel{B67}{Gait phases weighted unequally}%
+\fmlabel{B8}{No single preferred profile}%
+\fmlabel{R4}{Negative power disliked}%
+\fmlabel{G4}{How they differ from the prior}%
+\fmlabel{R6}{Users from other datasets}%
+\fmlabel{PM}{Peaks unlike the prior}%
+\fmlabel{PS}{Flexion peak 6, 12\,\%GC later}%
+\fmlabel{SO}{Other shapes unlike the prior}%
+\fmlabel{SC}{Shapes from the 4--6-param. family}%
+\fmlabel{C4T}{Pessimistic user (\icv{fmm}{0}{ndev_word} at once)}%
+\begin{tikzpicture}[x=1pt, y=1pt]
+\pgfkeys{/pgf/number format/assume math mode=true}% numbers in the text font (Times)
+\icorrload{fmm}{fig4m_meta.csv}%
+\icorrload{fmr}{fig4m_rows.csv}%
+\pgfmathtruncatemacro\fmN{\icv{fmm}{0}{n_rows}-1}%
+\pgfmathsetmacro\fmL{\icv{fmm}{0}{lab_w}}\pgfmathsetmacro\fmR{\icv{fmm}{0}{ax_r}}%
+\pgfmathsetmacro\fmP{0.85*\icv{fmm}{0}{pitch}}\pgfmathsetmacro\fmB{\icv{fmm}{0}{bottom}}%
+\pgfmathsetmacro\fmoff{\icv{fmm}{0}{off}}\pgfmathsetmacro\fmmr{\icv{fmm}{0}{mark_r}}%
+\pgfmathsetmacro\fmms{\icv{fmm}{0}{mark_s}}\pgfmathsetmacro\fmvgapx{\icv{fmm}{0}{val_gapx}}%
+\pgfmathsetmacro\fmxmin{\icv{fmm}{0}{xmin}}\pgfmathsetmacro\fmxmax{\icv{fmm}{0}{xmax}}%
+\pgfmathsetmacro\fmymin{\icv{fmm}{0}{ymin}}\pgfmathsetmacro\fmymax{\icv{fmm}{0}{ymax}}%
+\pgfmathsetmacro\fmscale{\icv{fmm}{0}{scale}}%
+\pgfmathsetmacro\fmH{(\fmymax-\fmymin)*\fmP}\pgfmathsetmacro\fmW{\fmR-\fmL}%
+\pgfmathsetmacro\fmylab{\icv{fmm}{0}{ylabels}}\pgfmathsetmacro\fmlinetop{\icv{fmm}{0}{linetop}}%
+\def\fmlight{icBlueLight}% a lead whose thin bar lies above 0: the lighter PsyPref
+\pgfplotsset{
+  fm mark w/.style={mark=*, mark size=\fmmr pt},
+  fm mark f/.style={mark=square*, mark size=\fmms pt},
+  fm marks/.style={only marks, mark options={fill=#1, draw=#1, line width=0.3pt}},
+  % error bars only: no line through the points and no marks
+  fm bar/.style 2 args={draw=none, mark=none, error bars/.cd, x dir=both, x explicit, error mark=none,
+    error bar style={draw=#1, line width=#2, line cap=butt}, /pgfplots/.cd},
+}
+\begin{axis}[ic axis, scale only axis, at={(\fmL pt,\fmB pt)}, anchor=south west,
+  width=\fmW pt, height=\fmH pt,
+  xmin=\fmxmin, xmax=\fmxmax, ymin=\fmymin, ymax=\fmymax, y dir=reverse,
+  axis y line=none, ytick=\empty,
+  xtick={-10,0,10,20,30},
+  xticklabels={\textminus10, 0, +10, +20, +30},
+  xticklabel style={inner sep=1pt},
+]
+% no lead (0): the strongest other optimizer
+\draw[icMuted, line width=0.5pt] (axis cs:0,\fmlinetop) -- (axis cs:0,\fmymax);
+\node[anchor=base west, inner sep=0pt, font=\scriptsize, text=icInk, xshift=-2.5pt]
+  at (axis cs:0,\fmylab) {PsyPref ahead of strongest other\,$\rightarrow$};
+% thin bars, thick bars, then markers: light first, blue on top; circle 3-35, square fixed 12
+\foreach \c/\t/\s/\m in {\fmlight/in/w/-, \fmlight/in/f/+, icBlue/out/w/-, icBlue/out/f/+}{%
+  \edef\fmplot{\noexpand\addplot[fm bar={\c}{0.5pt}, forget plot] table[col sep=comma, x=\t_\s,
+    y expr=\noexpand\thisrow{y}\m\fmoff,
+    x error plus expr=\noexpand\thisrow{\t_jhi_\s}-\noexpand\thisrow{\t_\s},
+    x error minus expr=\noexpand\thisrow{\t_\s}-\noexpand\thisrow{\t_jlo_\s}]
+    {\icorrtikzdata fig4m_rows.csv};}\fmplot
+  \edef\fmplot{\noexpand\addplot[fm bar={\c}{1pt}, forget plot] table[col sep=comma, x=\t_\s,
+    y expr=\noexpand\thisrow{y}\m\fmoff,
+    x error plus expr=\noexpand\thisrow{\t_hi_\s}-\noexpand\thisrow{\t_\s},
+    x error minus expr=\noexpand\thisrow{\t_\s}-\noexpand\thisrow{\t_lo_\s}]
+    {\icorrtikzdata fig4m_rows.csv};}\fmplot
+  \edef\fmplot{\noexpand\addplot[fm marks=\c, fm mark \s, forget plot] table[col sep=comma, x=\t_\s,
+    y expr=\noexpand\thisrow{y}\m\fmoff] {\icorrtikzdata fig4m_rows.csv};}\fmplot}
+% both methods at the cap: an open circle, nothing measured
+\addplot[only marks, fm mark w, mark options={fill=white, draw=icBlue, line width=0.6pt}, forget plot]
+  table[col sep=comma, x=cap_w, y expr=\thisrow{y}-\fmoff] {\icorrtikzdata fig4m_rows.csv};
+\end{axis}
+% labels of the blue cells: the value left of the thin bar, "both at 95 %" right of its circle, centred on their
+% own marker's line, shifted by the script's vdy (pt, up positive) where something drawn is close
+\def\fmvalue#1#2#3{% row, setting tag, marker offset (row units)
+  \pgfmathsetmacro\fmvy{\fmB+(\fmymax-\icv{fmr}{#1}{y}-(#3))*\fmP+\icv{fmr}{#1}{vdy_#2}}%
+  \ifnum\icv{fmr}{#1}{pos_#2}=3
+    \node[inner sep=0pt, font=\scriptsize, text=icBlue, anchor=east] at (\icv{fmr}{#1}{vx_#2},\fmvy)
+      {\ifnum\icv{fmr}{#1}{neg_#2}=1\textminus\fi\icv{fmr}{#1}{lab_#2}};%
+  \fi
+  \ifnum\icv{fmr}{#1}{pos_#2}=4
+    \node[inner sep=0pt, font=\scriptsize, text=icBlue, anchor=west] at (\icv{fmr}{#1}{vx_#2},\fmvy) {both at 95\,\%};%
+  \fi}%
+% group headers and row labels, left of the axis
+\foreach \i in {0,...,\fmN}{%
+  \pgfmathsetmacro\fmy{\fmB+(\fmymax-\icv{fmr}{\i}{y})*\fmP}%
+  \ifnum\icv{fmr}{\i}{is_header}=1
+    \node[anchor=mid west, inner sep=0pt, font=\scriptsize\bfseries, text=icInk]
+      at (0,\fmy) {\fmlab{\icv{fmr}{\i}{key}}};%
+  \else
+    \ifnum\icv{fmr}{\i}{bold}=1 \def\fmfont{\scriptsize\bfseries}\def\fmx{0}%
+    \else \def\fmfont{\scriptsize}\def\fmx{5}\fi
+    \node[anchor=mid west, inner sep=0pt, font=\fmfont, text=icInk]
+      at (\fmx,\fmy) {\fmlab{\icv{fmr}{\i}{key}}%
+        \ifnum\icv{fmr}{\i}{n_merged}>1\ (\icv{fmr}{\i}{n_merged})\fi
+        \ifnum\icv{fmr}{\i}{tie}=1\,\textdagger\fi};%
+    \fmvalue{\i}{w}{-\fmoff}%
+    \fmvalue{\i}{f}{\fmoff}%
+  \fi}
+% key (shape = the setting's peak torque), on the line of the zero line's label, left
+\pgfmathsetmacro\fmyk{\fmB+(\fmymax-\fmylab)*\fmP}%
+\begin{scope}[font=\scriptsize, every node/.style={anchor=base west, inner sep=0pt, text=icInk}]
+  \node (fmk1) at (0,\fmyk) {Peak torque};
+  \fill[\fmlight] ([xshift=4.4pt, yshift=1.7pt]fmk1.base east) circle[radius=\fmmr pt];
+  \node (fmk2) at ([xshift=7.3pt]fmk1.base east) {3--35\,Nm};
+  \fill[\fmlight] ([xshift=4.4pt-\fmms pt, yshift=1.7pt-\fmms pt]fmk2.base east)
+    rectangle ([xshift=4.4pt+\fmms pt, yshift=1.7pt+\fmms pt]fmk2.base east);
+  \node at ([xshift=7.3pt]fmk2.base east) {Fixed 12\,Nm};
+\end{scope}
+% x label, one line, centred under the zero line
+\pgfmathsetmacro\fmzero{\fmL-\fmxmin*\fmscale}%
+\node[anchor=base, inner sep=0pt, font=\footnotesize, text=icInk] at (\fmzero,1.9)
+  {$\Delta P_\mathrm{g}$ (percentage points)};
+\pgfresetboundingbox
+\useasboundingbox (0,0) rectangle (252,\fmB+\fmH);
+\end{tikzpicture}%

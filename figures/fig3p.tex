@@ -1,0 +1,250 @@
+% fig3p.tex: Fig. 3 (the projection), one column, 252 pt wide, for
+%   \begin{figure}[t]\centering\input{figures/tikz_v2/fig3p.tex}\caption{...}\end{figure}
+% Preamble: \usepackage{pgfplots}\pgfplotsset{compat=1.18}\usetikzlibrary{arrows.meta}
+%           \input{icorr_style.tex}; \cite{schafer,franks,park2025} in the row labels.
+% Data: \icorrtikzdata (default figures/tikz_v2/data/), every fig3p_*.csv written by the amp-free
+% worktree's scripts/paper_v2_fig3p.py (registration FAM, spec section 19; self-checked against
+% fam_report.md, fam_numbers.json, amp_table1.json and Fig. 2's data); the walker is Fig. 1's
+% (fig1_walker_part<i>.csv, fig1_walker_parts.csv) through a copy of fig1.tex's \icfwalker.
+% (a) The projection in Fig. 1's style (boxes, tint, arrows, the pair A/B in icPairA / icPairB,
+%     the walker). PsyPref searches the ProMP's 8 weights (z) under the walking-data prior; each
+%     proposal is fitted in family F (theta), and the user feels the fits; the answer and the
+%     fits' ProMP projections (z~) go back to PsyPref; PsyPref's result, fitted in F, is reported
+%     in theta. CMA-ES, 4-6 param. (Fig. 2's name; dash-dot border, Fig. 2's line style) proposes
+%     theta to the user directly. Curves: one FAM session (Fig. 1's user, 3-35 Nm, Schaefer et
+%     al.'s family (ii)), rerun and checked by the script; the pair asked after fig3p_meta.csv's
+%     k_pair answers in the ProMP (promp1, promp2) and as shown (shown1, shown2, with the nodes
+%     theta sets, fig3p_nodes.csv). The two middle boxes draw profile A's steps as the 2026-10-22
+%     projection diagram did: the fit over its ProMP curve, the projection (back1) over the shown
+%     curve and its nodes, each grey curve thick below the one approximating it.
+% (b) Chosen over generic assistance, %, one scale for both panels, 45-100, ticks at 50 / 75 / 100.
+%     One row per family (fig3p_rows.csv): the family's best profile (bar from generic assistance,
+%     50 %, to it; icContext) and PsyPref after 24 comparisons (dot, 95 % interval; with projection
+%     in the family rows, without in the bottom row); on the Schaefer row CMA-ES, 4-6 param. after
+%     24 comparisons (a cross, since squares mean other things in Figs. 2 and 4; 95 % interval;
+%     icDark) and an arrow to PsyPref with the paired
+%     difference as fam_report.md prints it.
+% Layout (pt), 252 x 179: (b) y 0-89: x label at 2, tick labels, axis at 17.5, rows at 55.5 / 45.5 /
+%     35.5 and the ProMP row at 23.5 (a rule at 29.5), the arrow at 61 and its number at 63.9, panel
+%     titles at 72.5, the key at 82.5; labels right-aligned at x 64, panels from x 68 (gap 10) to
+%     246.5; generic assistance in the key.
+%     (a) y 94-179: the strip y 94-105, the boxes y 117-169 (columns 0.5-64.5, 91-167,
+%     194-251.5; the two middle boxes 24.5 high), the headers' baseline at 172.5. Smallest type 7 pt
+%     (\scriptsize); arrow labels \footnotesize, their indices 6 pt.
+\providecommand{\icorrtikzdata}{figures/tikz_v2/data/}%
+\makeatletter
+\providecommand{\icorrload}[2]{% \icorrload{name}{file.csv}: every cell as \icv{name}{row}{column}%
+  \pgfplotstableread[col sep=comma]{\icorrtikzdata #2}\ic@table
+  \pgfplotstableforeachcolumn\ic@table\as\ic@col{%
+    \pgfplotstableforeachcolumnelement{\ic@col}\of\ic@table\as\ic@cell{%
+      \expandafter\global\expandafter\let\csname ic@#1@\pgfplotstablerow @\ic@col\endcsname
+        \ic@cell}}}%
+\providecommand{\icv}[3]{\csname ic@#1@#2@#3\endcsname}%
+% Fig. 1's walker (a copy of fig1.tex's definitions, identical, so that either file may come
+% first): \icfwalker{x}{y}{height}{last part}; hip at x, ground at y; last part 11 = with the hip
+% exoskeleton. Needs \icorrload{fwk}{fig1_walker_parts.csv}.
+\providecommand{\icfwalker}[4]{%
+  \begin{axis}[at={({#1},{#2})}, anchor=origin, x=#3, y=#3, hide axis, clip=false,%
+               xmin=-0.3, xmax=0.3, ymin=0, ymax=1]%
+    \pgfplotsinvokeforeach{0,...,#4}{\icf@walkerpart{##1}{#3}}%
+  \end{axis}}%
+\def\icf@none{none}\def\icf@line{line}%
+\providecommand{\icf@walkerpart}[2]{%
+  \edef\icf@edge{\icv{fwk}{#1}{edge}}\edef\icf@fill{\icv{fwk}{#1}{fill}}%
+  \edef\icf@kind{\icv{fwk}{#1}{kind}}%
+  \ifx\icf@edge\icf@none\else\colorlet{icfwe#1}{\icf@edge}\fi
+  \ifx\icf@fill\icf@none\else\colorlet{icfwf#1}{\icf@fill}\fi
+  \ifx\icf@kind\icf@line
+    \addplot[draw=icfwe#1, line width=\icv{fwk}{#1}{lw_per_height}*#2,%
+             line cap=\icv{fwk}{#1}{cap}, line join=round, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \else\ifx\icf@edge\icf@none
+    \addplot[fill=icfwf#1, draw=none, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \else
+    \addplot[fill=icfwf#1, draw=icfwe#1, line width=\icv{fwk}{#1}{lw_per_height}*#2, mark=none]%
+      table[col sep=comma, x=x, y=y] {\icorrtikzdata fig1_walker_part#1.csv};%
+  \fi\fi}%
+\makeatother
+\begin{tikzpicture}[x=1pt, y=1pt, font=\scriptsize]
+\scriptsize
+\icorrload{pjm}{fig3p_meta.csv}\icorrload{pjr}{fig3p_rows.csv}\icorrload{fwk}{fig1_walker_parts.csv}%
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig3p_curves.csv}\pjcurves
+\tikzset{
+  pj text/.style={inner sep=0pt, icInk, anchor=base west},
+  pj head/.style={inner sep=0pt, icInk, anchor=base west, font=\footnotesize\bfseries},
+  pj block/.style={inner sep=0pt, icInk, anchor=north west, align=left,
+                   font=\fontsize{7}{7.7}\selectfont},
+  pj sym/.style={inner sep=0pt, icInk, font=\footnotesize},
+  % Fig. 1's boxes and arrows (its line widths at the paper's scale, 0.95)
+  pj box/.style={draw=icMuted, fill=white, line width=0.57pt, rounded corners=3.4pt},
+  pj arrow/.style={draw=#1, line width=0.76pt, -{Triangle[length=2.66pt, width=2.66pt]}},
+  pj arrow/.default=icMuted,
+}
+\pgfplotsset{
+  pj glyph/.style={anchor=south west, scale only axis, hide axis, clip=false,
+    xmin=0, xmax=100, ymin=\icv{pjm}{0}{gmin}, ymax=\icv{pjm}{0}{gmax}},
+  pj curve/.style={#1, line width=0.95pt, line cap=round, line join=round, mark=none},
+  pj halo/.style={icContext, line width=2.1pt, line cap=round, line join=round, mark=none},
+  pj nodes/.style={only marks, mark=*, mark size=1.05pt,
+    mark options={fill=#1, draw=white, line width=0.35pt}},
+}
+% a glyph as Fig. 1's small axes: #1, #2 lower-left corner, #3, #4 width and height (pt), #5 its
+% curves; a zero line, the left and bottom spines
+\def\pjglyph#1#2#3#4#5{%
+  \begin{axis}[pj glyph, at={({(#1)*1pt},{(#2)*1pt})}, width=(#3)*1pt, height=(#4)*1pt]
+    \draw[icRule, line width=0.48pt] (axis cs:0,0) -- (axis cs:100,0);
+    #5
+    \draw[icContext, line width=0.57pt] (rel axis cs:0,1) -- (rel axis cs:0,0) -- (rel axis cs:1,0);
+  \end{axis}}
+% a family curve with its nodes (the points its parameters theta set): #1 column, #2 profile, #3
+% colour
+\def\pjfamily#1#2#3{%
+  \addplot[pj curve=#3] table[x=phase, y=#1] {\pjcurves};
+  \addplot[pj nodes=#3] table[col sep=comma, x=t, y=v,
+    restrict expr to domain={\thisrow{profile}}{#2:#2}] {\icorrtikzdata fig3p_nodes.csv};}
+% ================================================================ (a) the projection
+\def\pjA{94}% (a)'s bottom: the strip
+\def\LXa{0.5}\def\LXb{64.5}\def\MXa{91}\def\MXb{167}\def\RXa{194}\def\RXb{251.5}
+\pgfmathsetmacro\TYa{\pjA+23}\pgfmathsetmacro\TYb{\pjA+75}% the boxes' bottom and top
+\pgfmathsetmacro\FYa{\TYb-24.5}% bottom of the fit box
+\pgfmathsetmacro\PYb{\TYa+24.5}% top of the projection box
+\pgfmathsetmacro\aytop{\TYb-12.25}\pgfmathsetmacro\aybot{\TYa+12.25}
+% ---- headers
+\node[pj text, font=\scriptsize\bfseries] at (0,\TYb+3.5) {(a)};
+\node[pj text, icMuted] at (12,\TYb+3.5) {Search in the ProMP};
+\node[pj text, icMuted, anchor=base east] at (\RXb,\TYb+3.5) {Shown in family $F$};
+% ---- left: PsyPref in the ProMP's z
+\draw[pj box, fill=icTintBlue, draw=icBlue, line width=0.86pt] (\LXa,\TYa) rectangle (\LXb,\TYb);
+\node[pj head, text=icBlue] at (\LXa+4,\TYb-9) {PsyPref};
+\node[pj block] at (\LXa+4,\TYb-12.5) {8 ProMP weights $\mathbf z$\\walking-data prior};
+% ---- top middle: the fit in the family
+\draw[pj box] (\MXa,\FYa) rectangle (\MXb,\TYb);
+\node[pj block, font=\fontsize{7}{8}\selectfont\bfseries] at (\MXa+4,\TYb-4.25) {Fit in\\family $F$};
+% ---- bottom middle: the projection back onto the ProMP
+\draw[pj box] (\MXa,\TYa) rectangle (\MXb,\PYb);
+\node[pj block, font=\fontsize{7}{8}\selectfont\bfseries] at (\MXa+4,\PYb-4.25) {Project onto\\ProMP};
+% ---- right: the user feels the family's curves
+\draw[pj box, fill=icTintBlue] (\RXa,\TYa) rectangle (\RXb,\TYb);
+\node[pj text, font=\scriptsize\bfseries] at (\RXa+4,\TYb-8.5) {Profile A or B?};
+% ---- the loop's four edges and what they carry
+\draw[pj arrow=icInk] (\LXb+0.5,\aytop) -- (\MXa-0.5,\aytop);
+\node[pj sym, anchor=base] at ({(\LXb+\MXa)/2},\aytop+3.6) {$\mathbf z_{\mathrm{A,B}}$};
+\draw[pj arrow=icInk] (\MXb+0.5,\aytop) -- (\RXa-0.5,\aytop);
+\node[pj sym, anchor=base] at ({(\MXb+\RXa)/2},\aytop+3.6) {$\theta_{\mathrm{A,B}}$};
+\draw[pj arrow=icInk] (\RXa-0.5,\aybot) -- (\MXb+0.5,\aybot);
+\node[inner sep=0pt, icInk, anchor=north] at ({(\MXb+\RXa)/2},\aybot-2.6) {answer};
+\draw[pj arrow=icInk] (\MXa-0.5,\aybot) -- (\LXb+0.5,\aybot);
+\node[pj sym, anchor=base] at ({(\LXb+\MXa)/2},\aybot+3.6) {$\tilde{\mathbf z}_{\mathrm{A,B}}$};
+\node[inner sep=0pt, icInk, anchor=north] at ({(\LXb+\MXa)/2},\aybot-2.6) {answer};
+% ---- the strip: PsyPref's result, fitted in F, reported in theta
+\def\SX{10}
+\draw[pj arrow] (\SX,\TYa-0.5) -- (\SX,\pjA+11.5);
+\node[pj text, icMuted] at (\SX+3,\pjA+14.6) {fitted in $F$};
+\draw[pj box] (\LXa,\pjA) rectangle (171,\pjA+11);
+\node[pj text] at (\LXa+4,\pjA+3.4) {Identified assistance in $\theta$, e.g., peak times and torques};
+% ---- CMA-ES, 4-6 param.: proposes theta directly (Fig. 2's dash-dot)
+\draw[ic sch, line width=0.57pt, rounded corners=3.4pt, fill=white] (179,\pjA) rectangle (\RXb,\pjA+11);
+\node[pj text, text=icDark] at (183,\pjA+3.4) {CMA-ES, 4--6 param.};
+\draw[pj arrow=icDark] (\RXb-8,\pjA+11.5) -- (\RXb-8,\TYa-0.5);
+\node[pj sym, anchor=base east] at (\RXb-10.5,\pjA+14.9) {$\theta_{\mathrm{A,B}}$};
+% ---- the walker with the hip exoskeleton
+\icfwalker{(\RXa+11)*1pt}{(\TYa+3)*1pt}{33pt}{11}
+% ---- the glyphs: the pair in the ProMP (left) and as shown, with the nodes theta sets (right)
+\pjglyph{\LXa+4}{\TYa+3}{\LXb-\LXa-8}{15}{%
+  \addplot[pj curve=icPairA] table[x=phase, y=promp1] {\pjcurves};
+  \addplot[pj curve=icPairB] table[x=phase, y=promp2] {\pjcurves};}
+% the fit and the projection of profile A, each over the curve it approximates (grey)
+\pjglyph{\MXb-32}{\FYa+3}{29}{18.5}{%
+  \addplot[pj halo] table[x=phase, y=promp1] {\pjcurves};
+  \pjfamily{shown1}{1}{icPairA}}
+\pjglyph{\MXb-32}{\TYa+3}{29}{18.5}{%
+  \addplot[pj halo] table[x=phase, y=shown1] {\pjcurves};
+  \addplot[pj nodes=icContext] table[col sep=comma, x=t, y=v,
+    restrict expr to domain={\thisrow{profile}}{1:1}] {\icorrtikzdata fig3p_nodes.csv};
+  \addplot[pj curve=icPairA] table[x=phase, y=back1] {\pjcurves};}
+\pjglyph{\RXa+21}{\TYa+24}{\RXb-\RXa-24}{14}{%
+  \pjfamily{shown1}{1}{icPairA}
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=2.4pt,
+        yshift=1.4pt] at (rel axis cs:0,1) {A};}
+\pjglyph{\RXa+21}{\TYa+5}{\RXb-\RXa-24}{14}{%
+  \pjfamily{shown2}{2}{icPairB}
+  \node[inner sep=0pt, anchor=north west, font=\scriptsize\bfseries, icInk, xshift=2.4pt,
+        yshift=1.4pt] at (rel axis cs:0,1) {B};}
+% ================================================================ (b) the results
+% one scale for both panels, 45-100 %, from x 68 to 246.5
+\edef\pjmw{\icv{pjm}{0}{xmin_w}}\edef\pjmf{\icv{pjm}{0}{xmin_f}}\edef\pjxmax{\icv{pjm}{0}{xmax}}%
+\def\pjLw{68}\def\pjgap{10}\def\pjxe{246.5}% 100's tick label ends inside the column
+\pgfmathsetmacro\pjxs{(\pjxe-\pjLw-\pjgap)/((\pjxmax-\pjmw)+(\pjxmax-\pjmf))}
+\pgfmathsetmacro\pjLf{\pjLw+(\pjxmax-\pjmw)*\pjxs+\pjgap}
+% x of value #2 (%) in panel #1 (w or f)
+\def\pjX#1#2{(\csname pjL#1\endcsname)+((#2)-\csname pjm#1\endcsname)*\pjxs}
+\def\pjrowy#1{(55.5-10*(#1)-2*((#1)==3))}
+% the axis (ticks at 25-point steps inside the panel), the generic-assistance line, the title:
+% #1 panel, #2 title
+\def\pjframe#1#2{%
+  \draw[icMuted, line width=0.5pt] ({\pjX{#1}{\csname pjm#1\endcsname}},17.5) -- ({\pjX{#1}{\pjxmax}},17.5);
+  \foreach \t in {25,50,75,100} {
+    \pgfmathparse{\t>=\csname pjm#1\endcsname ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \draw[icMuted, line width=0.5pt] ({\pjX{#1}{\t}},17.5) -- ++(0,-2);
+      \node[icMuted, font=\scriptsize, anchor=north, inner sep=0pt] at ({\pjX{#1}{\t}},14) {\t};
+    \fi}
+  \draw[ic generic] ({\pjX{#1}{50}},17.5) -- ({\pjX{#1}{50}},58.5);
+  \node[icInk, font=\footnotesize, anchor=base, inner sep=0pt]
+    at ({(\pjX{#1}{\csname pjm#1\endcsname}+\pjX{#1}{\pjxmax})/2},72.5) {#2};}
+% one row in one panel: #1 row, #2 panel (w, f): the bar from generic assistance (50 %) to the
+% family's best profile, PsyPref's interval and estimate
+\def\pjrow#1#2{%
+  \pgfmathsetmacro\pjy{\pjrowy{#1}}%
+  \fill[icContext, fill opacity=0.55] ({\pjX{#2}{50}},\pjy-2.5) rectangle
+    ({\pjX{#2}{\icv{pjr}{#1}{ceil_#2}}},\pjy+2.5);
+  \draw[icBlue, line width=0.6pt] ({\pjX{#2}{\icv{pjr}{#1}{psy_lo_#2}}},\pjy)
+    -- ({\pjX{#2}{\icv{pjr}{#1}{psy_hi_#2}}},\pjy);
+  \fill[icBlue] ({\pjX{#2}{\icv{pjr}{#1}{psy_#2}}},\pjy) circle[radius=1.5pt];}
+% CMA-ES's cross, centred at (#1, #2)
+\def\pjcross#1#2{%
+  \draw[icDark, line width=0.9pt] ({#1-1.8},{#2-1.8}) -- ++(3.6,3.6) ({#1-1.8},{#2+1.8}) -- ++(3.6,-3.6);}
+% CMA-ES, 4-6 param. on the Schaefer row, and the arrow to PsyPref with the paired difference:
+% #1 panel
+\def\pjcma#1{%
+  \pgfmathsetmacro\pjy{\pjrowy{0}}%
+  \draw[icDark, line width=0.6pt] ({\pjX{#1}{\icv{pjm}{0}{cma_lo_#1}}},\pjy)
+    -- ({\pjX{#1}{\icv{pjm}{0}{cma_hi_#1}}},\pjy);
+  \pgfmathsetmacro\pjxc{\pjX{#1}{\icv{pjm}{0}{cma_#1}}}%
+  \pjcross{\pjxc}{\pjy}
+  \draw[icInk, line width=0.6pt, -{Stealth[length=3pt, width=2.6pt]}]
+    ({\pjX{#1}{\icv{pjm}{0}{cma_#1}}},\pjy+5.5) -- ({\pjX{#1}{\icv{pjr}{0}{psy_#1}}},\pjy+5.5);
+  \node[icInk, font=\scriptsize\bfseries, anchor=base, inner sep=0pt]
+    at ({\pjX{#1}{(\icv{pjm}{0}{cma_#1}+\icv{pjr}{0}{psy_#1})/2}},\pjy+8.4) {\icv{pjm}{0}{gap_#1}};}
+\pjframe{w}{Peaks free in 3--35~Nm}
+\pjframe{f}{Peaks fixed at 12~Nm}
+\draw[ic rule] (2,29.5) -- (\pjxe,29.5);
+\foreach \r in {0,...,3} {\pjrow{\r}{w}\pjrow{\r}{f}}
+\pjcma{w}
+\pjcma{f}
+% the row labels, right-aligned
+\tikzset{pj label/.style={inner sep=0pt, icInk, font=\scriptsize, anchor=east}}
+\node[pj label] at (64,{\pjrowy{0}}) {Sch\"afer et al.~\cite{schafer}};
+\node[pj label] at (64,{\pjrowy{1}}) {Franks et al.~\cite{franks}};
+\node[pj label] at (64,{\pjrowy{2}}) {PCHIP~\cite{park2025}};
+\node[pj label] at (64,{\pjrowy{3}}) {ProMP, no projection};
+% the x label, centred on the panels
+\node[icInk, font=\footnotesize, anchor=base, inner sep=0pt] at ({(\pjLw+\pjxe)/2},2)
+  {Chosen over generic assistance (\%)};
+% ---- the key, one row
+\node[pj text, font=\scriptsize\bfseries] at (0,82.5) {(b)};
+\fill[icContext, fill opacity=0.55] (14,83.1) rectangle ++(9,4.4);
+\node[pj text] (k1) at (25,82.5) {Best profile in the family};
+\draw[icBlue, line width=0.6pt] ([xshift=6pt]k1.base east) ++(0,2.6) -- ++(7,0);
+\fill[icBlue] ([xshift=9.5pt, yshift=2.6pt]k1.base east) circle[radius=1.5pt];
+\node[pj text] (k2) at ([xshift=15pt]k1.base east) {PsyPref};
+\draw[icDark, line width=0.6pt] ([xshift=6pt, yshift=2.6pt]k2.base east) -- ++(7,0);
+\draw[icDark, line width=0.9pt] ([xshift=7.7pt, yshift=0.8pt]k2.base east) -- ++(3.6,3.6)
+  ([xshift=7.7pt, yshift=4.4pt]k2.base east) -- ++(3.6,-3.6);
+\node[pj text] (k3) at ([xshift=15pt]k2.base east) {CMA-ES, 4--6 param.};
+\draw[ic generic] ([xshift=6pt, yshift=0.1pt]k3.base east) -- ++(0,5);
+\node[pj text] at ([xshift=9pt]k3.base east) {Generic};
+\pgfresetboundingbox
+\useasboundingbox (0,0) rectangle (252,179);
+\end{tikzpicture}%

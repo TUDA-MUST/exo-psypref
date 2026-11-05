@@ -1,0 +1,268 @@
+% fig2d.tex: variant of fig2r.tex with five panels (2026-11-02): the three curve panels, 85 pt wide;
+% the users who benefit against comparisons (as fig2c.tex); the bars at k = 24 (as fig2r.tex), each
+% method named above its bar, in the order and colours of the curves. One tikzpicture, 516 x 110 pt
+% (\textwidth), for
+%   \begin{figure*}[t]\centering\input{figures/tikz_v2/fig2d.tex}\caption{...}\end{figure*}
+% Preamble: \usepackage{pgfplots}\pgfplotsset{compat=1.18}\usepgfplotslibrary{fillbetween}
+%           \usetikzlibrary{arrows.meta}\input{icorr_style.tex}
+% Data: \icorrtikzdata (default figures/tikz_v2/data/), written by the amp-free worktree's
+% scripts/paper_v2_fig2.py from out/icorr/amp_free: fig2d_panels.csv (--variant d: the label
+% layout below, each in-panel label checked against every drawn line) and the curves, users and
+% meta files of fig2.tex (fig2_curves_{a,b,c}.csv, fig2_users.csv, fig2_meta.csv); the fourth panel:
+% fig2c_users.csv and fig2c_meta.csv (--variant c).
+% Changes against fig2.tex:
+%   - the arrow explained in the first panel: above its tail, "<marker> CMA-ES at 40" in the
+%     comparator's text colour, so that the arrow reads from that level to the number at the dot;
+%   - the comparator named in every panel: by that gloss (first panel), by "<triangle> Arens' GP"
+%     under its curve where the comparator differs from the first panel's (3-35 Nm), and by the
+%     direct label right of the last panel, now that panel's comparator only ("CMA-ES, 8 weights"),
+%     not "CMA-ES or Arens' GP, 8 weights";
+%   - panel titles name what the setting fixes ("3-12 Nm peaks", ..., "Fixed 12 Nm peaks"); the
+%     second line says "Generic assistance 2.6 Nm away", not "... off";
+%   - "~20 min" right of the k = 24 rule in the first panel (k_users x seconds per comparison);
+%   - the clipped start of CMA-ES on Schaefer's family as "Start 23", not "(down arrow) 23 %".
+% Layout (pt): three curve panels 3-12 / 3-35 / fixed 12 Nm, axes 85 x 70 at x = 35, 130, 225,
+% y = 21, 40-100 %; direct labels in one column right of the third panel at the heights the script
+% spread for that panel's line ends, each joined to its line's end by a thin leader; the fourth
+% panel: axes 62 x 70 at x = 381, y = 21, 0-100 % against k = 1-40; the fifth: four stacked bars
+% 0-100 % of users, x = 452-502, 7.5 pt high, 15 pt apart, the method's name above each, the better
+% share in its coloured segment, the worse share in a column right of the bars, the key in the row of
+% the x labels.
+\providecommand{\icorrtikzdata}{figures/tikz_v2/data/}%
+\makeatletter
+\providecommand{\icorrload}[2]{% \icorrload{name}{file.csv}: every cell as \icv{name}{row}{column}%
+  \pgfplotstableread[col sep=comma]{\icorrtikzdata #2}\ic@table
+  \pgfplotstableforeachcolumn\ic@table\as\ic@col{%
+    \pgfplotstableforeachcolumnelement{\ic@col}\of\ic@table\as\ic@cell{%
+      \expandafter\global\expandafter\let\csname ic@#1@\pgfplotstablerow @\ic@col\endcsname
+        \ic@cell}}}%
+\providecommand{\icv}[3]{\csname ic@#1@#2@#3\endcsname}%
+\makeatother
+% markers as text symbols, centred on the x-height of the 7-pt labels: the comparator's hollow
+% ones (square CMA-ES, triangle Arens' GP); pgfpictures, not tikzpictures, so that tools that catch
+% every tikzpicture (externalize, preview) leave them alone
+\ifdefined\ftsqbox\else\newsavebox\ftsqbox\fi%
+\ifdefined\fttribox\else\newsavebox\fttribox\fi%
+\ifdefined\ftwithinbox\else\newsavebox\ftwithinbox\fi%
+\ifdefined\ftworsebox\else\newsavebox\ftworsebox\fi%
+\def\ftmarkpic#1#2#3{\begin{pgfpicture}\pgfsetlinewidth{0.6pt}\pgfsetstrokecolor{icOrange}%
+  \pgfsetfillcolor{white}\pgfsetplotmarksize{#2}\pgfuseplotmark{#1}\pgfsetbaseline{#3}%
+  \end{pgfpicture}}%
+\sbox\ftsqbox{\ftmarkpic{square*}{1.6pt}{-1.6pt}}%
+\sbox\fttribox{\ftmarkpic{triangle*}{2.0pt}{-1.0pt}}%
+\sbox\ftwithinbox{\begin{pgfpicture}\pgfsetfillcolor{icRule}%
+  \pgfpathrectangle{\pgfpointorigin}{\pgfpoint{5.2pt}{4pt}}\pgfusepath{fill}\end{pgfpicture}}%
+\sbox\ftworsebox{\begin{pgfpicture}\pgfsetstrokecolor{icMuted}%
+  \begin{pgfscope}\pgfpathrectangle{\pgfpointorigin}{\pgfpoint{5.2pt}{4pt}}\pgfusepath{clip}%
+    \pgfsetlinewidth{0.35pt}%
+    \foreach \ftx in {-4,-2.4,...,5.2}{\pgfpathmoveto{\pgfpoint{\ftx pt}{0pt}}%
+      \pgfpathlineto{\pgfpoint{\ftx pt+4pt}{4pt}}}\pgfusepath{stroke}\end{pgfscope}%
+  \pgfsetlinewidth{0.3pt}\pgfpathrectangle{\pgfpointorigin}{\pgfpoint{5.2pt}{4pt}}\pgfusepath{stroke}%
+  \pgfresetboundingbox\pgfpathrectangle{\pgfpointorigin}{\pgfpoint{5.2pt}{4pt}}%
+  \pgfusepath{use as bounding box}\end{pgfpicture}}%
+% the comparator by its code in fig2d_panels.csv (1 CMA-ES, square; 2 Arens' GP, triangle): its
+% marker and name
+\def\ftcmpmark#1{\ifnum#1=1 \usebox\ftsqbox\else\usebox\fttribox\fi}%
+\def\ftcmpname#1{\ifnum#1=1 CMA-ES\else Arens' GP\fi}%
+\begin{tikzpicture}[x=1pt, y=1pt, font=\footnotesize]
+\pgfkeys{/pgf/number format/assume math mode=true}% numbers in the text font (Times)
+\icorrload{ftp}{fig2d_panels.csv}\icorrload{ftm}{fig2_meta.csv}%
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig2_curves_a.csv}\ftcurvesa
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig2_curves_b.csv}\ftcurvesb
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig2_curves_c.csv}\ftcurvesc
+\edef\ftymin{\icv{ftm}{0}{ymin}}\edef\ftymax{\icv{ftm}{0}{ymax}}%
+\edef\ftkusers{\icv{ftm}{0}{k_users}}\edef\ftncomp{\icv{ftm}{0}{n_comp}}%
+% the minutes of walking at k_users comparisons (k_users x seconds per comparison / 60)
+\pgfmathsetmacro\ftminutes{\icv{ftm}{0}{k_users}*\icv{ftm}{0}{sec_per_comparison}/60}%
+\tikzset{ft lab/.style={ic label, font=\scriptsize\linespread{0.9}\selectfont}}
+\pgfplotsset{
+  ft frame/.style={ic axis, anchor=south west, scale only axis, width=85pt, height=70pt},
+  % each plot clipped to 40-100 % on its own; the \draw and \node commands are not clipped
+  ft main/.style={ft frame, xmin=0, xmax=\ftncomp, ymin=\ftymin, ymax=\ftymax, clip=true,
+    clip mode=individual, xtick={0,12,24,40}, ytick={40,60,80,100},
+    xticklabel={\pgfmathprintnumber{\tick}}, yticklabel={\pgfmathprintnumber{\tick}},
+    xlabel={Comparisons}, xlabel style={inner sep=0pt}, every axis plot/.append style={line join=round}},
+}
+% the panel title, with a second line in small type under it (#1 title, #2 second line)
+\def\fttitle#1#2{%
+  \node[icInk, font=\footnotesize, anchor=base] at ([yshift=12pt]axis description cs:0.5,1) {#1};
+  \node[icMuted, font=\scriptsize, anchor=base, inner sep=0pt] at ([yshift=3.6pt]axis description cs:0.5,1)
+    {#2};}
+% a direct label right of the last panel at its spread height #1 (%), with a thin leader from its
+% line's end #2 (%) in that panel, since the spread moves some labels off their ends; #3 colour,
+% #4 text
+\def\ftlab#1#2#3#4{%
+  \draw[icContext, line width=0.4pt, line cap=round] ([xshift=1.0pt]axis cs:40,#2)
+    -- ([xshift=5.2pt]axis cs:40,#1);
+  \node[ft lab, #3, anchor=west] at ([xshift=5.6pt]axis cs:40,#1) {#4};}
+% one panel: #1 row of fig2d_panels.csv, #2 curves table, #3 left edge (pt), #4 title,
+% #5 extra options of the main axis (the y tick labels and label on the first panel only)
+\def\ftpanel#1#2#3#4#5{%
+  \ifnum\icv{ftp}{#1}{cmp_code}=1
+    \def\ftmark{square*}\def\ftmsize{1.6pt}%
+  \else
+    \def\ftmark{triangle*}\def\ftmsize{2.0pt}%
+  \fi
+  \begin{axis}[ft main, at={(#3pt,21pt)}, #5]
+    % references: k = k_users, the best 8-weight profile (ceiling), generic assistance (50 %)
+    \draw[ic rule] (axis cs:\ftkusers,\ftymin) -- (axis cs:\ftkusers,\ftymax);
+    \draw[ic context] (axis cs:0,\icv{ftp}{#1}{ceiling}) -- (axis cs:40,\icv{ftp}{#1}{ceiling});
+    \ifnum#1=0 % named once, in the first panel
+    \node[ft lab, icMuted, anchor=base west] at ([yshift=2.0pt]axis cs:0.4,\icv{ftp}{#1}{ceiling})
+      {Best 8-weight profile};
+    \fi
+    \draw[ic generic] (axis cs:0,50) -- (axis cs:40,50);
+    % 95 % bands: PsyPref and the comparator
+    \addplot[name path=plo, draw=none, forget plot] table[x=k, y=psypref_lo] {#2};
+    \addplot[name path=phi, draw=none, forget plot] table[x=k, y=psypref_hi] {#2};
+    \addplot[ic band=icBlue, forget plot] fill between[of=phi and plo];
+    \addplot[name path=blo, draw=none, forget plot] table[x=k, y=best_lo] {#2};
+    \addplot[name path=bhi, draw=none, forget plot] table[x=k, y=best_hi] {#2};
+    \addplot[ic band=icOrange, forget plot] fill between[of=bhi and blo];
+    % the curves, PsyPref on top; the comparator's hollow marker every 8 comparisons at
+    % k = 4, 12, ..., 36 (mark phase 5 = row k = 4)
+    \addplot[ic sch] table[x=k, y=sch] {#2};
+    \addplot[ic gpbald] table[x=k, y=gpbald] {#2};
+    \addplot[ic best, mark=\ftmark, mark size=\ftmsize, mark phase=5, mark repeat=8,
+      mark options={solid, draw=icOrange, fill=white, line width=0.6pt}] table[x=k, y=best] {#2};
+    \addplot[ic psypref] table[x=k, y=psypref] {#2};
+    % the takeaway: the comparator's level after 40, reached by PsyPref at the first k
+    \draw[icInk, line width=0.7pt, -{Stealth[length=3.4pt, width=2.8pt]}, shorten >=1.5pt]
+      (axis cs:40,\icv{ftp}{#1}{level40}) -- (axis cs:\icv{ftp}{#1}{first_k},\icv{ftp}{#1}{level40});
+    \fill[icInk] (axis cs:\icv{ftp}{#1}{first_k},\icv{ftp}{#1}{level40}) circle[radius=1.5pt];
+    % the comparator's markers once more, over the arrow
+    \addplot[only marks, forget plot, mark=\ftmark, mark size=\ftmsize, mark phase=5, mark repeat=8,
+      mark options={solid, draw=icOrange, fill=white, line width=0.6pt}] table[x=k, y=best] {#2};
+    % the first k, written at the dot
+    \node[icInk, font=\scriptsize\bfseries, anchor=south east, inner sep=0.8pt]
+      at ([xshift=-1.2pt, yshift=1.0pt]axis cs:\icv{ftp}{#1}{first_k},\icv{ftp}{#1}{level40})
+      {\icv{ftp}{#1}{first_k}};
+    % the arrow explained (first panel): its tail is the comparator after 40 comparisons; anchor
+    % and baseline from the script, which checked the box against every line
+    \ifnum\icv{ftp}{#1}{gloss}=1
+    \node[ft lab, icOrangeText, anchor=base east, inner sep=0pt]
+      at (axis cs:\icv{ftp}{#1}{gloss_k},\icv{ftp}{#1}{gloss_y})
+      {\ftcmpmark{\icv{ftp}{#1}{cmp_code}}\hspace{1.8pt}\ftcmpname{\icv{ftp}{#1}{cmp_code}} at \ftncomp};
+    \fi
+    % the minutes of walking at k_users, right of the rule at the bottom (first panel)
+    \ifnum\icv{ftp}{#1}{min20}=1
+    \node[ft lab, icMuted, anchor=base west, inner sep=0pt]
+      at ([xshift=1.2pt]axis cs:\icv{ftp}{#1}{min20_k},\icv{ftp}{#1}{min20_y})
+      {\(\approx\)\,\pgfmathprintnumber[fixed, precision=0]{\ftminutes}\,min};
+    \fi
+    % the comparator's name where it differs from the first panel's (3-35 Nm), under its curve
+    \ifnum\icv{ftp}{#1}{cmplab}=1
+    \node[ft lab, icOrangeText, anchor=base west, inner sep=0pt]
+      at (axis cs:\icv{ftp}{#1}{cmplab_k},\icv{ftp}{#1}{cmplab_y})
+      {\ftcmpmark{\icv{ftp}{#1}{cmp_code}}\hspace{1.8pt}\ftcmpname{\icv{ftp}{#1}{cmp_code}}};
+    \fi
+    % CMA-ES on Schaefer's family below the axis at the start: its k = 0 value, bottom left
+    \ifnum\icv{ftp}{#1}{start}=1
+    \node[ft lab, icDark, anchor=base west, inner sep=0pt]
+      at ([xshift=0.4pt]axis cs:\icv{ftp}{#1}{start_k},\icv{ftp}{#1}{start_y})
+      {Start \pgfmathprintnumber[fixed, precision=0]{\icv{ftp}{#1}{sch_k0}}};
+    \fi
+    % the direct labels, once, right of the last panel, at the heights the script spread for its
+    % line ends; the colours identify the lines in all three panels; the comparator's label names
+    % that panel's comparator (the other panels name theirs inside)
+    \ifnum#1=2
+    \ftlab{\icv{ftp}{#1}{ylab_psypref}}{\icv{ftp}{#1}{end_psypref}}{icBlue}{PsyPref}
+    \ftlab{\icv{ftp}{#1}{ylab_gpbald}}{\icv{ftp}{#1}{end_gpbald}}{icGrey}{GP-BALD}
+    \ftlab{\icv{ftp}{#1}{ylab_best}}{\icv{ftp}{#1}{end_best}}{icOrangeText}
+      {\ftcmpmark{\icv{ftp}{#1}{cmp_code}}\hspace{1.8pt}\ftcmpname{\icv{ftp}{#1}{cmp_code}},\\
+       \hphantom{\ftcmpmark{\icv{ftp}{#1}{cmp_code}}\hspace{1.8pt}}8 weights}
+    \ftlab{\icv{ftp}{#1}{ylab_sch}}{\icv{ftp}{#1}{end_sch}}{icDark}{CMA-ES,\\4--6 param.}
+    \ftlab{\icv{ftp}{#1}{ylab_generic}}{50}{icMuted}{Generic\\assistance}
+    \fi
+    % the title; under it, how far generic assistance is from the preferred profiles (median)
+    \fttitle{#4}{Generic \pgfmathprintnumber[fixed, fixed zerofill, precision=1]%
+      {\icv{ftp}{#1}{d0_median_nm}}\,Nm away}
+  \end{axis}%
+}
+\ftpanel{0}{\ftcurvesa}{35}{3--12 Nm peaks}{ylabel={Chosen over generic\\assistance, $P_\mathrm{g}$ (\%)},
+  ylabel style={align=center, inner sep=0pt, font=\footnotesize\linespread{0.92}\selectfont}}
+\ftpanel{1}{\ftcurvesb}{130}{3--35 Nm peaks}{yticklabels={}}
+\ftpanel{2}{\ftcurvesc}{225}{Fixed 12 Nm peaks}{yticklabels={}}
+% the fourth panel: users at least 1 JND better than generic assistance against comparisons, pooled
+% over the settings (fig2c_users.csv; fig2c_meta.csv, rows 0-3: PsyPref, GP-BALD, the comparator,
+% CMA-ES on Schaefer's family). The first k at which half of the users benefit is marked for
+% PsyPref, the comparator and CMA-ES on Schaefer's family.
+\def\ftcx{381}\def\ftcw{62}%
+\icorrload{ftc}{fig2c_meta.csv}%
+\pgfplotstableread[col sep=comma]{\icorrtikzdata fig2c_users.csv}\ftcusers
+% half of the users: #1 row of fig2c_meta.csv, #2 colour of the dot, #3 of the number, #4 its anchor
+\def\ftchalf#1#2#3#4{%
+  \fill[#2] (axis cs:\icv{ftc}{#1}{k50},50) circle[radius=1.4pt];
+  \node[font=\scriptsize\bfseries, #3, inner sep=1.2pt, anchor=#4]
+    at (axis cs:\icv{ftc}{#1}{k50},50) {\icv{ftc}{#1}{k50}};}
+\begin{axis}[ft frame, at={(\ftcx pt,21pt)}, width=\ftcw pt, xmin=0, xmax=\ftncomp, ymin=0, ymax=100,
+  clip=true, clip mode=individual, xtick={0,12,24,40}, ytick={0,50,100},
+  xticklabel={\pgfmathprintnumber{\tick}}, yticklabel={\pgfmathprintnumber{\tick}},
+  xlabel={Comparisons}, xlabel style={inner sep=0pt}, ylabel={Users (\%)}, ylabel style={inner sep=0pt},
+  every axis plot/.append style={line join=round}]
+  \draw[ic rule] (axis cs:\ftkusers,0) -- (axis cs:\ftkusers,100);
+  \draw[ic context] (axis cs:0,50) -- (axis cs:\ftncomp,50);
+  \addplot[name path=plo, draw=none, forget plot] table[x=k, y=psypref_lo] {\ftcusers};
+  \addplot[name path=phi, draw=none, forget plot] table[x=k, y=psypref_hi] {\ftcusers};
+  \addplot[ic band=icBlue, forget plot] fill between[of=phi and plo];
+  \addplot[name path=blo, draw=none, forget plot] table[x=k, y=best_lo] {\ftcusers};
+  \addplot[name path=bhi, draw=none, forget plot] table[x=k, y=best_hi] {\ftcusers};
+  \addplot[ic band=icOrange, forget plot] fill between[of=bhi and blo];
+  \addplot[ic sch] table[x=k, y=sch] {\ftcusers};
+  \addplot[ic gpbald] table[x=k, y=gpbald] {\ftcusers};
+  \addplot[ic best] table[x=k, y=best] {\ftcusers};
+  \addplot[ic psypref] table[x=k, y=psypref] {\ftcusers};
+  \ftchalf{0}{icInk}{icInk}{south east}
+  \ftchalf{2}{icInk}{icOrangeText}{north west}
+  \ftchalf{3}{icInk}{icDark}{north west}
+\end{axis}
+% the fifth panel: users after k_users comparisons better / within / worse than generic assistance by
+% 1 JND or more (fig2_users.csv, rows 0-3 as above); the bars span \ftub to \ftub + \ftuw pt (0-100 %),
+% the worse shares and their heading right-aligned at \ftun pt
+\def\ftub{452}\def\ftuw{50}\def\ftun{515.5}%
+\icorrload{ftu}{fig2_users.csv}%
+\begin{axis}[ft frame, at={(\ftub pt,21pt)}, width=\ftuw pt, xmin=0, xmax=100, ymin=0, ymax=70,
+  axis y line=none, ytick=\empty, xtick={0,50,100}, xticklabels={0, 50, 100},
+  xlabel={\usebox\ftwithinbox\hspace{1.5pt}Within\hspace{4pt}\usebox\ftworsebox\hspace{1.5pt}Worse},
+  xlabel style={inner sep=0pt, font=\scriptsize, xshift=4pt}]
+\end{axis}
+% one bar: #1 row of fig2_users.csv, #2 the method's colour, #3 its number's colour on it, #4 its
+% name's colour, #5 its name; the better segment, within (icRule), worse (icMuted hatch on white,
+% outlined, so that a thin one stays visible); the better share in its segment, the worse share in
+% the column right of the bars
+\def\ftbar#1#2#3#4#5{%
+  \pgfmathsetmacro\ftyc{71.75-15*#1}%
+  \pgfmathsetmacro\ftxb{\ftub+\ftuw*\icv{ftu}{#1}{better}/100}%
+  \pgfmathsetmacro\ftxw{\ftub+\ftuw*(100-\icv{ftu}{#1}{worse})/100}%
+  \pgfmathsetmacro\ftww{\ftuw*\icv{ftu}{#1}{worse}/100}%
+  \fill[#2] (\ftub,\ftyc-3.75) rectangle (\ftxb,\ftyc+3.75);
+  \fill[icRule] (\ftxb,\ftyc-3.75) rectangle (\ftxw,\ftyc+3.75);
+  \ifdim\icv{ftu}{#1}{worse}pt>0pt
+    \begin{scope}% the hatch: 45-degree lines 1.6 pt apart, clipped to the segment
+      \clip (\ftxw,\ftyc-3.75) rectangle (\ftub+\ftuw,\ftyc+3.75);
+      \foreach \ftx in {-8.8,-7.2,...,\ftww}
+        \draw[icMuted, line width=0.35pt] (\ftxw+\ftx,\ftyc-3.75) -- ++(9,9);
+    \end{scope}
+    \draw[icMuted, line width=0.3pt] (\ftxw,\ftyc-3.75) rectangle (\ftub+\ftuw,\ftyc+3.75);
+  \fi
+  \node[font=\scriptsize, #3, anchor=east, inner sep=0pt] at (\ftxb-1.4,\ftyc)
+    {\icv{ftu}{#1}{better_txt}};
+  \node[font=\scriptsize, icInk, anchor=east, inner sep=0pt] at (\ftun,\ftyc)
+    {\icv{ftu}{#1}{worse_txt}};
+  \node[font=\scriptsize, #4, anchor=base west, inner sep=0pt] at (\ftub,\ftyc+5.35) {#5};}
+\ftbar{0}{icBlue}{white}{icBlue}{PsyPref}
+\ftbar{1}{icGrey}{white}{icGrey}{GP-BALD}
+\ftbar{2}{icOrange}{icInk}{icOrangeText}{CMA-ES/Arens' GP}
+\ftbar{3}{icDark}{white}{icDark}{CMA-ES, 4--6 param.}
+% the headings above the bars: their k, and the worse shares
+\node[icMuted, font=\scriptsize, anchor=base west, inner sep=0pt] at (\ftub,85.5)
+  {$k = \ftkusers$};
+\node[icMuted, font=\scriptsize, anchor=base east, inner sep=0pt] at (\ftun,85.5)
+  {Worse (\%)};
+% the title, centred on the two panels; under it, the reference
+\node[icInk, font=\footnotesize, anchor=base] at ({(366+516)/2},21+70+12) {Users who benefit, all settings};
+\node[icMuted, font=\scriptsize, anchor=base, inner sep=0pt] at ({(366+516)/2},21+70+3.6)
+  {Would choose it in at least 72.5\,\% of cases};
+\pgfresetboundingbox
+\useasboundingbox (0,0) rectangle (516,110);
+\end{tikzpicture}%
