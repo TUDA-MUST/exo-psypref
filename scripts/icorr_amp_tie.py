@@ -202,8 +202,8 @@ def report(out: Path) -> None:
     rng = np.random.default_rng(AF.SEED_FULL + 26)
     pref = RB._pref
     pts = lambda t: tuple(100 * v for v in t)   # noqa: E731
-    L = ["# Registration TIE: \"no preference\" answers as data (PsyPref-T), users 8-39", "",
-         f"Spec section 26 (6671fa0). {len(ok)} sessions, {len(errors)} errors. ROB2's users with index "
+    L = ["# Test plan TIE: \"no preference\" answers as data (PsyPref-T), users 8-39", "",
+         f"Design note 26 (6671fa0). {len(ok)} sessions, {len(errors)} errors. ROB2's users with index "
          f"8-39 in C4 pessimistic and A5 no preference; paired with ROB2's stored sessions (same users "
          f"and answer seeds). Own-utility preference over generic assistance; 95 % intervals from "
          f"{R.N_BOOT} draws, users resampled within folds. Differences in points.", ""]
@@ -272,7 +272,7 @@ def report(out: Path) -> None:
           f"- PTI2 (A5: PsyPref-T above PsyPref in each setting): {overall(v2)} {v2}",
           f"- PTI3 (C4 fixed 12: not shown to trail CMA-ES on Schäfer's family): {v3}"
           + (f" {R._f(pts(p3['dsch']), 1)}" if p3 else ""),
-          f"- PTI4 (off-centre band priors: gain > 0 and within 2 points of the registered arm in all "
+          f"- PTI4 (off-centre band priors: gain > 0 and within 2 points of the planned arm in all "
           f"cells): {v4} " + str([(c.split()[0], s, a, round(100 * r['d24'][0], 1),
                                     None if r['vs_reg'] is None else round(100 * r['vs_reg'], 1))
                                    for c, s, a, r in off]),

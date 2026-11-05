@@ -161,8 +161,8 @@ def report(out: Path) -> None:
     errors = [r for r in raw if r.get("error") and _key(r) not in ok]
     rows = {**_stored(d), **ok}
     rng = np.random.default_rng(AF.SEED_FULL + 31)
-    L = ["# Registration PW: the prior's width against speed", "",
-         f"Spec section 31. {len(ok)} sessions, {len(errors)} errors. PsyPref with z* ~ N(0, c² I) and c times the "
+    L = ["# Test plan PW: the prior's width against speed", "",
+         f"Design note 31. {len(ok)} sessions, {len(errors)} errors. PsyPref with z* ~ N(0, c² I) and c times the "
          f"search radius, on FULL's users and answer seeds; c = 1 is FULL's PsyPref, c = 3 ABL's. s = {AF.S} Nm, "
          f"λ = {AF.LAPSE}. 95 % intervals from {R.N_BOOT} draws, users resampled within folds. First k: the first k at "
          "which c = 1 reaches this width's level at k = 40.", "",

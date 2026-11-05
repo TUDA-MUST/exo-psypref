@@ -1,12 +1,12 @@
-"""A wearer whose answer model changes during the session.
+"""A simulated user whose answer model changes during the session.
 
 - **S3, fatigue.** The lapse rate rises linearly from 0.05 at the first comparison to 0.30 at the
   last.
-- **S4, changing sensitivity.** The sensitivity ``s`` falls from 1.5 to 0.75 Nm (S4a, the wearer
-  learns to discriminate) or rises from 0.75 to 1.5 Nm (S4b, the wearer is desensitised), linearly
+- **S4, changing sensitivity.** The sensitivity ``s`` falls from 1.5 to 0.75 Nm (S4a, the simulated user
+  learns to discriminate) or rises from 0.75 to 1.5 Nm (S4b, the simulated user is desensitised), linearly
   over the comparisons.
 
-The preference itself (the utility, the ideal) never changes; only how the wearer answers does.
+The preference itself (the utility, the ideal) never changes; only how the simulated user answers does.
 Like :class:`~prompref.user.drift.DriftingObserver`, comparison ``k`` (0-based) is answered with
 the ``k``-th entry of each path, and past the end of a path its last entry holds. A path that is not
 given leaves the observer's own value untouched.
@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .oracle import Observer
+from .simulated_user import Observer
 
 
 def linear_path(start: float, end: float, n: int) -> np.ndarray:

@@ -1,4 +1,4 @@
-"""A wearer who answers by a drift-diffusion model (DDM): a choice and a response time (our design notes, "RT. Response time, isolated").
+"""A simulated user who answers by a drift-diffusion model (DDM): a choice and a response time (our design notes, "RT. Response time, isolated").
 
 **The answer model.** A comparison is a Wiener diffusion with unit noise between two boundaries a
 apart, started midway (no response bias). The upper boundary is "prefers A". The drift is
@@ -7,8 +7,8 @@ proportional to the utility difference in units of s,
     v = (u_A - u_B) / (s * CHOICE_SCALE * a),
 
 so that the attentive choice probability is P(A) = expit(v a) = expit((u_A - u_B) / (s *
-CHOICE_SCALE)). That is the logistic wearer of stress test S5a at its matched scale: its decisiveness
-(the median |p - 1/2| on prior-scale pairs) equals the main probit wearer's, as planned ("as in
+CHOICE_SCALE)). That is the logistic simulated user of stress test S5a at its matched scale: its decisiveness
+(the median |p - 1/2| on prior-scale pairs) equals the main probit simulated user's, as planned ("as in
 S5"). The response time is the first-passage time plus a non-decision time T0.
 
 - **Lapse.** With probability ``lapse`` the answer is a coin flip, and its response time is drawn
@@ -60,7 +60,7 @@ from pathlib import Path
 import numpy as np
 from scipy.special import expit, logsumexp
 
-from .oracle import Observer
+from .simulated_user import Observer
 
 #: Non-decision time in seconds (assumption; module docstring).
 T0_S = 0.44
@@ -78,7 +78,7 @@ CHOICE_SCALE = 0.5916008501683337
 #: The boundary separation a (noise 1), calibrated by ``scripts/icorr_rt_prep.py`` so that the
 #: median response time on the prior-scale pairs is TARGET_MEDIAN_RT_S at T0_S.
 BOUNDARY = 2.8222737007239345
-#: Answer models of the DDM wearer: response time informative ("inf") or drawn from the marginal
+#: Answer models of the DDM simulated user: response time informative ("inf") or drawn from the marginal
 #: independently of the pair ("null").
 RT_MODES = ("inf", "null")
 #: Where ``scripts/icorr_rt_prep.py`` writes the marginal and the calibration, under the run.
@@ -296,11 +296,11 @@ def load_rt_params(run_dir: str) -> DDMParams:
     return DDMParams(du, source=str(path), marginal_sha256=side["marginal_sha256"])
 
 
-# --------------------------------------------------------------------------------- the wearer
+# --------------------------------------------------------------------------------- the simulated user
 
 @dataclass
 class DDMObserver(Observer):
-    """The RMS wearer of the main condition answering by a DDM (module docstring). ``respond`` also
+    """The RMS simulated user of the main condition answering by a DDM (module docstring). ``respond`` also
     records the response time in s: ``last_response_time`` and the list ``response_times``, with
     ``lapsed`` (0/1 per answer) and ``n_redraws`` (undecided PyDDM draws redrawn)."""
 

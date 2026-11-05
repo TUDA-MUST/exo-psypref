@@ -84,8 +84,8 @@ def report(out: Path) -> None:
     abl = _load(d / "abl_sessions.jsonl")
     rng = np.random.default_rng(AF.SEED_FULL + 25)
     mean = ABL._mean
-    L = ["# Registration RND: the informative pairs' share of PsyPref's gain", "",
-         f"Spec section 25 (c945a5e). {len(rnd)} sessions, {len(errors)} errors. PsyPref with random "
+    L = ["# Test plan RND: the informative pairs' share of PsyPref's gain", "",
+         f"Design note 25 (c945a5e). {len(rnd)} sessions, {len(errors)} errors. PsyPref with random "
          f"pairs against FULL's PsyPref and GP-BALD on the same users and answer seeds. s = {AF.S} Nm, "
          f"λ = {AF.LAPSE}. 95 % intervals from {R.N_BOOT} draws, users resampled within folds.", "",
          "| setting | k | PsyPref (FULL) | random pairs | random − PsyPref (points) | share of gain kept "

@@ -11,8 +11,8 @@ import numpy as np
 from ..population.curves import MIN_LANDMARK_GAP_PCT, landmarks
 
 
-def two_bout_plausible(curve: np.ndarray) -> bool:
-    """Both bouts exist and the four landmarks keep their circular order, every gap above
+def two_part_plausible(curve: np.ndarray) -> bool:
+    """Both parts exist and the four landmarks keep their circular order, every gap above
     ``MIN_LANDMARK_GAP_PCT`` -- the structure a preferred assistance curve must have (M8)."""
     try:
         found = landmarks(curve)

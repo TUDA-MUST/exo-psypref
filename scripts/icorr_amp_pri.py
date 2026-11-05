@@ -12,8 +12,8 @@ Three tests:
        FULL's fixed-level results reweighted to their rooms (no sessions; ``prc``);
   PAM  preferred peaks not log-uniform (M1-M6, medium and wide ranges);
   PAD  a wrong shape prior (S1/S2 flexion peak later, S3 Schaefer-family shapes; S0 control)
-       with static, adaptive (mean update, the prior counting as four users) and oracle priors.
-``prep`` writes the shifted users' shapes and the oracle priors' moments. Outputs in
+       with static, adaptive (mean update, the prior counting as four users) and simulated user priors.
+``prep`` writes the shifted users' shapes and the simulated user priors' moments. Outputs in
 <out>/icorr/amp_free/: pri-prep-<fold>.npz, pri_sessions.jsonl (resumable), amp_pri_report.md,
 amp_pri_prc.md; ``posthoc`` writes amp_pri_posthoc.md.
 """
@@ -51,9 +51,9 @@ from prompref.experiment.run import run_session  # noqa: E402
 from prompref.learning.arms import ARMS  # noqa: E402
 from prompref.learning.space import LearnerSpace  # noqa: E402
 from prompref.population.folds import loso_folds  # noqa: E402
-from prompref.prior import Whitening  # noqa: E402
+from prompref.prior import Normalization  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import Observer, rms_distance  # noqa: E402
 
 JND = true_jnd(AF.S)
 LEVEL = F.LEVEL
@@ -69,7 +69,7 @@ PAD_POPS = {"S0 users": 0.0, "S1 flexion +6": 6.0, "S2 flexion +12": 12.0, "S3 S
 PAD_SETTINGS = ("wide", "fixed 12")
 PAD_SINGLE = ("psypref_static", "psypref_oracle", "cmaes_sch4", "g")
 N0 = 4                    # the prior counts as its four training subjects
-N_ORACLE_SCHAEFER = 2000
+N_SIM_USER_SCHAEFER = 2000
 BASIS = VonMisesBasis()
 
 
@@ -107,7 +107,7 @@ def draw_amps(law: tuple, lo: float, hi: float, n: int, rng: np.random.Generator
 def warp_flexion(curve: np.ndarray, delta: float) -> np.ndarray:
     """The curve with its flexion peak ``delta`` % GC later: a piecewise-linear phase warp
     through the extension peak (held), the flexion peak (moved) and the extension peak one
-    cycle on, so the bout order and the zero crossings stay."""
+    cycle on, so the part order and the zero crossings stay."""
     c = np.asarray(curve, dtype=float)
     base = c[:-1]
     e, f = float(np.argmin(base)), float(np.argmax(base))
@@ -131,7 +131,7 @@ def _schaefer_shapes(rng, n: int):
     from prompref.experiment.robust import TimingDistribution, draw_timing
 
     dist = TimingDistribution.load(_inputs_path())
-    return [AF.unit_bouts(SchaeferDesign(1.0, 1.0).curve(draw_timing(rng, dist)[0])) for _ in range(n)]
+    return [AF.unit_parts(SchaeferDesign(1.0, 1.0).curve(draw_timing(rng, dist)[0])) for _ in range(n)]
 
 
 def _inputs_path() -> Path:
@@ -139,7 +139,7 @@ def _inputs_path() -> Path:
 
 
 def prep(out: Path) -> None:
-    """Per fold: S1/S2 users' shapes, and the oracle priors' training bouts' weights."""
+    """Per fold: S1/S2 users' shapes, and the simulated user priors' training parts' weights."""
     d = _dir(out)
     for fi, fold in enumerate(loso_folds()):
         z = F._users(str(d / f"full-{fold.name}.npz"))
@@ -157,7 +157,7 @@ def prep(out: Path) -> None:
             tm, tp = _unit_rows(np.array([warp_flexion(c, delta) for c in train]))
             save[f"{tag}_w_minus"], save[f"{tag}_w_plus"] = BASIS.project(tm.T).T, BASIS.project(tp.T).T
         rng = np.random.default_rng([AF.SEED_FULL, 2300, fi])
-        sh = _schaefer_shapes(rng, N_ORACLE_SCHAEFER)
+        sh = _schaefer_shapes(rng, N_SIM_USER_SCHAEFER)
         save["S3_w_minus"] = BASIS.project(np.array([s[0] for s in sh]).T).T
         save["S3_w_plus"] = BASIS.project(np.array([s[1] for s in sh]).T).T
         np.savez(d / f"pri-prep-{fold.name}.npz", **save)
@@ -186,7 +186,7 @@ def _range_amps(fi: int, setting: str, n: int) -> np.ndarray:
 
 def moments(setting: str, fi: int, ppath: str, out: Path, kind: str = "static", pop: str | None = None,
             cond: str | None = None):
-    """Prior mean and covariance: FULL's (static), the population's training bouts (oracle),
+    """Prior mean and covariance: FULL's (static), the population's training parts (simulated user),
     or the training shapes at the condition's peaks (PAM's matched prior)."""
     if kind == "static":
         if setting in F.RANGES:
@@ -217,7 +217,7 @@ def space_for(setting: str, mu, sigma) -> LearnerSpace:
         return AF.promp_space(mu, sigma, limit=F.RANGES[setting][1])
     k = mu.size
     design = DeviceDesign(AF.FixedLevelDesign(LEVEL, basis=BASIS), limit=LEVEL + 1e-9)
-    return LearnerSpace(design, Whitening(mu, sigma, k), ARMS["tight"].radius(k))
+    return LearnerSpace(design, Normalization(mu, sigma, k), ARMS["tight"].radius(k))
 
 
 # ----------------------------------------------------------------------------- sessions
@@ -244,7 +244,7 @@ def session(job: dict, out: Path, mu_override=None, sigma_override=None) -> tupl
     run_dir = out / "phase5-schaefer"
     ideal = AF.compose(job["amps"][0], job["amps"][1], *_shape(job, out))
     dd = R._fold(ppath, fi)
-    g_minus, g_plus = AF.unit_bouts(dd["generic"])
+    g_minus, g_plus = AF.unit_parts(dd["generic"])
     seed = int(job["answer_seed"]) % 2**32
     if setting in F.RANGES:
         lo, hi = F.RANGES[setting]
@@ -260,7 +260,7 @@ def session(job: dict, out: Path, mu_override=None, sigma_override=None) -> tupl
         if sigma_override is not None:
             sigma = sigma_override
         space = space_for(setting, mu, sigma)
-        learner = (AF.TwoBoutGuard(AF.metric_psypref(space, seed), space, 0.5 * lo, seed=seed)
+        learner = (AF.TwoPartGuard(AF.metric_psypref(space, seed), space, 0.5 * lo, seed=seed)
                    if setting in F.RANGES else AF.psypref(space, seed))
     else:
         mu, sigma = moments(setting, fi, ppath, out, "static")
@@ -332,7 +332,7 @@ def jobs(out: Path) -> list[dict]:
                 chains.append(dict(test="PAD", condition=pop, setting=setting, fold=fold.name,
                                    fold_index=fi, candidate="psypref_adaptive", chain=True, _users=users))
                 if pop == "S0 users":
-                    continue        # S0's static arm is FULL's; its oracle is static
+                    continue        # S0's static arm is FULL's; its simulated user is static
                 for j in users:
                     for cand in PAD_SINGLE:
                         (slow if cand.startswith("psypref") else fast).append(dict(j, candidate=cand))
@@ -389,7 +389,7 @@ def prc(out: Path) -> None:
 
     d = _dir(out)
     parts = json.loads(_inputs_path().read_text(encoding="utf-8"))["participants"]
-    curves = [AF.compose(LEVEL, LEVEL, *AF.unit_bouts(SchaeferDesign(1.0, 1.0).curve(np.array(p["preferred_t"]))))
+    curves = [AF.compose(LEVEL, LEVEL, *AF.unit_parts(SchaeferDesign(1.0, 1.0).curve(np.array(p["preferred_t"]))))
               for p in parts]
     r_part = np.zeros((len(parts), 5))
     d0_part = np.zeros((len(parts), 5))
@@ -401,7 +401,7 @@ def prc(out: Path) -> None:
         space = space_for("fixed 12", mu, sigma)
         radius.append(space.radius)
         dd = R._fold(ppath, fi)
-        generic = AF.compose(LEVEL, LEVEL, *AF.unit_bouts(dd["generic"]))
+        generic = AF.compose(LEVEL, LEVEL, *AF.unit_parts(dd["generic"]))
         for i, c in enumerate(curves):
             r_part[i, fi] = float(np.linalg.norm(space.to_z(BASIS.project(c / LEVEL))))
             d0_part[i, fi] = rms_distance(generic, c)
@@ -448,8 +448,8 @@ def prc(out: Path) -> None:
         for c in diffs:
             diffs[c].append(wmean(w, pref["psypref"][idx] - pref[c][idx]))
     ci = lambda v: tuple(np.percentile(v, [2.5, 97.5]))  # noqa: E731
-    L = ["# Registration PRC: real preferences under the prior", "",
-         f"Spec section 21 (e2a079f). Schäfer et al.'s {len(parts)} participants' preferred timings as "
+    L = ["# Test plan PRC: real preferences under the prior", "",
+         f"Design note 21 (e2a079f). Schäfer et al.'s {len(parts)} participants' preferred timings as "
          f"their family's curve at {LEVEL:.0f} Nm; FULL's 200 users at {LEVEL:.0f} Nm. Radius r = |z| "
          f"under the fixed-level prior (K = 8); the 99 % search ball has radius {np.mean(radius):.2f}.", "",
          "| | median r | 75th / 90th percentile r | max r | median ProMP floor (Nm) | median distance to generic (Nm) |",
@@ -522,8 +522,8 @@ def report(out: Path) -> None:
             return {u: r for (s, u), r in full.items() if s == setting}
         return {k[4]: r for k, r in rows.items() if k[:4] == (test, cond, setting, cand)}
 
-    L = ["# Registration PRI: PAM and PAD", "",
-         f"Spec section 21 (e2a079f). {len(rows)} sessions, {len(errors)} errors. Preference over "
+    L = ["# Test plan PRI: PAM and PAD", "",
+         f"Design note 21 (e2a079f). {len(rows)} sessions, {len(errors)} errors. Preference over "
          f"generic assistance at k = 24 (s = {AF.S} Nm, λ = {AF.LAPSE}); paired differences in points; "
          f"95 % intervals from {R.N_BOOT} draws, users resampled within folds.", "",
          "## PAM: preferred peaks not log-uniform (prior log-uniform)", "",
@@ -595,8 +595,8 @@ def report(out: Path) -> None:
 
 
 def posthoc(out: Path) -> None:
-    """PAD, post hoc: oracle and adaptive against static on the same users (21-40), the oracle
-    against CMA-ES on Schaefer's family, and where the oracle prior differs from the static one
+    """PAD, post hoc: simulated user and adaptive against static on the same users (21-40), the simulated user
+    against CMA-ES on Schaefer's family, and where the simulated user prior differs from the static one
     (mean, in the static prior's SDs, against covariance)."""
     rows = [r for r in map(json.loads, (_dir(out) / "pri_sessions.jsonl").read_text(encoding="utf-8").splitlines())
             if r["test"] == "PAD" and r["error"] is None]
@@ -613,8 +613,8 @@ def posthoc(out: Path) -> None:
         return R._f(R._boot(items, lambda x: 100 * float(np.mean([i["v"] for i in x])), rng), 1)
 
     pops = [p for p in PAD_POPS if PAD_POPS[p] != 0.0]
-    L = ["# Registration PRI, PAD: post hoc", "",
-         "Not registered. Preference over generic assistance at k = 24; paired differences in points; 95 % "
+    L = ["# Test plan PRI, PAD: post hoc", "",
+         "Not planned. Preference over generic assistance at k = 24; paired differences in points; 95 % "
          f"intervals from {R.N_BOOT} draws, users resampled within folds. Users 21–40: the adaptive prior "
          "has seen at least 20 identified users.", "",
          "| population | setting | oracle − static, 21–40 | adaptive − static, 21–40 | adaptive − oracle, 21–40 "

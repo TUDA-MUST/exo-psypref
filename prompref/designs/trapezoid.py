@@ -13,7 +13,7 @@ from .base import BoxDesign
 
 
 class TrapezoidDesign(BoxDesign):
-    """Extension and flexion bouts, each with peak torque, peak time and rise time."""
+    """Extension and flexion parts, each with peak torque, peak time and rise time."""
 
     param_names = tuple(FEATURE_NAMES)
 

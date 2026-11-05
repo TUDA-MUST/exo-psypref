@@ -148,7 +148,7 @@ def main(argv=None) -> int:
         raise SystemExit("amp_yardstick.json is not the post hoc fixed-yardstick file this figure expects")
     sc = js["self_check"]
     if sc["points_matched"] != sc["points_total"] or not all(e["ok"] for e in sc["exact"]):
-        raise SystemExit("amp_yardstick.json's own self-check against the registered reports did not pass")
+        raise SystemExit("amp_yardstick.json's own self-check against the planned reports did not pass")
 
     loss = {}      # (source, condition, setting, a) -> PsyPref(-T) minus FULL at k = 24
     other = {}     # (source, condition, setting, a, b) -> other differences at k = 24
@@ -264,7 +264,7 @@ def main(argv=None) -> int:
     for m in missing:
         print("missing:", m)
     print(f"axis {XMIN:g} .. {XMAX:g} points; plotted values span {lo_all:+.1f} .. {hi_all:+.1f}; y {ymin:g} .. {ymax:g}")
-    print("\nrow   y       3-35 Nm fixed [95 %]   registered | fixed 12 Nm fixed [95 %]  registered | n")
+    print("\nrow   y       3-35 Nm fixed [95 %]   planned | fixed 12 Nm fixed [95 %]  planned | n")
 
     def cell(r, i):
         b = 3 + 9 * i
@@ -278,27 +278,27 @@ def main(argv=None) -> int:
             print(f"{r[0]}  y = {r[2]:g}")
         else:
             print(f"  {r[0]:<4}{'*' if r[21] else ' '}{r[2]:6.2f} {cell(r, 0)}| {cell(r, 1)}| {r[11]} / {r[20]}")
-    print("  (* = prb2: in the scope of ROB2's registered prediction PRB2)")
+    print("  (* = prb2: in the scope of ROB2's planned prediction PRB2)")
     print("\nlabel values (fig4_meta.csv): " + ", ".join(f"{k} = {v:.4g}" for k, v in lab.items()))
     print("\nprovenance (worst-of choices and duplicates):")
     for p in prov:
         if p[7] != "-" or p[8] != "-":
             print("  ", p)
     print(f"\nfilled markers at or above {GUIDE:g} points: {n_within} of {len(fixed_pts)}")
-    print("\ncaption numbers (points; registered | fixed):")
+    print("\ncaption numbers (points; planned | fixed):")
     for n_ in notes:
         print(f"  {n_[0]}: {n_[1]} {n_[2]} {n_[3]} {n_[4]} - {n_[5]} (n = {n_[6]}): "
               f"{n_[7]:+.1f} [{n_[8]:+.1f}, {n_[9]:+.1f}] | {n_[10]:+.1f} [{n_[11]:+.1f}, {n_[12]:+.1f}]")
     p_rg = [n_[7] for n_ in notes if n_[0] == "prb2_registered_below_-5"]
     p_fx = [n_[10] for n_ in notes if n_[0] == "prb2_registered_below_-5"]
     n_prb2_rows = sum(r[21] for r in rows if r[1] == 0)
-    print(f"\nPRB2 in the figure: {n_prb2_rows} rows marked; {len(p_rg)} cells below {PRB2_LIMIT:g} registered "
+    print(f"\nPRB2 in the figure: {n_prb2_rows} rows marked; {len(p_rg)} cells below {PRB2_LIMIT:g} planned "
           f"({max(p_rg):+.1f} to {min(p_rg):+.1f}); the same cells on the fixed yardstick "
           f"{max(p_fx):+.1f} to {min(p_fx):+.1f}")
     rows_by = {r[0]: r for r in rows if r[1] == 0}
     unmarked_below = [(r[0], TAG[st], r[3 + 9 * i + 3]) for r in rows_by.values() if not r[21]
                       for i, st in enumerate(SETTINGS) if not r[3 + 9 * i + 7] and r[3 + 9 * i + 3] < PRB2_LIMIT]
-    print("registered below the limit outside PRB2's scope: "
+    print("planned below the limit outside PRB2's scope: "
           + ", ".join(f"{k} {t} {v:+.1f}" for k, t, v in unmarked_below))
 
     if not args.no_verify:

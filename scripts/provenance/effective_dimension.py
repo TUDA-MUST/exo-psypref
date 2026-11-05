@@ -26,7 +26,7 @@ def pref(d0, dk):
     return 100 * float(np.mean(LAPSE / 2 + (1 - LAPSE) * norm.cdf((np.asarray(d0) - np.asarray(dk)) / S)))
 
 
-# A. Stored floors per family
+# A. Stored best-profile distances per family
 print("A. Best profile per family (stored floors, n = 200): median Nm, median JND, P_g at the floor")
 rows = [json.loads(x) for x in (d / "fam_floors.jsonl").read_text(encoding="utf-8").splitlines()]
 for s in SETTINGS:
@@ -36,7 +36,7 @@ for s in SETTINGS:
         fl = np.array([r["floor"] for r in rs])
         print(f"  {s:9s} {fam:12s} n={len(rs)} {np.median(fl):5.2f} Nm {np.median(fl) / JND:5.2f} JND  P_g {pref([r['d0'] for r in rs], fl):5.1f}")
 
-# B. Floors in the prior's top-d directions
+# B. Best-profile distances in the prior's top-d directions
 print("\nB. Best profile in the prior's d leading directions (unconstrained least squares): median Nm, JND, P_g")
 jobs = FAM._base_jobs(out)
 checks = []
@@ -53,7 +53,7 @@ for K in (8, 24):
             if key not in cache:
                 pri = DIMS._prior(d, j["fold_index"], j["fold"], s, K, checks)
                 _, space, sigma, basis = pri
-                mu = np.asarray(space.whitening.mu, float)
+                mu = np.asarray(space.normalization.mu, float)
                 vals, vecs = np.linalg.eigh(np.asarray(sigma, float))
                 cache[key] = (mu, vecs[:, np.argsort(vals)[::-1]], np.asarray(basis.design, float))
             mu, vecs, phi = cache[key]

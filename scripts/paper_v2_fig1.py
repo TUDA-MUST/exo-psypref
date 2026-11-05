@@ -23,7 +23,7 @@ The session
     median" would not pick one; the lower middle user is the one of the two that flatters
     PsyPref less.
   * Built exactly as FULL's run_one builds it (scripts/icorr_amp_full.py: AM's space and prior
-    over the range, curve metric N1, two-bout guard, 40 comparisons, FULL's answer seed and
+    over the range, curve metric N1, two-part guard, 40 comparisons, FULL's answer seed and
     observer), with PsyPref-T's factory: job["ties"] = "band", i.e. AF.metric_psypref(...,
     ties="band"). FULL's simulated users never answer "no preference", and PsyPref-T then equals
     PsyPref bit for bit, so the session must reproduce FULL's stored distances exactly.
@@ -38,12 +38,12 @@ Written (in --csv, every file prefixed fig1_):
                       (generic assistance); pair1, pair2 (the pair asked after six answers, no
                       longer drawn: fig1.tex takes its pair from paper_v2_fig1j.py);
                       mean_k0, mean_k6, mean_k24 (the profile PsyPref would deliver after k
-                      answers: the posterior mean of z*, clipped into the trust ball, through
-                      the two-bout guard; after 24 answers the identified profile)
+                      answers: the posterior mean of z*, clipped into the trust search region, through
+                      the two-part guard; after 24 answers the identified profile)
   fig1_fan_k<k>.csv   phase, d0..d19: 20 particles of the posterior after k = 0, 6, 24 answers
                       (systematic resampling by weight, seed FAN_SEED), as curves
   fig1_prior.csv      phase, s0..s29: 30 draws of the walking-data shape prior (the fold's unit
-                      training shapes' weights, PsyPref's bowl prior, bouts at unit peaks, as
+                      training shapes' weights, PsyPref's ideal-point model prior, parts at unit peaks, as
                       AF.fixed_level_space at a level of 1); generic_shape: generic assistance's
                       shape at unit peaks
   fig1_sigmoid.csv    delta = d(2) - d(1) in Nm, p = P(choose 1) of the main condition's
@@ -87,7 +87,7 @@ import icorr_amp_full as FULL  # noqa: E402
 import icorr_amp_range as R  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.learning.arms import ARMS  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 SETTING = "wide"
 K_RULE = 24              # the rule's comparison count (the paper's budget)
@@ -157,7 +157,7 @@ def choose_user(out: Path) -> tuple[dict, dict]:
 
 # ---------------------------------------------------------------- the recorded session
 class Recorder:
-    """Passes every call to ``learner`` (FULL's TwoBoutGuard) and records the pairs, the
+    """Passes every call to ``learner`` (FULL's TwoPartGuard) and records the pairs, the
     answers, the delivered parameters and the posterior after the answers in KS. It reads the
     posterior and the inner learner's deterministic best only; the guard's own stream is
     touched only by run_session's own best calls."""
@@ -172,7 +172,7 @@ class Recorder:
         self._snapshot()
 
     def _inner(self):
-        return self._learner.learner if isinstance(self._learner, AF.TwoBoutGuard) else self._learner
+        return self._learner.learner if isinstance(self._learner, AF.TwoPartGuard) else self._learner
 
     def _snapshot(self) -> None:
         inner = self._inner()
@@ -286,7 +286,7 @@ def main(argv=None) -> int:
     table = check(row, stored)
     rec, design, observer, learner = cap["rec"], cap["design"], cap["observer"], cap["learner"]
     from prompref.learning.ties import TieMetricPsyPref
-    if not (isinstance(learner, AF.TwoBoutGuard) and isinstance(learner.learner, TieMetricPsyPref)
+    if not (isinstance(learner, AF.TwoPartGuard) and isinstance(learner.learner, TieMetricPsyPref)
             and learner.learner.tie_mode == "band"):
         raise SystemExit(f"the session's learner is not PsyPref-T (band) behind the two-bout "
                          f"guard: {type(learner).__name__}/{type(getattr(learner, 'learner', None)).__name__}")
@@ -301,7 +301,7 @@ def main(argv=None) -> int:
     lo, hi = FULL.RANGES[SETTING]
     centre = math.sqrt(lo * hi)
     d = R._fold(job["_parts"], job["fold_index"])
-    g_minus, g_plus = AF.unit_bouts(d["generic"])
+    g_minus, g_plus = AF.unit_parts(d["generic"])
     generic = AF.compose(centre, centre, g_minus, g_plus)
     if rms_distance(generic, ideal) != stored["d0"]:
         raise SystemExit("generic assistance does not give the stored d0")
@@ -336,7 +336,7 @@ def main(argv=None) -> int:
 
     # the walking-data shape prior at unit peaks
     unit = AF.fixed_level_space(d["w_minus"], d["w_plus"], 1.0)
-    zp = ARMS["tight"].bowl_prior().sample_zstar(np.random.default_rng(PRIOR_SEED), N_PRIOR,
+    zp = ARMS["tight"].ideal_point_prior().sample_zstar(np.random.default_rng(PRIOR_SEED), N_PRIOR,
                                                   unit.d)
     prior = np.array([np.asarray(unit.design.curve(unit.to_theta(z)), dtype=float) for z in zp])
     generic_shape = AF.compose(1.0, 1.0, g_minus, g_plus)

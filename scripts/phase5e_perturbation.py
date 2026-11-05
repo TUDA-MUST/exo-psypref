@@ -1,20 +1,20 @@
 """Perturbation strength of each Phase 5e cell.
 
-How differently does a cell's wearer answer than the plain s = 1.0 wearer? The measure is the
+How differently does a cell's simulated user answer than the plain s = 1.0 simulated user? The measure is the
 mean |p_cell - p_plain| over duel pairs, where p is the probability of preferring the first
 curve of the pair:
 
 - **Pairs.** For each fold, its first ``n_users`` population users (sorted ids), and for each
   user ``n_pairs`` pairs from the fold's ProMP data prior in the tight arm: standard-normal
-  whitened draws clipped to the arm's ball, mapped to curves through the device clip, as a
+  normalized draws clipped to the arm's search region, mapped to curves through the device clip, as a
   learner's duels are. The draws are seeded from the user id, so every cell sees the same
   pairs.
-- **Observers.** The cell's wearer is built exactly as its sessions build it
-  (:func:`prompref.experiment.phase5.build_observer`, at the user's own s); the plain wearer
+- **Observers.** The cell's simulated user is built exactly as its sessions build it
+  (:func:`prompref.experiment.phase5.build_observer`, at the user's own s); the plain simulated user
   is s = 1.0 against the user's ideal. Both are compared **without lapse**, so the lapse they
   share drops out -- except in the lapse cells, whose lapse is their only perturbation: there
-  each wearer keeps its own lapse (0.2 or 0.3 against 0.1), and the row says so.
-- **Device noise** reaches the comparison as in a session: the noise cell's wearer judges
+  each simulated user keeps its own lapse (0.2 or 0.3 against 0.1), and the row says so.
+- **Device noise** reaches the comparison as in a session: the noise cell's simulated user judges
   each pair through ``perceived``, from its own salted generator.
 - **Drift.** A magnitude-drift cell's ideal moves over its 24 comparisons; pair i is judged
   against the ideal of comparison i mod 24, so the value is a session average.
@@ -33,7 +33,7 @@ from prompref.experiment.phase5 import Phase5Point, arm_space, build_observer, p
 from prompref.experiment.phase5e_grid import ARM, N_DRIFT
 from prompref.population.export import load_fold_users
 from prompref.user.drift import path_for_scale
-from prompref.user.oracle import Observer
+from prompref.user.simulated_user import Observer
 
 FAMILY = "promp_s0"
 N_USERS = 20
@@ -54,11 +54,11 @@ def population_users(run_dir: str, fold: str, n_users: int = N_USERS) -> list[st
 
 
 def duel_pairs(run_dir: str, fold: str, user_id: str, n_pairs: int = N_PAIRS) -> np.ndarray:
-    """(n_pairs, 2, 101) device-clipped curves of whitened draws in the tight arm's ball."""
+    """(n_pairs, 2, 101) device-clipped curves of normalized draws in the tight arm's search region."""
     space = arm_space(phase5._prior(run_dir, fold, FAMILY), ARM)
     design = space.as_design()
     z = np.random.default_rng(pair_seed(user_id)).standard_normal((n_pairs, 2, space.d))
-    return np.array([[design.curve(space.clip_to_ball(v)) for v in pair] for pair in z])
+    return np.array([[design.curve(space.clip_to_search_region(v)) for v in pair] for pair in z])
 
 
 def _is_lapse_cell(fields: dict) -> bool:
@@ -66,7 +66,7 @@ def _is_lapse_cell(fields: dict) -> bool:
 
 
 def _cell_judge(run_dir: str, fold: str, user, fields: dict):
-    """A function (curve_a, curve_b, pair index) -> p for this cell's wearer."""
+    """A function (curve_a, curve_b, pair index) -> p for this cell's simulated user."""
     fields = dict(fields)
     cell_lapse = float(fields.pop("lapse", PLAIN_LAPSE))
     lapse = cell_lapse if cell_lapse != PLAIN_LAPSE else 0.0
@@ -129,7 +129,7 @@ def compute(run_dir: str, cells: dict[str, dict], *, folds, n_users: int = N_USE
 
 def decisiveness_ratio(delta_cell, delta_rms) -> float:
     """Median over duel pairs of |du_cell| / |du_rms|, the cell's utility difference of the two
-    curves against the plain s = 1.0 RMS wearer's. Pairs the RMS wearer cannot tell apart
+    curves against the plain s = 1.0 RMS simulated user's. Pairs the RMS simulated user cannot tell apart
     (du_rms = 0) have no ratio and drop out."""
     cell, rms = np.abs(np.asarray(delta_cell, float)), np.abs(np.asarray(delta_rms, float))
     keep = rms > 0.0
@@ -140,9 +140,9 @@ def compute_decisiveness(run_dir: str, cells: dict[str, dict], *, folds,
                          n_users: int = N_USERS, n_pairs: int = N_PAIRS) -> dict:
     """``{cell id: {ratio, s_equiv, n_users, n_pairs, note}}`` for the landmark cells among
     ``cells``, on the same pairs and users as :func:`compute`. ``ratio`` is the median over all
-    pairs of |du_landmark| / |du_rms(s = 1.0)|, u being each wearer's utility (the landmark
-    wearer's is -D x true_jnd(s), the RMS wearer's -RMS distance, so both are in Nm and the
-    probit scale s is the same); ``s_equiv`` = 1 / ratio is the RMS wearer who would be as
+    pairs of |du_landmark| / |du_rms(s = 1.0)|, u being each simulated user's utility (the landmark
+    simulated user's is -D x true_jnd(s), the RMS simulated user's -RMS distance, so both are in Nm and the
+    probit scale s is the same); ``s_equiv`` = 1 / ratio is the RMS simulated user who would be as
     decisive. A cell that cannot be built is reported with ratio None, never raised."""
     run_dir = str(run_dir)
     cells = {cid: f for cid, f in cells.items() if f.get("observer_metric") == "landmark"}

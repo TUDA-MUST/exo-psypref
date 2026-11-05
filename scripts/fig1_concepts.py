@@ -1,11 +1,11 @@
 """Concept sketches for Fig. 1 of the ICORR 2027 paper: three directions to choose from, not final
 art. Each is one IEEE column wide (3.5 in) and at most 6 cm tall.
 
-  concept1_loop.pdf      The loop with two answerers. A wearer (photo placeholder) is asked "A or
+  concept1_loop.pdf      The loop with two answerers. A simulated user (photo placeholder) is asked "A or
                          B?"; the answer goes to Optimizer A, which holds a belief over the preferred
                          profile and returns the next most informative pair. Below, in a dashed box,
-                         the simulated wearer of this paper stands in for the wearer: its
-                         psychometric function with the lapse floor and ceiling.
+                         the simulated simulated user of this paper stands in for the simulated user: its
+                         psychometric function with the lapse best-profile distance and best-profile level.
   concept2_belief.pdf    A's belief narrowing: posterior draws after k = 0, 6 and 24 comparisons, the
                          preferred profile (dashed) and the pair asked from that belief.
   concept3_judgment.pdf  The answer as a perceptual judgment: two candidates, their RMS distances to
@@ -19,13 +19,13 @@ icorr_calibration_video.py. The fold's ProMP prior and the user's ideal are load
 project's own loaders (phase5._prior, phase5.arm_space, phase5._users), and particles z* map to
 curves along the learner's own route (LearnerSpace.to_theta, then design.curve: eight von Mises
 bases, kappa = 9.106, 101 points, weights clipped to the box, curves to +-12 Nm). The script stops
-using the data unless the loaded whitening, basis and ideal equal the arrays stored with the
+using the data unless the loaded normalization, basis and ideal equal the arrays stored with the
 snapshots. If anything fails to load, it draws schematic curves instead, says so on stdout, and
 stamps "schematic curves" on every figure.
 
 The pair drawn with the belief at snapshot k is the pair asked next from that belief (duel index
 k). At k = 24 that pair is a lapse probe (A's probes, share 0.15), and it is labelled as one. The
-simulated wearer is the main condition's (s = 1.0 Nm, lapse 0.1, the paper's wearer equation),
+simulated simulated user is the main condition's (s = 1.0 Nm, lapse 0.1, the paper's simulated user equation),
 through paper_icorr_figures.psychometric. Style, colours and rcParams are paper_icorr_figures'.
 
 Usage:
@@ -54,7 +54,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import FancyBboxPatch, Polygon, Rectangle  # noqa: E402
 
-# The paper figures' rcParams (Arial 8 pt, thin grey axes), colours and wearer model.
+# The paper figures' rcParams (Arial 8 pt, thin grey axes), colours and simulated user model.
 from paper_icorr_figures import (BLUE, BLUE_LIGHT, CONTEXT, FIG_W, INK, LAPSE,  # noqa: E402
                                  MUTED, RULE, _spines, psychometric)
 
@@ -98,9 +98,9 @@ def real_session(out: Path) -> dict:
     space = p5.arm_space(p5._prior(run, FOLD, "promp_s0"), "tight")
     design, basis = space.design, space.design.basis
     ideal = np.asarray(p5._users(run, FOLD)[USER].curve_nm, dtype=float)
-    checks = {"whitening mu": np.abs(space.whitening.mu - z["whitening_mu"]).max(),
-              "whitening U": np.abs(space.whitening._u - z["whitening_u"]).max(),
-              "whitening scale": np.abs(space.whitening._scale - z["whitening_scale"]).max(),
+    checks = {"whitening mu": np.abs(space.normalization.mu - z["whitening_mu"]).max(),
+              "whitening U": np.abs(space.normalization._u - z["whitening_u"]).max(),
+              "whitening scale": np.abs(space.normalization._scale - z["whitening_scale"]).max(),
               "basis": np.abs(basis.design - z["basis"]).max(),
               "ideal": np.abs(ideal - z["ideal_curve"]).max()}
     bad = {k: float(v) for k, v in checks.items() if not v <= 1e-12}
@@ -133,7 +133,7 @@ def real_session(out: Path) -> dict:
                        prefers_a=bool(z["duel_prefers_a"][k]), d_a=_rms(ca, ideal),
                        d_b=_rms(cb, ideal))
         err[k] = _rms(mean[k], ideal)
-    # sanity: the stored answers follow the closer curve about as often as the wearer model says
+    # sanity: the stored answers follow the closer curve about as often as the simulated user model says
     n = len(z["duel_prefers_a"])
     closer = [_rms(*curves(z["duel_z_a"][j]), ideal) < _rms(*curves(z["duel_z_b"][j]), ideal)
               for j in range(n)]
@@ -273,7 +273,7 @@ def _tau(ax, s, lw=1.0):
 
 
 def _psychometric(ax, mark=None, right=False, ticks=True):
-    """P(choose A) against d(B) - d(A) for the main wearer, with the lapse floor and ceiling."""
+    """P(choose A) against d(B) - d(A) for the main simulated user, with the lapse best-profile distance and best-profile level."""
     xmax = 2.6
     delta = np.linspace(-xmax, xmax, 261)
     for p in (LAPSE / 2, 1 - LAPSE / 2):
@@ -324,7 +324,7 @@ def concept1(s: dict, figdir: Path, png_dir: Path):
     c = Canvas(2.30)
     W = c.w
     k, p = K_PAIR, s["pair"][K_PAIR]
-    # wearer
+    # simulated user
     px, py, pw, ph = 0.04, 1.06, 0.72, 1.20
     c.photo(px, py, pw, ph, "photo:\nwearer in\nhip exo-\nskeleton")
     # speech bubble with the pair
@@ -357,7 +357,7 @@ def concept1(s: dict, figdir: Path, png_dir: Path):
     c.arrow((ox - 0.02, yr), (px + pw + 0.02, yr))
     c.text((px + pw + ox) / 2, yr + 0.06, "next most informative pair", ha="center",
            va="bottom")
-    # this paper: the simulated wearer
+    # this paper: the simulated simulated user
     dx0, dy0, dw, dh = 0.04, 0.03, W - 0.08, 0.84
     c.box(dx0, dy0, dw, dh, r=0.07, edgecolor=MUTED, lw=0.8, ls=(0, (3, 2)))
     c.text(dx0 + 0.08, dy0 + dh - 0.11, "This paper: simulated wearer", fontsize=8,
@@ -384,7 +384,7 @@ def concept1(s: dict, figdir: Path, png_dir: Path):
 def concept2(s: dict, figdir: Path, png_dir: Path):
     """A's belief narrowing toward the preferred profile."""
     c = Canvas(1.88)
-    # wearer
+    # simulated user
     c.photo(0.04, 0.34, 0.36, 1.06, "photo: wearer\n(simulated here)", rotate=True)
     # panels
     x0, gap, y0, h = 0.82, 0.08, 0.34, 1.06
@@ -439,9 +439,9 @@ def concept3(s: dict, figdir: Path, png_dir: Path):
     c = Canvas(1.72)
     p = s["pair"][K_PAIR]
     delta = p["d_b"] - p["d_a"]
-    # wearer
+    # simulated user
     c.photo(0.04, 0.36, 0.34, 1.10, "photo: wearer", rotate=True)
-    # the simulated wearer
+    # the simulated simulated user
     bx0, by0 = 0.46, 0.03
     c.box(bx0, by0, FIG_W - 0.04 - bx0, 1.66, r=0.07, edgecolor=MUTED, lw=0.8, ls=(0, (3, 2)))
     c.text(bx0 + 0.08, 1.57, "This paper: simulated wearer", fontsize=8, fontweight="bold")

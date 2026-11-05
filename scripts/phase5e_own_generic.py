@@ -1,17 +1,17 @@
-"""Gain over generic assistance in the wearer's own metric, for the Phase 5e observer cells.
+"""Gain over generic assistance in the simulated user's own metric, for the Phase 5e observer cells.
 
 Usage:  python scripts/phase5e_own_generic.py --dir5e out/phase5e [--k 24] [--boot 10000]
             [--out out/phase5e/own_generic.md]
 
 Section 10 of the Phase 5e report gives the gain over generic assistance in the RMS distance to
-the ideal, A's own model class. A landmark, asymmetric or familiar wearer does not feel that
+the ideal, A's own model class. A landmark, asymmetric or familiar simulated user does not feel that
 distance. Here the generic assistance (the prior's mean curve, built exactly as
 ``prior_mean_distance`` builds it: 2,000 projected prior draws, seed 0) is scored by each
-wearer's own distance, ``observer.own_distance``, and compared with ``own_distances[k - 1]`` of
+simulated user's own distance, ``observer.own_distance``, and compared with ``own_distances[k - 1]`` of
 the identified assistance. No session is run; the observers are rebuilt from the stored points.
 
 Population users, as in the B7 tables. Gains are in true_jnd(1.0) = 0.674 Nm, the observer
-cells' yardstick; for the landmark wearer one feature-JND answers like 0.674 Nm.
+cells' yardstick; for the landmark simulated user one feature-JND answers like 0.674 Nm.
 The lower decile and its CI are benchmark_report's (linear percentile, cluster bootstrap over
 users within folds). Post hoc: added after the planned predictions were read.
 """
@@ -121,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path)
     args = ap.parse_args(argv)
     head = [f"# Gain over generic assistance in the wearer's own metric, k = {args.k}", "",
-            "Post hoc (after the registered predictions were read). Population users. Generic "
+            "Post hoc (after the planned predictions were read). Population users. Generic "
             "assistance is the prior's mean curve; gains are in true_jnd(1.0) = 0.674 Nm "
             "(one feature-JND for the landmark wearer). Weber's own distance is the RMS "
             "distance, so its two last columns agree. Lower decile: linear percentile, cluster "

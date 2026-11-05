@@ -42,7 +42,7 @@ from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.experiment.run import run_session  # noqa: E402
 from prompref.population.folds import child_sequence, load_trials, loso_folds  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import PHASE_WEIGHTED, RANDOM_SMOOTH, Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import PHASE_WEIGHTED, RANDOM_SMOOTH, Observer, rms_distance  # noqa: E402
 
 SETTINGS = ("wide", "fixed 12")
 CANDS = ("psypref", "cmaes_sch4", "g", "d_z", "cmaes")
@@ -96,7 +96,7 @@ def _space(setting: str, ppath: str, fold_index: int):
 
 def _pairs(space, seed) -> np.ndarray:
     z = np.random.default_rng(seed).standard_normal((N_PAIRS, 2, space.d))
-    return np.array([[space.design.curve(space.to_theta(space.clip_to_ball(v))) for v in p] for p in z])
+    return np.array([[space.design.curve(space.to_theta(space.clip_to_search_region(v))) for v in p] for p in z])
 
 
 def _ratio(du_cell, du_rms) -> float:
@@ -122,7 +122,7 @@ def prep(out: Path) -> None:
         z = F._users(str(d / f"full-{fold.name}.npz"))
         root = np.random.SeedSequence([AF.SEED_FULL, 1800 + fi])
         rng = np.random.default_rng(child_sequence(root, 0))
-        sch = [AF.unit_bouts(SchaeferDesign(1.0, 1.0).curve(draw_timing(rng, dist)[0]))
+        sch = [AF.unit_parts(SchaeferDesign(1.0, 1.0).curve(draw_timing(rng, dist)[0]))
                for _ in range(AF.FULL_USERS_PER_FOLD)]
         shift, switches, timing = AF.population_config(run_dir, fold.name)
         held = load_trials(fold.held_out)
@@ -134,7 +134,7 @@ def prep(out: Path) -> None:
                                           nu_timing=1.5),
                            ext_scale=AF.SHAPE_SCALE, flex_scale=AF.SHAPE_SCALE)
             try:
-                heavy.append(AF.unit_bouts(user_curve(trial, draw)))
+                heavy.append(AF.unit_parts(user_curve(trial, draw)))
             except (OrderViolation, ValueError):
                 continue
         from prompref.experiment.phase5 import _franks_prior
@@ -149,7 +149,7 @@ def prep(out: Path) -> None:
             else:
                 for _ in range(1000):
                     try:
-                        mix[u] = AF.unit_bouts(franks.curve(franks.sample_prior(rng_m, 1)[0]))
+                        mix[u] = AF.unit_parts(franks.curve(franks.sample_prior(rng_m, 1)[0]))
                         break
                     except OrderViolation:
                         continue
@@ -168,7 +168,7 @@ def prep(out: Path) -> None:
             ppath = str(d / f"fold-{fold.name}.npz")
             space = _space(setting, ppath, fi)
             pairs = _pairs(space, [AF.SEED_FULL, 1900, fi, SETTINGS.index(setting)])
-            prior_curves = np.array([space.design.curve(space.to_theta(space.clip_to_ball(v)))
+            prior_curves = np.array([space.design.curve(space.to_theta(space.clip_to_search_region(v)))
                                      for v in np.random.default_rng([AF.SEED_FULL, 1901, fi]).standard_normal((20_000, space.d))])
             coef = fourier_coefficients(prior_curves)
             mean, sd = coef.mean(axis=0), coef.std(axis=0, ddof=1)
@@ -298,7 +298,7 @@ def run_one(job: dict, out: str) -> dict:
         seed = int(job["answer_seed"])
         observer, s_end, l_end = _observer(spec, ideal, seed, job["user"], setting, out_p)
         dfold = R._fold(ppath, job["fold_index"])
-        g_minus, g_plus = AF.unit_bouts(dfold["generic"])
+        g_minus, g_plus = AF.unit_parts(dfold["generic"])
         run_dir = out_p / "phase5-schaefer"
         lseed = seed % 2**32
         if setting == "wide":
@@ -306,7 +306,7 @@ def run_one(job: dict, out: str) -> dict:
             centre = math.sqrt(lo * hi)
             space = _space(setting, ppath, job["fold_index"])
             if cand == "psypref":
-                learner = AF.TwoBoutGuard(AF.metric_psypref(space, lseed), space, 0.5 * lo, seed=lseed)
+                learner = AF.TwoPartGuard(AF.metric_psypref(space, lseed), space, 0.5 * lo, seed=lseed)
             elif cand.startswith("cmaes_sch"):
                 space = AF.schaefer_range_space(run_dir, job["fold"], lo, hi)
                 learner = AF.comparator(cand, space, lseed, s=observer.s)
@@ -381,8 +381,8 @@ def report(out: Path) -> None:
             map(json.loads, (d / "full_sessions.jsonl").read_text(encoding="utf-8").splitlines())
             if r.get("error") is None and r["candidate"] == "psypref"}
     rng = np.random.default_rng(AF.SEED_FULL + 18)
-    L = ["# Registration ROB2: the earlier robustness conditions in the amplitude-free design", "",
-         f"Spec section 18 (fb6563b). {len(rows)} sessions, {len(errors)} errors. Preference over generic "
+    L = ["# Test plan ROB2: the earlier robustness conditions in the amplitude-free design", "",
+         f"Design note 18 (fb6563b). {len(rows)} sessions, {len(errors)} errors. Preference over generic "
          f"assistance in the user's own utility at k = 24 (s and λ at the session's end), 95 % intervals "
          f"from {R.N_BOOT} draws, users resampled within folds.", "",
          "| condition | setting | PsyPref | CMA-ES (Schäfer) | best published | PsyPref − CMA-ES (Schäfer) | "

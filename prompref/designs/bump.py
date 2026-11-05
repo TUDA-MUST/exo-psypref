@@ -1,7 +1,7 @@
-"""Two circular bumps: amplitude, centre and width for each of the two bouts.
+"""Two circular bumps: amplitude, centre and width for each of the two parts.
 
-The simplest smooth two-bout family, and the reference that the structured ProMP (S2)
-must reproduce exactly when its within-bout shape weights are zero.
+The simplest smooth two-part family, and the reference that the structured ProMP (S2)
+must reproduce exactly when its within-part shape weights are zero.
 
 Sign convention: flexion positive, extension negative -- the extension bump is
 subtracted, the flexion bump is added.

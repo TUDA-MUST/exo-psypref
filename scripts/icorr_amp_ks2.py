@@ -226,8 +226,8 @@ def report(out: Path) -> None:
         return R._boot(ps, lambda x: 100 * (F._pref_k([p["a"] for p in x], k) - F._pref_k([p["b"] for p in x], k)), rng)
 
     machines = sorted({KS.LONG._machine_name(r) for r in ok.values()})
-    L = ["# Registration KS2: the comparators at K = 12 and 24", "",
-         f"Spec section 30. {len(ok)} sessions, {len(errors)} errors. KS's users, main condition (s = {AF.S} Nm, "
+    L = ["# Test plan KS2: the comparators at K = 12 and 24", "",
+         f"Design note 30. {len(ok)} sessions, {len(errors)} errors. KS's users, main condition (s = {AF.S} Nm, "
          f"λ = {AF.LAPSE}), wide and fixed 12. K = 8 is FULL's and CMP's rows, K = 16 KS's, PsyPref LONG's and KS's. "
          "95 % intervals from 2,000 fold-stratified draws.", "", "## Checks", ""]
     L += [f"- Sessions run on: {m}" for m in machines]

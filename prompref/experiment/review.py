@@ -5,9 +5,9 @@ Two learner variants, each switched on by a :class:`~prompref.experiment.phase5.
 field that stays out of the key and the row at its default, so every earlier session is built
 exactly as before:
 
-- **G with a generic start** (``g_start="generic"``). Arens' Algorithm S1 opens with a random
+- **G with a start at the prior's mean** (``g_start="generic"``). Arens' Algorithm S1 opens with a random
   duel between two candidates, so G's incumbent after the first answer is a random prior draw.
-  Here candidate 0 is replaced by z = 0, the prior mean in the arm's whitened coordinates, which
+  Here candidate 0 is replaced by z = 0, the prior mean in the arm's normalized coordinates, which
   is where A, LineCoSpar and SortCMA start; the first duel is that candidate against one random
   other candidate. Everything after the first duel is :class:`GPUCBLearner` unchanged. The
   candidate set keeps its size (``n_candidates`` stays 2048, and with it the row's resume key);
@@ -16,7 +16,7 @@ exactly as before:
   z = 0's device-clipped curve is not exactly generic assistance (the mean of device-clipped prior
   curves); each row records the RMS gap between the two (``g_generic_gap_nm``).
 - **A without lapse** (``a_no_lapse=True``). A's likelihood with lambda fixed at 0, and no
-  intensity probes (``p_probe = 0``); the wearer still lapses at the point's ``lapse``. Every
+  intensity probes (``p_probe = 0``); the simulated user still lapses at the point's ``lapse``. Every
   particle's logit-lapse coordinate is -inf, so ``smc.per_duel_log_likelihood`` -- the one
   likelihood the posterior update, the acquisition and the one-step predictive all call -- gives
   ``log Phi(signed)`` exactly (``log_expit(-inf) = -inf``, ``log_expit(inf) = -0.0``). That
@@ -31,9 +31,9 @@ import numpy as np
 
 from ..learning.gp_ucb import GPUCBLearner
 from ..learning.psychometric import _STREAM_SALT, PsychometricLearner
-from ..learning.smc import BowlPrior, SMCPosterior, log_likelihood, log_prior
-from ..learning.whitened import WhitenedLearner
-from ..user.oracle import rms_distance
+from ..learning.smc import IdealPointPrior, SMCPosterior, log_likelihood, log_prior
+from ..learning.normalized import WhitenedLearner
+from ..user.simulated_user import rms_distance
 from .metrics import prior_mean_curve
 
 #: The values of ``Phase5Point.g_start`` besides ``None`` (Arens' random first duel).
@@ -42,7 +42,7 @@ G_STARTS = ("generic",)
 GENERIC_INDEX = 0
 
 
-# == G with a generic start ===================================================================
+# == G with a start at the prior's mean ===================================================================
 
 class GenericStartGPUCB(GPUCBLearner):
     """:class:`GPUCBLearner` whose candidate 0 is z = 0 and whose first duel is candidate 0
@@ -68,15 +68,15 @@ class GenericStartGPUCB(GPUCBLearner):
         return super().propose()
 
 
-def generic_start_g(space, seed: int, *, prior, jnd, n_candidates: int, **tuned) -> WhitenedLearner:
-    """G with a generic start in the arm's ball, as ``WhitenedLearner.gp_ucb`` builds plain G."""
+def prior_mean_start_g(space, seed: int, *, prior, jnd, n_candidates: int, **tuned) -> WhitenedLearner:
+    """G with a start at the prior's mean in the arm's search region, as ``WhitenedLearner.gp_ucb`` builds plain G."""
     inner = GenericStartGPUCB(space.as_design(), seed=seed, jnd=jnd, prior=prior,
                               n_candidates=int(n_candidates), **tuned)
     return WhitenedLearner(space, inner)
 
 
-def generic_start_fields(learner: WhitenedLearner, design, ideal_nm) -> dict:
-    """Row fields of a generic-start G session: the RMS distance in Nm of G's generic candidate
+def prior_mean_start_fields(learner: WhitenedLearner, design, ideal_nm) -> dict:
+    """Row fields of a start at the prior's mean G session: the RMS distance in Nm of G's generic candidate
     to the ideal, and its RMS gap to generic assistance (the curve ``d_prior`` is the distance
     of). Draws no session random number (``prior_mean_curve`` uses its own seed-0 generator)."""
     curve = np.asarray(design.curve(learner.space.to_theta(learner.inner.candidates[GENERIC_INDEX])),
@@ -98,7 +98,7 @@ class NoLapsePosterior(SMCPosterior):
     """
 
     def __init__(self, d: int, rng: np.random.Generator, n_particles: int = 4000,
-                 prior: BowlPrior = BowlPrior(), n_moves: int | None = None,
+                 prior: IdealPointPrior = IdealPointPrior(), n_moves: int | None = None,
                  ess_fraction: float = 0.5) -> None:
         super().__init__(d, rng, n_particles=n_particles, prior=prior, n_moves=n_moves,
                          ess_fraction=ess_fraction)

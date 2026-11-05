@@ -1,4 +1,4 @@
-"""Source dependence of floors and ceilings. Extends test X (``prompref.experiment.xexpr``);
+"""Source dependence of best-profile distances and best-profile levels. Extends test X (``prompref.experiment.xexpr``);
 no session is run.
 
 Sources (rows), 200 ideals each, device-clipped to +/-12 Nm: X's five (``xexpr.GENERATORS``), plus
@@ -128,7 +128,7 @@ def new_cells() -> list[tuple[str, str]]:
     return cells
 
 
-# ---------------------------------------------------------------- baselines and ceilings
+# ---------------------------------------------------------------- baselines and best-profile levels
 def rms_rows(curves: np.ndarray, reference: np.ndarray) -> np.ndarray:
     """Per row, the RMS over the cycle of ``curves - reference``."""
     d = np.asarray(curves, dtype=float) - np.asarray(reference, dtype=float)

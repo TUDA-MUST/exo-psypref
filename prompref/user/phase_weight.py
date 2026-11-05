@@ -1,7 +1,7 @@
-"""Phase weights of the phase-weighted wearers.
+"""Phase weights of the phase-weighted simulated users.
 
-The wearer judges by ``d_w(tau, tau*) = sqrt(mean_phi w(phi) (tau - tau*)^2)`` with
-``mean_phi w = 1`` (:func:`prompref.user.oracle.weighted_rms_distance`). Two weightings:
+The simulated user judges by ``d_w(tau, tau*) = sqrt(mean_phi w(phi) (tau - tau*)^2)`` with
+``mean_phi w = 1`` (:func:`prompref.user.simulated_user.weighted_rms_distance`). Two weightings:
 
 - **W-pref, individual preference.** ``log w_u`` is a random periodic function per user: Fourier
   harmonics 1-3 with independent normal coefficients, scaled so that the SD of ``log w`` over
@@ -15,7 +15,7 @@ The wearer judges by ``d_w(tau, tau*) = sqrt(mean_phi w(phi) (tau - tau*)^2)`` w
   is no fallback weighting.
 
 **Which phase points.** Every phase average (the weight's mean, the mean ``|theta_dot|`` of the
-floor term) and the SD of ``log w`` are over the 101-point grid 0, 1, ..., 100 %GC, the points
+best-profile distance term) and the SD of ``log w`` are over the 101-point grid 0, 1, ..., 100 %GC, the points
 ``rms_distance`` averages and the test plan's ``M_w = ... / 101`` sums. Every curve is
 periodic: it is evaluated on the 100 distinct points 0-99 %GC and its point 100 is a copy of point
 0, so ``w[100] == w[0]`` exactly.
@@ -30,7 +30,7 @@ from pathlib import Path
 import numpy as np
 from preftune.profile import N_PHASE
 
-from .oracle import check_phase_weight
+from .simulated_user import check_phase_weight
 
 #: Values of ``Phase5Point.phase_weighting``. "pref-sd1" is the ICORR stress test S1 (section 9a,
 #:): W-pref with the SD of log w raised from 0.5 to 1.0, the same
@@ -43,7 +43,7 @@ PREF_LOG_SD = 0.5
 PREF_CELLS = {"pref": PREF_LOG_SD, "pref-sd1": 1.0}
 #: W-pref's own stream per user: ``default_rng([answer_seed, PREF_SALT])``.
 PREF_SALT = 0x3A5E7F
-#: W-bio: the floor term's fraction of the mean |theta_dot|.
+#: W-bio: the best-profile distance term's fraction of the mean |theta_dot|.
 BIO_FLOOR_FRACTION = 0.2
 #: The W-bio sidecar, relative to the project's ``out`` directory (``Path(run_dir).parent``).
 BIO_WEIGHT_NAME = "wph_bio_weight.json"
@@ -147,5 +147,5 @@ def load_bio_weight(run_dir) -> tuple[np.ndarray, str]:
         raise ValueError(f"{path} has schema {payload.get('schema')!r}, expected {BIO_SCHEMA!r}")
     if float(payload.get("floor_fraction", np.nan)) != BIO_FLOOR_FRACTION:
         raise ValueError(f"{path} was built with floor fraction {payload.get('floor_fraction')}, "
-                         f"not the registered {BIO_FLOOR_FRACTION}")
+                         f"not the planned {BIO_FLOOR_FRACTION}")
     return check_phase_weight(payload["weight"], N_PHASE), file_sha256(path)

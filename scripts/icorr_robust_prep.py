@@ -1,6 +1,6 @@
 """Inputs and checks for the robustness blocks (our design notes:
 "Home-advantage test at matched decisiveness" and "Out-of-generator and random-utility
-wearers").
+simulated users").
 
 Usage:
     python scripts/icorr_robust_prep.py --run <main>/out/phase5-schaefer --step STEP
@@ -16,7 +16,7 @@ Steps (each writes only new files, and its checks to ``OUT/robust_<step>.json``)
   pairs, where it is 1 by construction, and out of sample (population users 20-39, pairs from
   another seed), where it is a check.
 - ``ood``: the out-of-generator users (5 folds x 40, :mod:`prompref.experiment.robust`), their
-  promp_s0 floors and reach radii by 5a's ``user_floors`` with the fold's own prior and 20
+  promp_s0 best-profile distances and reach radii by 5a's ``user_floors`` with the fold's own prior and 20
   starts, written to ``RUN/ood/``; and the timing check against Schaefer's distribution.
 - ``random``: per fold, regenerates the 20,000 training ideals (Molinaro trials on S:, as
   ``icorr_k_priors.py`` does) and checks them by refitting the stored 8-basis prior bit for bit;
@@ -29,8 +29,8 @@ Steps (each writes only new files, and its checks to ``OUT/robust_<step>.json``)
   session's delivered weights and a first pass's maxima (``--first-pass DIR``); u_max becomes
   the best of everything found, with its source, and the check counts sessions that delivered
   more than every search found.
-- ``ood --magnitude per-bout``: the ruled primary OOD users: the same timings, z and answer seeds as the common-peak users,
-  each bout's peak its own population median x (1 + 0.26 z); floors as before; ``RUN/ood-pb/``.
+- ``ood --magnitude per part``: the ruled primary OOD users: the same timings, z and answer seeds as the common-peak users,
+  each part's peak its own population median x (1 + 0.26 z); best-profile distances as before; ``RUN/ood-pb/``.
 - ``converge`` (after ``refine``): one more refinement search per user and round until the last
   two searches of every user agree within 1 % of its headroom (``--tol``), or ``--max-searches``.
 """
@@ -56,9 +56,9 @@ from prompref.experiment.floors5c import fold_seed  # noqa: E402
 from prompref.experiment.metrics import prior_mean_curve  # noqa: E402
 from prompref.experiment.phase5 import Phase5Point, build_observer, per_user_s  # noqa: E402
 from prompref.experiment.phase5c_grid import LOSO  # noqa: E402
-from prompref.experiment.robust import (MAGNITUDE_RULE, MAGNITUDE_RULE_PER_BOUT,  # noqa: E402
+from prompref.experiment.robust import (MAGNITUDE_RULE, MAGNITUDE_RULE_PER_PART,  # noqa: E402
                                         OOD_MAGNITUDE_CV, OOD_N_POPULATION, OOD_NU,
-                                        OOD_PER_BOUT_USER_SET, OOD_USER_SET,
+                                        OOD_PER_PART_USER_SET, OOD_USER_SET,
                                         population_median_peaks,
                                         OOD_SEED, RANDOM_SCHEMA, UMAX_MAX_SEARCHES,
                                         UMAX_MIN_SEARCHES, TimingDistribution,
@@ -70,7 +70,7 @@ from prompref.experiment.robust import (MAGNITUDE_RULE, MAGNITUDE_RULE_PER_BOUT,
                                         write_ood_users)
 from prompref.population.users import FloorCache, prior_digest, user_floors  # noqa: E402
 from prompref.priors.data_prior import DataPrior  # noqa: E402
-from prompref.user.oracle import Observer  # noqa: E402
+from prompref.user.simulated_user import Observer  # noqa: E402
 from prompref.user.smooth_utility import (CENTRE_SALT, LENGTHSCALE, N_FEATURES, RFF_SALT, RHO,  # noqa: E402
                                           RandomSmoothUtility, draw_centre_index,
                                           fourier_coefficients)
@@ -101,7 +101,7 @@ def pairs(run: str, fold: str, user_id: str, n_pairs: int, seed: int) -> np.ndar
     design = space.as_design()
     z = np.random.default_rng([seed, zlib.crc32(user_id.encode("utf-8"))]).standard_normal(
         (n_pairs, 2, space.d))
-    return np.array([[design.curve(space.clip_to_ball(v)) for v in pair] for pair in z])
+    return np.array([[design.curve(space.clip_to_search_region(v)) for v in pair] for pair in z])
 
 
 def measure(run: str, cells: dict, *, folds, users: slice, seed: int,
@@ -196,7 +196,7 @@ def step_ood(run: str, out: Path, workers: int) -> int:
     inputs = Path(run).parent / "schaefer" / "prior_inputs.json"
     dist = TimingDistribution.load(inputs)
     if dist.nu != OOD_NU:
-        raise ValueError(f"{inputs} recommends nu {dist.nu}, the registered design says {OOD_NU}")
+        raise ValueError(f"{inputs} recommends nu {dist.nu}, the planned design says {OOD_NU}")
     population = _population_curves(run, LOSO)
     median_peak = population_median_peak(population)
     summary = json.loads(inputs.read_text(encoding="utf-8"))["summary"]
@@ -207,7 +207,7 @@ def step_ood(run: str, out: Path, workers: int) -> int:
         fold_config = json.loads((Path(run) / "folds" / f"{fold}.json").read_text(encoding="utf-8"))["config"]
         starts = int(fold_config["floor_starts"])
         users = make_ood_users(fold, dist, median_peak)
-        floors = user_floors(prior.design(), prior.whitening(), users, n_starts=starts,
+        floors = user_floors(prior.design(), prior.normalization(), users, n_starts=starts,
                              seed_sequence=fold_seed(fold, "ood", "promp_s0"), workers=workers,
                              cache=FloorCache(ood_floors_cache_path(run, fold)),
                              family="promp_s0-ood", prior_hash=prior_digest(prior.mu, prior.sigma))
@@ -276,10 +276,10 @@ def step_ood(run: str, out: Path, workers: int) -> int:
     return 0
 
 
-def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
-    """The ruled primary OOD users: each bout's peak its own population median x (1 + 0.26 z), one z per user.
+def step_ood_per_part(run: str, out: Path, workers: int) -> int:
+    """The ruled primary OOD users: each part's peak its own population median x (1 + 0.26 z), one z per user.
     Same timings, z and answer seeds as the common-peak users, which must exist already and
-    are checked against; floors as before, into ``RUN/ood-pb/``."""
+    are checked against; best-profile distances as before, into ``RUN/ood-pb/``."""
     inputs = Path(run).parent / "schaefer" / "prior_inputs.json"
     dist = TimingDistribution.load(inputs)
     population = _population_curves(run, LOSO)
@@ -291,7 +291,7 @@ def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
         prior = DataPrior.load(Path(run) / "priors" / f"{fold}-promp_s0")
         fold_config = json.loads((Path(run) / "folds" / f"{fold}.json").read_text(encoding="utf-8"))["config"]
         starts = int(fold_config["floor_starts"])
-        users = make_ood_users(fold, dist, None, median_peaks_per_bout=(median_ext, median_flex))
+        users = make_ood_users(fold, dist, None, median_peaks_per_part=(median_ext, median_flex))
         same["ids"] &= [u.user_id for u in users] == list(common)
         for user in users:
             ref = common[user.user_id].draw
@@ -299,12 +299,12 @@ def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
             same["z"] &= user.draw["z_magnitude"] == ref["z_magnitude"]
             same["rejected"] &= user.draw["rejected_timing_draws"] == ref["rejected_timing_draws"]
             same["answer_seeds"] &= user.answer_seed == common[user.user_id].answer_seed
-        floors = user_floors(prior.design(), prior.whitening(), users, n_starts=starts,
+        floors = user_floors(prior.design(), prior.normalization(), users, n_starts=starts,
                              seed_sequence=fold_seed(fold, "ood", "promp_s0"), workers=workers,
-                             cache=FloorCache(ood_floors_cache_path(run, fold, OOD_PER_BOUT_USER_SET)),
+                             cache=FloorCache(ood_floors_cache_path(run, fold, OOD_PER_PART_USER_SET)),
                              family="promp_s0-ood-pb", prior_hash=prior_digest(prior.mu, prior.sigma))
         config = dict(schema_note="ICORR reframe section 9a, O: out-of-generator ideals, per-bout "
-                                  "peaks (ruling of 2026-10-19, the primary O analysis)",
+                                  "peaks (decision of 2026-10-19, the primary O analysis)",
                       generator="prompref.experiment.robust.make_ood_users(median_peaks_per_bout=...)",
                       profile="SchaeferDesign(peak_ext, peak_flex).curve(t), the four-half-cosine profile",
                       timing_source=str(inputs), timing_mean=dist.mean.tolist(),
@@ -312,7 +312,7 @@ def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
                       scatter="cov * (nu - 2) / nu (t covariance = cov)",
                       device_limits="gaps t2+100-t1, t3-t2, t4-t3, t1-t4 in [10, 40] %ST; "
                                     "t2 <= 50; t4 >= 50; t1 in [50, 150)",
-                      magnitude_rule=MAGNITUDE_RULE_PER_BOUT, median_ext_peak_nm=median_ext,
+                      magnitude_rule=MAGNITUDE_RULE_PER_PART, median_ext_peak_nm=median_ext,
                       median_flex_peak_nm=median_flex,
                       median_peak_source=f"{len(population)} population users of {', '.join(LOSO)}",
                       magnitude_cv=OOD_MAGNITUDE_CV, seed=OOD_SEED,
@@ -320,15 +320,15 @@ def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
                       n_population=OOD_N_POPULATION, floor_starts=starts,
                       floor_seed=f"floors5c.fold_seed({fold!r}, 'ood', 'promp_s0')",
                       prior=f"priors/{fold}-promp_s0", prior_hash=prior_digest(prior.mu, prior.sigma))
-        write_ood_users(run, fold, users, floors, config, OOD_PER_BOUT_USER_SET)
-        loaded = load_ood_users(run, fold, OOD_PER_BOUT_USER_SET)
+        write_ood_users(run, fold, users, floors, config, OOD_PER_PART_USER_SET)
+        loaded = load_ood_users(run, fold, OOD_PER_PART_USER_SET)
         per_fold[fold] = dict(n=len(loaded), floor_median=float(np.median(
             [u.families["promp_s0"]["floor_nm"] for u in loaded.values()])))
         print(f"{fold}: {len(users)} per-bout OOD users, floor median "
               f"{per_fold[fold]['floor_median']:.3f} Nm [{time.perf_counter() - started:.0f} s]",
               flush=True)
     rms = lambda c: np.sqrt(np.mean(np.asarray(c) ** 2, axis=-1))  # noqa: E731
-    pb = [u for fold in LOSO for u in load_ood_users(run, fold, OOD_PER_BOUT_USER_SET).values()]
+    pb = [u for fold in LOSO for u in load_ood_users(run, fold, OOD_PER_PART_USER_SET).values()]
     common = [u for fold in LOSO for u in load_ood_users(run, fold, OOD_USER_SET).values()]
     curves = np.array([u.curve_nm for u in pb])
     floors_pb = [u.families["promp_s0"]["floor_nm"] for u in pb]
@@ -337,7 +337,7 @@ def step_ood_per_bout(run: str, out: Path, workers: int) -> int:
     result = dict(
         when=stamp(), run=run, seconds=round(time.perf_counter() - started, 1),
         same_draws_as_common_peak=same,
-        magnitude=dict(rule=MAGNITUDE_RULE_PER_BOUT, median_ext_peak_nm=median_ext,
+        magnitude=dict(rule=MAGNITUDE_RULE_PER_PART, median_ext_peak_nm=median_ext,
                        median_flex_peak_nm=median_flex,
                        ext_peaks_median=float(np.median([u.draw["peak_ext_nm"] for u in pb])),
                        flex_peaks_median=float(np.median([u.draw["peak_flex_nm"] for u in pb])),
@@ -771,7 +771,7 @@ def main(argv=None) -> int:
         return step_landmark(run, out)
     if args.step == "ood":
         if args.magnitude == "per-bout":
-            return step_ood_per_bout(run, out, args.workers)
+            return step_ood_per_part(run, out, args.workers)
         return step_ood(run, out, args.workers)
     if args.step == "converge":
         return step_converge(run, out, args.workers,

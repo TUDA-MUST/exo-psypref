@@ -5,8 +5,8 @@ design ``2026-10-17-icorr-user-tuning-reframe-design.md`` section 9a, "Review re
 differ only in the acquisition that picks each pair (``acquisition="eubo"`` or ``"bald"``):
 
 - **Model.** BoTorch's ``PairwiseGP`` (Chu & Ghahramani's probit likelihood with the Laplace
-  approximation) on the arm's whitened coordinates ``z``. The utility's prior mean is the data
-  prior's bowl, ``-c/2 ||z||^2``, with ``c`` learned (:class:`BowlMean`). The kernel is
+  approximation) on the arm's normalized coordinates ``z``. The utility's prior mean is the data
+  prior's ideal-point model, ``-c/2 ||z||^2``, with ``c`` learned (:class:`IdealPointMean`). The kernel is
   PairwiseGP's own default (a scaled ARD RBF with BoTorch's priors).
 - **Refit after every answer**, as BoTorch's preference-BO tutorial does: a fresh model on all
   answers so far, its hyperparameters (lengthscales, output scale and ``c``) fitted by
@@ -16,29 +16,29 @@ differ only in the acquisition that picks each pair (``acquisition="eubo"`` or `
   by Monte Carlo), decision-theoretic. GP-BALD: BoTorch's
   ``PairwiseBayesianActiveLearningByDisagreement``, information-based, with its Monte Carlo draws
   held fixed within each acquisition (:class:`FixedDrawBALD`). Either is maximised over pairs in
-  A's search region, the arm's ball ``||z|| <= r`` (r the chi quantile at 0.99), the way BoTorch
-  handles a nonlinear region: SLSQP with the ball as an intra-point nonlinear inequality
+  A's search region, the arm's search region ``||z|| <= r`` (r the chi quantile at 0.99), the way BoTorch
+  handles a nonlinear region: SLSQP with the search region as an intra-point nonlinear inequality
   constraint (``gen_candidates_scipy``, see :meth:`GPEUBOLearner._optimize`), started from the
   best raw pairs (``initialize_q_batch_topn``) of a per-comparison pool of prior draws inside the
-  ball and pairs with the incumbent.
+  search region and pairs with the incumbent.
 - **Start** at generic assistance, ``z = 0``: it is the identified assistance before any answer,
-  and the first duel shows it against one prior draw inside the ball (analytic EUBO needs a model
+  and the first duel shows it against one prior draw inside the search region (analytic EUBO needs a model
   with data; BoTorch's tutorials, like Arens' Algorithm S1 for G, start from a random duel).
-- **Identified assistance**: the maximiser of the posterior mean within the ball
+- **Identified assistance**: the maximiser of the posterior mean within the search region
   (``optimize_acqf`` on ``PosteriorMean`` with the same constraint, started from the shown points,
   ``z = 0`` and prior draws). The harness delivers it through the arm's device-clipped design,
-  like every other optimizer's (:class:`~prompref.learning.whitened.WhitenedLearner`).
+  like every other optimizer's (:class:`~prompref.learning.normalized.WhitenedLearner`).
 
 Two deviations from BoTorch's defaults, each needed for the planned model and stated as a
 build decision:
 
 1. **Inputs are normalised** with BoTorch's ``Normalize`` and *fixed* bounds, the cube
-   ``[-r, r]^d`` around the ball (the tutorial normalises too; PairwiseGP's default lengthscale
+   ``[-r, r]^d`` around the search region (the tutorial normalises too; PairwiseGP's default lengthscale
    prior, Gamma(2.4, 2.7), is meant for unit-cube inputs). This is an isotropic affine map of
-   ``z``, so the GP still lives on the whitened coordinates; :class:`BowlMean` maps back to ``z``.
+   ``z``, so the GP still lives on the normalized coordinates; :class:`IdealPointMean` maps back to ``z``.
 2. **The evidence counts the prior mean.** PairwiseGP subtracts its mean module in the MAP solve
    and in prediction, but ``PairwiseLaplaceMarginalLogLikelihood`` forms its prior term from
-   ``f_map`` alone, which is right only for a zero mean. :class:`BowlLaplaceMLL` adds the omitted
+   ``f_map`` alone, which is right only for a zero mean. :class:`IdealPointLaplaceMLL` adds the omitted
    term, ``m' K^-1 f - m' K^-1 m / 2`` (so that the prior term is ``(f - m)' K^-1 (f - m) / 2``),
    to BoTorch's value; at ``m = 0`` it is BoTorch's MLL exactly.
 
@@ -76,7 +76,7 @@ from gpytorch.constraints import GreaterThan
 from gpytorch.means import Mean
 from gpytorch.priors import LogNormalPrior
 
-from ..user.oracle import NO_PREFERENCE, PREFER_A, PREFER_B
+from ..user.simulated_user import NO_PREFERENCE, PREFER_A, PREFER_B
 
 #: Raw pairs scored per comparison before the restarts, and the restarts: BoTorch's
 #: preference-BO tutorial's RAW_SAMPLES = 512 and NUM_RESTARTS = 3.
@@ -86,12 +86,12 @@ N_RESTARTS = 3
 #: which the tutorial's ``optimize_acqf`` call also leaves in place.
 MAXITER = None
 #: The mean scale ``c``: its start and BoTorch-style prior, LogNormal(0, 1) (median 1, the
-#: natural scale: A's bowl at ell = 1 is ``c = sqrt 2`` in PairwiseGP's probit units).
+#: natural scale: A's ideal-point model at ell = 1 is ``c = sqrt 2`` in PairwiseGP's probit units).
 MEAN_SCALE_INIT = 1.0
 MEAN_SCALE_PRIOR = (0.0, 1.0)
 #: Its lower bound, PairwiseGP's own lower bound on a lengthscale.
 MEAN_SCALE_LOWER = 1e-4
-#: Initial conditions sit this fraction inside the ball, so SLSQP starts feasible.
+#: Initial conditions sit this fraction inside the search region, so SLSQP starts feasible.
 SHRINK = 1.0 - 1e-9
 
 #: The acquisitions: analytic EUBO (GP-EUBO, PF3) and BoTorch's pairwise BALD (GP-BALD, PF3b).
@@ -124,8 +124,8 @@ class FixedDrawBALD(PairwiseBayesianActiveLearningByDisagreement):
             return super().forward(X)
 
 
-class BowlMean(Mean):
-    """``m(x) = -c/2 ||z||^2`` with ``z = r (2 x - 1)``: the data prior's bowl in the whitened
+class IdealPointMean(Mean):
+    """``m(x) = -c/2 ||z||^2`` with ``z = r (2 x - 1)``: the data prior's ideal-point model in the normalized
     coordinates, evaluated on BoTorch's normalised inputs ``x = (z + r) / (2 r)``; ``c`` learned,
     with a LogNormal prior.
 
@@ -159,7 +159,7 @@ class BowlMean(Mean):
         return -0.5 * self.scale * (z ** 2).sum(dim=-1)
 
 
-class BowlLaplaceMLL(PairwiseLaplaceMarginalLogLikelihood):
+class IdealPointLaplaceMLL(PairwiseLaplaceMarginalLogLikelihood):
     """BoTorch's Laplace evidence with the prior mean in its prior term (module docstring,
     deviation 2): BoTorch's value plus ``m' K^-1 f - m' K^-1 m / 2``."""
 
@@ -173,10 +173,10 @@ class BowlLaplaceMLL(PairwiseLaplaceMarginalLogLikelihood):
 
 
 class GPEUBOLearner:
-    """PairwiseGP with a learned bowl mean, queried by analytic EUBO inside the arm's ball.
+    """PairwiseGP with a learned ideal-point model mean, queried by analytic EUBO inside the arm's search region.
 
-    Works in the whitened coordinates of ``space`` (a
-    :class:`~prompref.learning.space.LearnerSpace`); :class:`~prompref.learning.whitened.WhitenedLearner`
+    Works in the normalized coordinates of ``space`` (a
+    :class:`~prompref.learning.space.LearnerSpace`); :class:`~prompref.learning.normalized.WhitenedLearner`
     translates to design parameters. ``prior`` is the arm's
     :class:`~prompref.learning.smc.BowlPrior`, the measure the raw pool is drawn from.
     """
@@ -234,25 +234,25 @@ class GPEUBOLearner:
 
     # -- the pool ------------------------------------------------------------------------
     def _draws(self, n: int) -> np.ndarray:
-        """``n`` draws from the arm's prior, clipped radially into the ball (the clip every
+        """``n`` draws from the arm's prior, clipped radially into the search region (the clip every
         learner in the space shares), then pulled just inside it."""
         z = self.prior.sample_zstar(self._rng, n, self.d)
-        return np.array([self.space.clip_to_ball(v) for v in z]) * SHRINK
+        return np.array([self.space.clip_to_search_region(v) for v in z]) * SHRINK
 
     @staticmethod
     def _t(x) -> torch.Tensor:
         return torch.as_tensor(np.asarray(x, dtype=float), dtype=DTYPE)
 
-    def _ball(self):
+    def _search_region(self):
         r2 = self.radius ** 2
         return [(lambda x: r2 - (x ** 2).sum(dim=-1), True)]
 
     # -- the model -----------------------------------------------------------------------
     def _build(self, X: torch.Tensor, comps: torch.Tensor):
-        """PairwiseGP on the shown points and answers, with the bowl mean, its Laplace
+        """PairwiseGP on the shown points and answers, with the ideal-point model mean, its Laplace
         approximation solved at the starting hyperparameters."""
         model = PairwiseGP(X, comps, input_transform=Normalize(d=self.d, bounds=self._bounds))
-        model.mean_module = BowlMean(self.radius)
+        model.mean_module = IdealPointMean(self.radius)
         model.set_train_data(X, comps, update_model=True)
         return model
 
@@ -268,12 +268,12 @@ class GPEUBOLearner:
         comps = torch.as_tensor(np.array(self._comps), dtype=torch.long)
         with self._seeded():
             model = self._build(X, comps)
-            mll = BowlLaplaceMLL(model.likelihood, model)
+            mll = IdealPointLaplaceMLL(model.likelihood, model)
             try:
                 fit_gpytorch_mll(mll)
             except FIT_FAILURES:
                 # BoTorch's retries all failed, or a numerical error escaped them: the model
-                # with PairwiseGP's and BowlMean's starting hyperparameters, unfitted.
+                # with PairwiseGP's and IdealPointMean's starting hyperparameters, unfitted.
                 self.n_fit_failed += 1
                 model = self._build(X, comps)
             model.eval()
@@ -287,16 +287,16 @@ class GPEUBOLearner:
         self.timing["fit_s"] += time.perf_counter() - started
 
     def _optimize(self, acq, raw: np.ndarray, q: int) -> tuple[np.ndarray, float]:
-        """Maximise ``acq`` inside the ball from the best raw candidates (``raw`` is
+        """Maximise ``acq`` inside the search region from the best raw candidates (``raw`` is
         ``b x q x d``): BoTorch's ``initialize_q_batch_topn`` picks the starts, and BoTorch's
-        ``gen_candidates_scipy`` (the generator ``optimize_acqf`` runs; SLSQP with the ball as an
+        ``gen_candidates_scipy`` (the generator ``optimize_acqf`` runs; SLSQP with the search region as an
         intra-point nonlinear constraint, one start at a time as ``optimize_acqf`` requires for
         nonlinear constraints) climbs from each.
 
         Called directly rather than through ``optimize_acqf`` because ``optimize_acqf`` then
         checks feasibility at an absolute tolerance of 1e-8 on ``r^2 - ||z||^2`` (r^2 = 20 at
         d = 8), below SLSQP's own, and refuses ends that touch the boundary. Each end is instead
-        clipped radially onto the ball, the clip every learner in the space shares. Every end and
+        clipped radially onto the search region, the clip every learner in the space shares. Every end and
         every start is then scored one at a time (a batch of one, as in the climb), and the best
         is returned, so a failed climb can never do worse than its start."""
         Xraw = self._t(raw)
@@ -308,14 +308,14 @@ class GPEUBOLearner:
         for ic in ics:
             try:
                 cand, _ = gen_candidates_scipy(ic[None], acq, lower_bounds=lo, upper_bounds=hi,
-                                               nonlinear_inequality_constraints=self._ball(),
+                                               nonlinear_inequality_constraints=self._search_region(),
                                                options={} if self.maxiter is None
                                                else {"maxiter": self.maxiter})
             except FIT_FAILURES:
                 self.n_climb_failed += 1        # this start stays a candidate below
                 continue
             z = cand.detach().cpu().numpy().reshape(q, self.d)
-            ends.append(np.array([self.space.clip_to_ball(v) for v in z]))
+            ends.append(np.array([self.space.clip_to_search_region(v) for v in z]))
         options = ends + [ic.detach().cpu().numpy().reshape(q, self.d) for ic in ics]
         with torch.no_grad():
             scores = np.array([float(acq(self._t(z)[None])) for z in options])
@@ -328,7 +328,7 @@ class GPEUBOLearner:
         if self._pending is not None:
             raise RuntimeError("update() the previous proposal before proposing again")
         if not self._comps:
-            # The first duel: generic assistance against one prior draw in the ball.
+            # The first duel: generic assistance against one prior draw in the search region.
             z_a, z_b = np.zeros(self.d), self._draws(1)[0]
             self.traces["eubo"].append(None)
         else:
@@ -375,7 +375,7 @@ class GPEUBOLearner:
         self._comps.append((ia, ib) if response == PREFER_A else (ib, ia))
 
     def best(self) -> np.ndarray:
-        """The posterior-mean maximiser in the ball; ``z = 0`` (generic) before any answer."""
+        """The posterior-mean maximiser in the search region; ``z = 0`` (generic) before any answer."""
         n = len(self._comps)
         if n == 0:
             return np.zeros(self.d)

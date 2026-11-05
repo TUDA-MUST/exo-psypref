@@ -218,7 +218,7 @@ def main(argv=None) -> int:
     for cond in PAM_ROW:
         m = re.search(rf"\| {re.escape(cond)} \| wide \|.*?\| ([\d.\-]+) \[[^]]*\] \| ([\d.\-]+) \[[^]]*\] \| [\d.\-]+ \[", report)
         pub = min((pri["PAM", cond, "wide", b]["reg"][0] for b in ("g", "d_z", "cmaes")))
-        # the report's "best published" is the highest level, so the smallest paired difference
+        # the report's "strongest other optimizer" is the highest level, so the smallest paired difference
         if f"{pri['PAM', cond, 'wide', 'cmaes_sch4']['reg'][0]:.1f}" != m.group(1) or f"{pub:.1f}" != m.group(2):
             raise SystemExit(f"PAM {cond}: {pub:.1f} vs the report's {m.group(2)}")
         n_pri += 2
@@ -333,7 +333,7 @@ def main(argv=None) -> int:
         "flDropSingle": f1(-single), "flDropPess": f1(-pess),
         "flBaldLo": f1(min(bald)), "flBaldHi": f1(max(bald)),
     }
-    tex = ["% fig4l_text.tex: written by scripts/paper_v2_fig4l.py (amp-free worktree); do not edit by hand."]
+    tex = ["% fig4l_text.tex: written by scripts/paper_v2_fig4l.py (repository); do not edit by hand."]
     tex += [f"\\def\\{k_}{{{v}}}" for k_, v in macro.items()]
     (args.dest / "fig4l_text.tex").write_text("\n".join(tex) + "\n", encoding="utf-8")
 

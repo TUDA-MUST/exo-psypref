@@ -3,8 +3,8 @@
 design found that LineCoSpar on PrompS0's +/-14 Nm box starts 7.9 Nm from the
 target and never recovers, so D-on-box cannot test what A-versus-D is meant to test:
 informed against random duel DIRECTIONS in the SAME space. This adapter gives any
-design-generic learner A's space -- the same whitening, prior and trust ball, built by
-the same :class:`LearnerSpace` -- by handing it a :class:`WhitenedDesign` and
+design-generic learner A's space -- the same normalization, prior and trust search region, built by
+the same :class:`LearnerSpace` -- by handing it a :class:`NormalizedDesign` and
 translating at the boundary.
 """
 
@@ -29,10 +29,10 @@ class WhitenedLearner:
     def linecospar(cls, design: Design, seed: int = 0, *, eps: float = 0.0,
                    d: int | None = None, space: LearnerSpace | None = None,
                    **kwargs) -> "WhitenedLearner":
-        """D_z: LineCoSpar over A's trust ball, starting at the prior mean.
+        """D_z: LineCoSpar over A's trust search region, starting at the prior mean.
 
-        With ``space``, the arm's space: the fold prior's whitening and
-        the arm's radius. LineCoSpar's constants stay relative to that ball's box.
+        With ``space``, the arm's space: the fold prior's normalization and
+        the arm's radius. LineCoSpar's constants stay relative to that search region's box.
         """
         if space is None:
             space = LearnerSpace.build(design, eps=eps, d=d)
@@ -45,14 +45,14 @@ class WhitenedLearner:
     @classmethod
     def gp_ucb(cls, design: Design, seed: int = 0, *, space: LearnerSpace | None = None,
                jnd: float | None = None, prior=None, **kwargs) -> "WhitenedLearner":
-        """G: the preference GP over the arm's ball.
+        """G: the preference GP over the arm's search region.
 
-        The ball is the search region, so the kernel's length scale follows its span through ``GPUCBLearner``'s own default, and the JND gate measures
+        The search region is the search region, so the kernel's length scale follows its span through ``GPUCBLearner``'s own default, and the JND gate measures
         delivered curves through the space's device-clipped design.
 
         ``prior`` is the arm's :class:`~prompref.learning.smc.BowlPrior`, and passing it is
         how G comes to search the *arm's* measure rather than a standard normal (review, item 1; the gp_ucb module docstring has the measurement). It is named
-        explicitly rather than left to ``**kwargs`` because the ball this method builds --
+        explicitly rather than left to ``**kwargs`` because the search region this method builds --
         ``space.as_design`` -- is precisely what makes the design's own ``sample_prior``
         the wrong measure here, so the two belong in one signature.
         """

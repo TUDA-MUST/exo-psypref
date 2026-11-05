@@ -8,10 +8,10 @@ No session is run. Every number is read from the stored rows: the identified ass
 comparisons is ``distances[k - 1]`` (exact under truncation, B3). Population users;
 JND_ref = 0.337 Nm in every cell. The cell selection is short_budget_report's.
 
-Per user, with start = d_prior and floor = d_floor:
+Per user, with start = d_prior and best-profile distance = d_floor:
   gain_k = (start - delivered_k) / JND_ref;  Q>=1: gain >= 1;  Q>=2: gain >= 2;
-  Q_opt: delivered_k - floor <= 2 JND_ref;
-  share of the achievable improvement = (start - delivered_k) / (start - floor).
+  Q_opt: delivered_k - best-profile distance <= 2 JND_ref;
+  share of the achievable improvement = (start - delivered_k) / (start - best-profile distance).
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def robust_label(name: str) -> str:
 
 def _flags(delivered, start, floor, jnd: float = JND_REF) -> dict:
     """Gain, level flags and share for arrays of any matching shape (NaN share where
-    start - floor <= 1e-9). ``jnd`` is the yardstick in Nm (Phase 5e passes each cell's own)."""
+    start - best-profile distance <= 1e-9). ``jnd`` is the yardstick in Nm (Phase 5e passes each cell's own)."""
     gain = (start - delivered) / jnd
     room = start - floor
     ok = room > NO_ROOM
@@ -78,7 +78,7 @@ def _flags(delivered, start, floor, jnd: float = JND_REF) -> dict:
 
 def levels_at(df, k: int, jnd: float = JND_REF) -> pd.DataFrame:
     """Per user at comparison k: gain (in ``jnd``), the three level flags and the share of the
-    achievable improvement (NaN where start - floor <= 1e-9)."""
+    achievable improvement (NaN where start - best-profile distance <= 1e-9)."""
     delivered = delivered_at(df, k)
     f = _flags(delivered.to_numpy(), df["d_prior"].astype(float).to_numpy(),
                df["d_floor"].astype(float).to_numpy(), jnd)

@@ -47,7 +47,7 @@ NEWTON_MAX_ITERS = 100
 #:
 #: It is *not* only a guard on the early, large-gradient iterations, as this comment said
 #: until the review corrected it. This branch's own measurements disproved that: 6.5 %
-#: of fits exhaust all twenty halvings, and they do so at the floating-point floor, where no
+#: of fits exhaust all twenty halvings, and they do so at the floating-point best-profile distance, where no
 #: halving of a certified descent direction can improve the objective any further. That is
 #: the common case for exit 2 of ``_fit_map``, and it is exactly the path
 #: ``FLOOR_DECREMENT_TOL`` exists to accept -- so raising this constant would not help those
@@ -59,7 +59,7 @@ BACKTRACK_MAX_HALVINGS = 20
 #:
 #: When no halving of a descent direction -- taken through a Hessian that ``cho_factor``
 #: has just certified positive definite -- improves a strictly convex objective, the fit
-#: is sitting on its floating-point floor; there is nowhere left to go. That floor is not
+#: is sitting on its floating-point best-profile distance; there is nowhere left to go. That best-profile distance is not
 #: a fixed number: it scales with ``cond(K)`` (1e9-1e10 at the sizes comparator G reaches,
 #: because ``fit`` forms K^-1 explicitly) and with the magnitude of the objective. Measured
 #: over 6000 fits at 40-300 points and 0.67-1.5 pairs per point, the decrement on this path
@@ -77,7 +77,7 @@ BACKTRACK_MAX_HALVINGS = 20
 #: own scale. Checked directly at 100 points, where the decrement is 1.0e-6: an independent
 #: ``trust-ncg`` run with this same exact Hessian and ``gtol=1e-12`` finds an objective
 #: 5.1e-7 lower -- half the decrement, as the estimate predicts -- with the same argmax,
-#: and its own warm and cold starts disagree by 3.2e-7, which is the floor restated. A
+#: and its own warm and cold starts disagree by 3.2e-7, which is the best-profile distance restated. A
 #: genuinely broken fit, whose decrement is of the same order as the objective itself,
 #: still fails this bound by orders of magnitude.
 FLOOR_DECREMENT_TOL = 1e-5
@@ -148,7 +148,7 @@ class PreferenceGP:
            step is taken -- free, since the step is already in hand. Almost every fit
            leaves here.
         2. **Backtracking exhausted.** No halving of the descent direction improves the
-           objective, so the fit is on its floating-point floor (see
+           objective, so the fit is on its floating-point best-profile distance (see
            ``FLOOR_DECREMENT_TOL``) and is accepted against the relative bound. Note that
            the tight in-loop test is *unusable* on this path: ``f`` and ``grad`` are
            unchanged here, so any recomputed decrement reproduces the in-loop one bitwise,
@@ -178,11 +178,11 @@ class PreferenceGP:
                 candidate_f = f - step_size * step
                 candidate_value, candidate_grad = self._objective(candidate_f, k_inv, win, lose)
                 # Strictly less, not `<=`: equality means the objective cannot be decreased
-                # along this direction in this arithmetic, which *is* the floor. Accepting
+                # along this direction in this arithmetic, which *is* the best-profile distance. Accepting
                 # it as progress would let a finished fit take zero-progress steps until
                 # the iteration cap, which raises unconditionally -- turning a converged
                 # fit into a hard failure. Refusing it sends the fit to exit 2 instead,
-                # where the floor criterion decides.
+                # where the best-profile distance criterion decides.
                 if candidate_value < value:
                     f, value, grad = candidate_f, candidate_value, candidate_grad
                     stepped = True
@@ -190,7 +190,7 @@ class PreferenceGP:
                 step_size *= 0.5
             if not stepped:
                 # Exit 2. `f`, `value`, `grad` and `lambda_sq` all describe this same point,
-                # so the floor bound is decided here, with no recomputation to go wrong.
+                # so the best-profile distance bound is decided here, with no recomputation to go wrong.
                 if lambda_sq <= FLOOR_DECREMENT_TOL * max(1.0, abs(value)):
                     return f
                 raise RuntimeError(

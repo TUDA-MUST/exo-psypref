@@ -1,13 +1,13 @@
 """The three structure levels of the ProMP representation.
 
-S0 carries no structure at all: the prior does the work. S1 hard-codes the two bouts'
+S0 carries no structure at all: the prior does the work. S1 hard-codes the two parts'
 sign and phase windows by reparameterisation, which costs nothing at inference time. S2
-hard-codes the two-bout shape and leaves only the within-bout detail free -- and with
+hard-codes the two-part shape and leaves only the within-part detail free -- and with
 zero shape weights it *is* the bump family, which is the Phase 1 gate.
 
 The reason to encode structure in the parameterisation rather than the prior: a Gaussian
-prior cannot say "there are exactly two bouts, extension first". It can only make
-three-bout curves unlikely.
+prior cannot say "there are exactly two parts, extension first". It can only make
+three-part curves unlikely.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class PrompS0(BoxDesign):
     box-uniform draws the best of forty random curves was measurably *worse* than the
     prior mean, because uniform weights on +/-14 Nm produce wildly oscillating curves
     while the mean is near-flat. A prior fitted to a parametric family instead produces
-    plausible smooth two-bout curves, which is the space the search is supposed to
+    plausible smooth two-part curves, which is the space the search is supposed to
     explore.
 
     The box survives only as a feasibility clip for :meth:`project`; it no longer
@@ -111,10 +111,10 @@ class PrompS1(PrompS0):
 
 
 class PrompS2(BoxDesign):
-    """Two-bout structure hard-coded; within-bout shape left free.
+    """Two-part structure hard-coded; within-part shape left free.
 
     Parameters are the six :class:`BumpDesign` parameters followed by ``n_shape``
-    within-bout weights. With ``n_shape = 0`` the curve is exactly a bump curve.
+    within-part weights. With ``n_shape = 0`` the curve is exactly a bump curve.
     """
 
     def __init__(self, basis: VonMisesBasis | None = None, n_shape: int = 0,

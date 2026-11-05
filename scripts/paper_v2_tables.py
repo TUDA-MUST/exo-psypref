@@ -13,7 +13,7 @@ Markdown table, parsed here) and checked against at least one second source:
                           PsyPref, GP-BALD, the comparator (the best of the five published
                           optimizers at k = 24, our design notes; Fig. 2's hollow square CMA-ES /
                           triangle Arens' GP by each value), CMA-ES on Schaefer et al.'s family and the best 8-weight profile
-                          (ceiling), all from amp_table1.json; generic assistance's median distance
+                          (best-profile level), all from amp_table1.json; generic assistance's median distance
                           from the preferred profiles (Fig. 2's panel titles; amp_posthoc_users.md);
                           the first k at which PsyPref reaches the comparator's and GP-BALD's
                           k = 40 level (amp_table1.json); the parts at k = 24 (three times wider
@@ -33,7 +33,7 @@ Markdown table, parsed here) and checked against at least one second source:
                           rows of Fig. 4 from amp_yardstick.json (fixed yardstick, post hoc; the
                           same selection as paper_v2_fig4.GROUPS, checked against fig4_rows.csv),
                           the peak law from amp_pri_report.md (PAM: PsyPref - matched prior), the
-                          prior's population from amp_pri_report.md (PAD: static - oracle), the
+                          prior's population from amp_pri_report.md (PAD: static - simulated user), the
                           number of weights from amp_ks_report.md (K = 12, 16, 24 - K = 8).
                           The sentence recommended instead of the table (for the rows Fig. 4 does
                           not carry, with the one PAD cell where static PsyPref trails CMA-ES on
@@ -269,7 +269,7 @@ def table_main(d: Path, dest: Path) -> dict:
 
     def head(fname: str, form: str) -> list[str]:
         return [f"% {fname}: Table I (candidate; {form}) of the ICORR paper v2. Written by the amp-free",
-                "% worktree's scripts/paper_v2_tables.py from out/icorr/amp_free (amp_table1.json,",
+                "% repository's scripts/paper_v2_tables.py from out/icorr/amp_free (amp_table1.json,",
                 "% amp_rnd_report.md, amp_posthoc_users.md); do not edit by hand. Post hoc tabulation.",
                 "% Comparators: " + "; ".join(f"{st}: {cmp_name[st]}" for st in SETTINGS),
                 "% Markers: Fig. 2's hollow orange square (CMA-ES) and triangle (Arens' GP), defined",
@@ -526,7 +526,7 @@ def table_assumptions(d: Path, dest: Path) -> dict:
     ]
     L = []
     L.append("% table_assumptions.tex: Table II (candidate) of the ICORR paper v2. Written by the amp-free")
-    L.append("% worktree's scripts/paper_v2_tables.py (amp_yardstick.json with Fig. 4's selection;")
+    L.append("% repository's scripts/paper_v2_tables.py (amp_yardstick.json with Fig. 4's selection;")
     L.append("% amp_pri_report.md PAM and PAD; amp_ks_report.md); do not edit by hand. Post hoc.")
     for name, v in rows.items():
         L.append(f"%   {name}: " + "; ".join(f"{st} {v[st][0]:+.2f} ({v[st][1]})" for st in tw))
@@ -621,7 +621,7 @@ def table_ledger(d: Path, dest: Path) -> dict:
     pred = {}
     for g in ("pilot", "confirmatory"):
         ids = by_id[g]
-        check(len(ids) == G[g]["registered"], f"ledger {g}: {len(ids)} ids vs {G[g]['registered']} registered")
+        check(len(ids) == G[g]["registered"], f"ledger {g}: {len(ids)} ids vs {G[g]['registered']} planned")
         split = {i: v for i, v in ids.items() if len(v) > 1}
         pred[g] = dict(n=len(ids), full=sum(all(x == "held" for x in v) for v in ids.values()),
                        part=sum(("held" in v) and not all(x == "held" for x in v) for v in ids.values()),
@@ -639,8 +639,8 @@ def table_ledger(d: Path, dest: Path) -> dict:
     split_txt = "; ".join(f"{i}: " + ", ".join(v) for i, v in pp["split"].items())
     L = []
     L.append("% table_ledger.tex: Table III (candidate) of the ICORR paper v2. Written by the amp-free")
-    L.append("% worktree's scripts/paper_v2_tables.py from amp_ledger.json (post hoc ledger of the")
-    L.append("% registered predictions; scripts/icorr_posthoc_ledger.py); do not edit by hand.")
+    L.append("% repository's scripts/paper_v2_tables.py from amp_ledger.json (post hoc ledger of the")
+    L.append("% planned predictions; scripts/icorr_posthoc_ledger.py); do not edit by hand.")
     L.append(f"% Pilot predictions judged in parts: {split_txt}.")
     L.append("% Recommended instead of the table (one sentence, Methods' statistics paragraph or Results):")
     L.append("%   " + sentence)
@@ -663,7 +663,7 @@ def table_ledger(d: Path, dest: Path) -> dict:
     n_split = len(pp["split"])
     L.append(r"\parbox{\columnwidth}{\scriptsize Held: 95\,\% interval wholly on the predicted side; failed: "
              r"wholly on the other; uncertain: otherwise. Post hoc tally; brackets: 95\,\% interval over "
-             rf"registrations ({sh['pilot']['clusters']} and {sh['confirmatory']['clusters']}), descriptive. "
+             rf"test plan ({sh['pilot']['clusters']} and {sh['confirmatory']['clusters']}), descriptive. "
              rf"$^{{\mathrm{{a}}}}${'One' if n_split == 1 else n_split} judged in two parts; counts and shares "
              rf"of the {P['units']} parts. Full ledger in the repository.}}")
     L.append(r"\end{table}")

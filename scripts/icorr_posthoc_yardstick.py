@@ -276,7 +276,7 @@ def _exact(raw: dict, rep: dict) -> list[dict]:
             add(f"ROB {cond}, {setting}, PsyPref − {NAMES[cand]}, k = 24 (points)",
                 R._boot(ps, lambda x: ROB._pref([p["a"] for p in x], 24) - ROB._pref([p["b"] for p in x], 24), rng),
                 rep["rob"][cond, setting, cand]["diff"], 100, 1)
-    # ROB2: rng SEED_FULL + 18; A1 wide: PsyPref, − CMA-ES (Schaefer), − best published, − FULL, CMA-ES (Schaefer)
+    # ROB2: rng SEED_FULL + 18; A1 wide: PsyPref, − CMA-ES (Schaefer), − strongest other optimizer, − FULL, CMA-ES (Schaefer)
     rows = {RB._key(r): r for r in raw["rob2"] if r.get("error") is None}
     full = {(r["user"], r["setting"]): dict(r) for r in raw["full"]
             if r.get("error") is None and r["candidate"] == "psypref"}
@@ -487,10 +487,10 @@ def report(out: Path) -> None:
 
     # ------------------------------------------------------------------ markdown
     L = ["# Fixed yardstick for the robustness rows (post hoc)", "",
-         "Post hoc, not registered: stored session rows of FULL, ROB, ROB2 and TIE, nothing rerun. No "
-         "registered verdict is changed or re-judged; the registered yardstick stays the one the "
+         "Post hoc: stored session rows of FULL, ROB, ROB2 and TIE, nothing rerun. No "
+         "planned verdict is changed or re-judged; the planned yardstick stays the one the "
          "verdicts used.", "",
-         f"Preference over generic assistance at k = 24 and 40 on two yardsticks: **registered** (as each "
+         f"Preference over generic assistance at k = 24 and 40 on two yardsticks: **planned** (as each "
          f"report: ROB on the RMS distance with the row's s and λ, R4 in the own utility; ROB2 and TIE on "
          f"the own utility with s and λ at the session's end) and **fixed** ({FIX_LAPSE / 2:g} + "
          f"{1 - FIX_LAPSE:g} Φ((own_d0 − own_k) / {FIX_S:g}), the plain user's s = {FIX_S:g} and "
@@ -503,7 +503,7 @@ def report(out: Path) -> None:
     L += ["## Summary", "",
           f"- The yardsticks differ in {len(diff_cells)} of {n_cells} condition × setting cells: "
           + "; ".join(f"{src} {c}, {s}" for src, c, s in diff_cells) + ". In all other cells s and λ at the "
-          f"end are {FIX_S:g} and {FIX_LAPSE:g} and the registered measure equals the own utility, so both "
+          f"end are {FIX_S:g} and {FIX_LAPSE:g} and the planned measure equals the own utility, so both "
           f"yardsticks give the same numbers (bit-identical per session).",
           f"- {len(changes)} of {n_diff_tested} differences (pair × k) in those cells change sign or their "
           f"interval's relation to 0 between the yardsticks (listed below): "
@@ -518,18 +518,18 @@ def report(out: Path) -> None:
             fl = diffs.get(key + ("FULL", k))
             parts.append(f"k = {k}: {_lv(lv['registered'])} → {_lv(lv['fixed'])}"
                          + (f", − FULL {_pt(fl['registered'])} → {_pt(fl['fixed'])}" if fl else ""))
-        L.append(f"- {src} {c}, {s}, {NAMES[key[3]]} (registered → fixed): " + "; ".join(parts))
+        L.append(f"- {src} {c}, {s}, {NAMES[key[3]]} (planned → fixed): " + "; ".join(parts))
     L.append("")
     # self-check
     n_ok = sum(p["ok"] for p in points)
-    L += ["## Self-check against the registered reports", "",
+    L += ["## Self-check against the planned reports", "",
           "Each report's first statistics, recomputed with that report's own seed and row order "
           "(point and interval at the printed precision):", ""]
     for e in exact:
         L.append(f"- {e['name']}: recomputed {e['recomputed'][0]:.4f} [{e['recomputed'][1]:.4f}, "
                  f"{e['recomputed'][2]:.4f}], reported {e['reported']} — {'match' if e['ok'] else 'MISMATCH'}")
     L += ["", f"Point estimates printed in the FULL (PsyPref rows), ROB, ROB2 and TIE (arm tie) reports, "
-          f"recomputed from this script's registered yardstick: {n_ok} of {len(points)} match at the "
+          f"recomputed from this script's planned yardstick: {n_ok} of {len(points)} match at the "
           f"printed precision."]
     L += [f"- MISMATCH {p['name']}: recomputed {p['recomputed']:.4f}, reported {p['reported']}"
           for p in points if not p["ok"]]
@@ -545,7 +545,7 @@ def report(out: Path) -> None:
              f"({'PsyPref: yes' if b5_merged else 'PsyPref: no'}).")
     L.append("")
     # yardsticks
-    L += ["## Where the registered yardstick is not the fixed one", "",
+    L += ["## Where the planned yardstick is not the fixed one", "",
           "| source | condition | setting | s at the end | λ at the end | sessions |", "|---|---|---|---|---|---|"]
     yard = {}
     for src, c, s in diff_cells:
@@ -559,7 +559,7 @@ def report(out: Path) -> None:
           "FULL's PsyPref (s = 1, λ = 0.1, both yardsticks): "
           + "; ".join(f"{s} k = {k} {_lv(levels['FULL', 'main', s, 'psypref', k]['registered'])}"
                       for s in SETTINGS for k in KS) + ".", "",
-          "| source | condition | setting | k | n | PsyPref, registered | PsyPref, fixed | − FULL, registered | "
+          "| source | condition | setting | k | n | PsyPref, planned | PsyPref, fixed | − FULL, planned | "
           "− FULL, fixed | worse off | ≥ 1 JND worse |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for src, c, s in diff_cells:
         for opt in (("psypref_t", "psypref") if src == "TIE" else ("psypref",)):
@@ -572,7 +572,7 @@ def report(out: Path) -> None:
     L.append("")
     # comparators in the differing cells
     L += ["## PsyPref minus each comparator, cells whose yardstick differs", "",
-          "| source | condition | setting | PsyPref − | n | k = 24, registered | k = 24, fixed | k = 40, registered | "
+          "| source | condition | setting | PsyPref − | n | k = 24, planned | k = 24, fixed | k = 40, planned | "
           "k = 40, fixed |", "|---|---|---|---|---|---|---|---|---|"]
     for src, c, s in diff_cells:
         if src == "TIE":
@@ -588,8 +588,8 @@ def report(out: Path) -> None:
     L += ["## C4 and A5: PsyPref-T and PsyPref against both CMA-ES variants (TIE, users 8-39)", "",
           "Paired on the same users and answer seeds; CMA-ES rows are ROB2's. A5's yardsticks coincide "
           "(s = 1, λ = 0.1).", "",
-          "| condition | setting | k | method | n | level, registered | level, fixed | − CMA-ES (ProMP), registered | "
-          "− CMA-ES (ProMP), fixed | − CMA-ES (Schäfer), registered | − CMA-ES (Schäfer), fixed | − FULL, registered | "
+          "| condition | setting | k | method | n | level, planned | level, fixed | − CMA-ES (ProMP), planned | "
+          "− CMA-ES (ProMP), fixed | − CMA-ES (Schäfer), planned | − CMA-ES (Schäfer), fixed | − FULL, planned | "
           "− FULL, fixed | worse off |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for c in TIE.CONDS:
         for s in SETTINGS:
@@ -620,12 +620,12 @@ def report(out: Path) -> None:
         what = " and ".join(w for w, x in (("sign", _sign(e["registered"]) != _sign(e["fixed"])),
                                            ("interval", _rel(e["registered"]) != _rel(e["fixed"]))) if x)
         L.append(f"- {e['source']} {e['condition']}, {e['setting']}, {NAMES[e['a']]} − "
-                 f"{'FULL' if e['b_source'] == 'FULL' else NAMES[e['b']]}, k = {e['k']} ({what}): registered "
+                 f"{'FULL' if e['b_source'] == 'FULL' else NAMES[e['b']]}, k = {e['k']} ({what}): planned "
                  f"{_pt(e['registered'])} ({_rel(e['registered'])}), fixed {_pt(e['fixed'])} ({_rel(e['fixed'])})")
     L.append("")
     # all optimizers in the differing cells
     L += ["## Every optimizer's level, cells whose yardstick differs", "",
-          "| source | condition | setting | optimizer | n | k = 24, registered | k = 24, fixed | k = 40, registered | "
+          "| source | condition | setting | optimizer | n | k = 24, planned | k = 24, fixed | k = 40, planned | "
           "k = 40, fixed | worse off, k = 24 | worse off, k = 40 |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for key in keys:
         if (key[0], key[1], key[2]) not in diff_cells:
@@ -637,9 +637,9 @@ def report(out: Path) -> None:
     L.append("")
     # all cells, PsyPref
     L += ["## All cells: PsyPref, its loss against FULL and the worse-off shares", "",
-          "\"=\": the fixed yardstick gives the registered number (bit-identical per session). B5a and B5b at "
+          "\"=\": the fixed yardstick gives the planned number (bit-identical per session). B5a and B5b at "
           "fixed 12 are one cell where bit-identical. ROB R6 has users of its own (no FULL pairing).", "",
-          "| source | condition | setting | k | n | PsyPref, registered | PsyPref, fixed | − FULL, registered | "
+          "| source | condition | setting | k | n | PsyPref, planned | PsyPref, fixed | − FULL, planned | "
           "− FULL, fixed | worse off | ≥ 1 JND worse |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for key in keys:
         src, c, s, opt = key
@@ -658,7 +658,7 @@ def report(out: Path) -> None:
                      f"{_pt(fl['registered']) if fl else '—'} | {ffx} | {_sh(lv['worse_off'])} | {_sh(lv['worse_off_1jnd'])} |")
     L += ["", "## Notes", "",
           "- Post hoc throughout; the fixed yardstick is a second reading of the same sessions, not a new "
-          "registration. Comparator differences and every optimizer's level in all cells are in "
+          "test plan. Comparator differences and every optimizer's level in all cells are in "
           "amp_yardstick.json.",
           "- ROB R7 (surrogates) is paired with FULL on FULL's users and answer seeds although its preferred "
           "curves are the surrogates, as ROB2's C conditions are paired with FULL although their shapes "
@@ -681,7 +681,7 @@ def report(out: Path) -> None:
 
     js = dict(
         post_hoc=True,
-        description="Fixed yardstick for the robustness rows: preference over generic on the registered "
+        description="Fixed yardstick for the robustness rows: preference over generic on the planned "
                     "yardstick and on s = 1.0, lapse = 0.1 applied to own_d0 - own[k-1]. Proportions; "
                     "differences in proportion units (x100 for points). Triples are [estimate, 2.5 %, 97.5 %].",
         fixed_yardstick=dict(s=FIX_S, lapse=FIX_LAPSE), jnd=JND, n_boot=R.N_BOOT, ks=list(KS),

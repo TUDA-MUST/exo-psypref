@@ -2,7 +2,7 @@
 heavy-tailed generator and a population-family mixture.
 
 Everything here builds **new** user sets beside a Phase 5a run, stored as the out-of-generator users
-are (``RUN/<set>/users/<fold>.{json,npz}``, the exported users' schema with their promp_s0 floors,
+are (``RUN/<set>/users/<fold>.{json,npz}``, the exported users' schema with their promp_s0 best-profile distances,
 :func:`prompref.experiment.robust.write_ood_users`). ``prompref/population`` and
 ``prompref/priors/data_prior.py`` are read only; the generator's own functions (``user_curve``,
 ``sample_draw``) are called, never changed.
@@ -34,7 +34,7 @@ landmark-order violation, or no cycle clear of the lag) is redrawn, both trial a
 come from the stream that user's did.
 
 **HT (b), the mixture.** Per fold 80 % population users and 20 % family ideals: the fold's population
-users pop000-pop031 as exported (curve, answer seed, floors), and four Schaefer (ii) and four Franks
+users pop000-pop031 as exported (curve, answer seed, best-profile distances), and four Schaefer (ii) and four Franks
 ideals sampled within their published ranges as in X (``xexpr.published_ideal`` with X's keys
 ``<fold>/schaefer000``-``003`` and ``<fold>/franks000``-``003``).
 """
@@ -274,8 +274,8 @@ def make_ht_mix_users(fold: str, population: dict, franks_prior) -> list[R2User]
 
 
 def exported_floor_entry(user) -> dict:
-    """An exported user's promp_s0 floor entry in ``user_floors``' shape (for the mixture's
-    population users, whose floors are the exported ones)."""
+    """An exported user's promp_s0 best-profile distance entry in ``user_floors``' shape (for the mixture's
+    population users, whose best-profile distances are the exported ones)."""
     fam = user.families["promp_s0"]
     return dict(floor_nm=float(fam["floor_nm"]), reach_050=float(fam["reach_050"]),
                 reach_025=float(fam["reach_025"]), radius_floor=float(fam["radius"]))

@@ -1,6 +1,6 @@
-"""Held-out users and their floors.
+"""Held-out users and their best-profile distances.
 
-A user's floor is the best a family can do for them within the device limit. It is not
+A user's best-profile distance is the best a family can do for them within the device limit. It is not
 restricted to any prior radius: whether a prior can *reach* that best is exactly what
 the diagnostics and the robustness study measure.
 """
@@ -117,10 +117,10 @@ def _clipped_mse(design, target: np.ndarray):
     return objective
 
 
-def _radius_sq(whitening):
-    """``theta -> ||whitening.to_z(theta)||^2`` and its exact gradient (to_z is affine)."""
-    m = whitening.eigenvectors[:, :whitening.d] / np.sqrt(whitening.eigenvalues[:whitening.d])
-    mu = np.asarray(whitening.mu, dtype=float)
+def _radius_sq(normalization):
+    """``theta -> ||normalization.to_z(theta)||^2`` and its exact gradient (to_z is affine)."""
+    m = normalization.eigenvectors[:, :normalization.d] / np.sqrt(normalization.eigenvalues[:normalization.d])
+    mu = np.asarray(normalization.mu, dtype=float)
 
     def value(theta: np.ndarray) -> float:
         z = (np.asarray(theta, dtype=float) - mu) @ m
@@ -132,18 +132,18 @@ def _radius_sq(whitening):
     return value, gradient
 
 
-def physics_floor(design, target: np.ndarray, n_starts: int = 20, seed=0, whitening=None
+def physics_floor(design, target: np.ndarray, n_starts: int = 20, seed=0, normalization=None
                   ) -> tuple[float, np.ndarray]:
-    """The user's floor in a family: the smallest RMS between the device-clipped curve and
+    """The user's best-profile distance in a family: the smallest RMS between the device-clipped curve and
     the target, over the design's box. Returns ``(floor_nm, theta)``.
 
-    With ``whitening``, ``theta`` is tie-broken toward the prior: where
+    With ``normalization``, ``theta`` is tie-broken toward the prior: where
     the model curve exceeds the device limit the objective is flat, so the multi-start
-    argmin lands wherever the optimiser stops, and its whitened radius is an optimiser
-    artefact. SLSQP then takes the smallest-radius point on the floor's level set,
+    argmin lands wherever the optimiser stops, and its normalized radius is an optimiser
+    artefact. SLSQP then takes the smallest-radius point on the best-profile distance's level set,
     ``mse <= best * (1 + 1e-6) + 1e-12``, inside the box. The constraint is hard, not a
     penalty -- a ``1e-8 ||z||^2`` penalty's gradient sits at finite-difference noise.
-    The floor value stays the multi-start minimum. ``seed`` may be an int or a
+    The best-profile distance value stays the multi-start minimum. ``seed`` may be an int or a
     ``SeedSequence``.
     """
     target = np.asarray(target, dtype=float)
@@ -170,8 +170,8 @@ def physics_floor(design, target: np.ndarray, n_starts: int = 20, seed=0, whiten
             f"physics_floor: no start converged to a finite value for "
             f"{type(design).__name__} ({len(starts)} starts)")
     best_theta = np.asarray(best_theta, dtype=float)
-    if whitening is not None:
-        best_theta = _tie_break(design, objective, whitening, best_value, best_theta, bounds)
+    if normalization is not None:
+        best_theta = _tie_break(design, objective, normalization, best_value, best_theta, bounds)
     return float(np.sqrt(best_value)), best_theta
 
 
@@ -196,10 +196,10 @@ def _pull_back(feasible: np.ndarray, candidate: np.ndarray, is_feasible, steps: 
     return feasible + lo * (candidate - feasible)
 
 
-def _tie_break(design, objective, whitening, best_value: float, theta: np.ndarray, bounds
+def _tie_break(design, objective, normalization, best_value: float, theta: np.ndarray, bounds
                ) -> np.ndarray:
     level = best_value * (1.0 + 1e-6) + 1e-12
-    radius_sq, radius_grad = _radius_sq(whitening)
+    radius_sq, radius_grad = _radius_sq(normalization)
     result = minimize(radius_sq, theta, jac=radius_grad, method="SLSQP", bounds=bounds,
                       constraints=[{"type": "ineq", "fun": lambda th: level - objective(th)}],
                       options=dict(maxiter=300, ftol=1e-12))
@@ -220,36 +220,36 @@ def reach_key(tau: float) -> str:
     return f"reach_{int(round(tau * 100)):03d}"
 
 
-def reach_radius(design, whitening, target: np.ndarray, floor_nm: float, tau: float,
+def reach_radius(design, normalization, target: np.ndarray, floor_nm: float, tau: float,
                  theta_floor: np.ndarray | None = None, return_z: bool = False):
     """The reach radius R_tau.
 
     ``min ||z||`` subject to ``RMS(physics_clip(curve(project(to_w(z)))) - target) <=
-    floor_nm + tau``: the smallest prior ball that holds a delivered curve inside this user's
-    R25 success region. Zero when the prior mean already is. Otherwise, from the floor's
+    floor_nm + tau``: the smallest prior's search region that holds a delivered curve inside this user's
+    R25 success region. Zero when the prior mean already is. Otherwise, from the best-profile distance's
     parameters (feasible by definition), a 30-step ray bisection toward z = 0 and SLSQP in
     z started from the bisection point; the smaller feasible radius wins.
 
-    ``theta_floor`` is the floor's parameters from :func:`physics_floor`; without it the
-    floor is recomputed (20 starts, tie-broken). ``return_z`` also returns the point.
+    ``theta_floor`` is the best-profile distance's parameters from :func:`physics_floor`; without it the
+    best-profile distance is recomputed (20 starts, tie-broken). ``return_z`` also returns the point.
     """
     target = np.asarray(target, dtype=float)
     goal = (float(floor_nm) + float(tau)) ** 2
 
     def mse_z(z: np.ndarray) -> float:
-        theta = design.project(whitening.to_w(z))
+        theta = design.project(normalization.to_w(z))
         return float(np.mean((physics_clip(design.curve(theta)) - target) ** 2))
 
     def done(z: np.ndarray):
         radius = float(np.linalg.norm(z))
         return (radius, np.asarray(z, dtype=float)) if return_z else radius
 
-    zero = np.zeros(whitening.d)
+    zero = np.zeros(normalization.d)
     if mse_z(zero) <= goal:
         return done(zero)
     if theta_floor is None:
-        _, theta_floor = physics_floor(design, target, whitening=whitening)
-    z0 = whitening.to_z(np.asarray(theta_floor, dtype=float))
+        _, theta_floor = physics_floor(design, target, normalization=normalization)
+    z0 = normalization.to_z(np.asarray(theta_floor, dtype=float))
     if not mse_z(z0) <= goal:
         raise ValueError(f"reach_radius: the floor's parameters miss floor + tau "
                          f"({np.sqrt(mse_z(z0)):.6f} > {np.sqrt(goal):.6f} Nm)")
@@ -271,35 +271,35 @@ def reach_radius(design, whitening, target: np.ndarray, floor_nm: float, tau: fl
     return done(best)
 
 
-def floor_and_reach(design, whitening, target: np.ndarray, n_starts: int, seed,
+def floor_and_reach(design, normalization, target: np.ndarray, n_starts: int, seed,
                     taus=REACH_TAUS) -> dict:
-    """One user's tie-broken floor, its whitened radius, and the reach radii, with timings."""
+    """One user's tie-broken best-profile distance, its normalized radius, and the reach radii, with timings."""
     started = time.perf_counter()
-    floor, theta = physics_floor(design, target, n_starts=n_starts, seed=seed, whitening=whitening)
+    floor, theta = physics_floor(design, target, n_starts=n_starts, seed=seed, normalization=normalization)
     floor_s = time.perf_counter() - started
     started = time.perf_counter()
-    reach = {reach_key(tau): float(reach_radius(design, whitening, target, floor, tau, theta_floor=theta))
+    reach = {reach_key(tau): float(reach_radius(design, normalization, target, floor, tau, theta_floor=theta))
              for tau in taus}
     return dict(floor_nm=float(floor), theta=[float(v) for v in theta],
-                radius_floor=float(np.linalg.norm(whitening.to_z(theta))), **reach,
+                radius_floor=float(np.linalg.norm(normalization.to_z(theta))), **reach,
                 floor_s=float(floor_s), reach_s=float(time.perf_counter() - started))
 
 
 def _floor_job(job) -> dict:
-    design, whitening, target, n_starts, seed = job
-    return floor_and_reach(design, whitening, target, n_starts, seed)
+    design, normalization, target, n_starts, seed = job
+    return floor_and_reach(design, normalization, target, n_starts, seed)
 
 
-#: Result fields cached next to a floor's value and parameters.
+#: Result fields cached next to a best-profile distance's value and parameters.
 _CACHED_EXTRAS = ("reach_050", "reach_025", "floor_s", "reach_s")
 
 
-def user_floors(design, whitening, users, *, n_starts: int, seed_sequence: np.random.SeedSequence,
+def user_floors(design, normalization, users, *, n_starts: int, seed_sequence: np.random.SeedSequence,
                 workers: int = 1, cache: "FloorCache | None" = None, family: str | None = None,
                 prior_hash: str | None = None, save_every: int = 10) -> list[dict]:
-    """Floor, floor radius and reach radii of every user in one family, in user order.
+    """Best-profile distance, best-profile distance radius and reach radii of every user in one family, in user order.
 
-    User ``i``'s floor starts come from ``child_sequence(seed_sequence, i)``, never from its
+    User ``i``'s best-profile distance starts come from ``child_sequence(seed_sequence, i)``, never from its
     answer seed. Missing users run in a ``ProcessPoolExecutor(workers)``;
     each job carries its own seed, so results do not depend on ``workers``. With a
     ``cache`` (and ``family``/``prior_hash``), hits are reused and the cache is saved every
@@ -315,7 +315,7 @@ def user_floors(design, whitening, users, *, n_starts: int, seed_sequence: np.ra
             entries[index] = cache.get(family, user.user_id, user.curve_nm, **key)
         if entries[index] is None:
             todo.append(index)
-    jobs = [(design, whitening, users[i].curve_nm, n_starts, child_sequence(seed_sequence, i)) for i in todo]
+    jobs = [(design, normalization, users[i].curve_nm, n_starts, child_sequence(seed_sequence, i)) for i in todo]
 
     def store(index: int, result: dict, new: int) -> None:
         user = users[index]
@@ -338,26 +338,26 @@ def user_floors(design, whitening, users, *, n_starts: int, seed_sequence: np.ra
     if cache is not None and jobs:
         cache.save()
     for entry in entries:
-        entry["radius_floor"] = float(np.linalg.norm(whitening.to_z(entry["theta"])))
+        entry["radius_floor"] = float(np.linalg.norm(normalization.to_z(entry["theta"])))
     return entries
 
 
-#: Bump when the floor's definition changes, so older cache entries are never reused.
+#: Bump when the best-profile distance's definition changes, so older cache entries are never reused.
 FLOOR_VERSION = "tiebreak-v1"
 
 
 def prior_digest(mu: np.ndarray, sigma: np.ndarray) -> str:
-    """Short hash of a prior's moments: floor starts and the tie-break both depend on it."""
+    """Short hash of a prior's moments: best-profile distance starts and the tie-break both depend on it."""
     h = hashlib.sha1(np.ascontiguousarray(mu, dtype=float).tobytes())
     h.update(np.ascontiguousarray(sigma, dtype=float).tobytes())
     return h.hexdigest()[:12]
 
 
 class FloorCache:
-    """Floors are expensive (multi-start per user and family); cache them across runs.
+    """Best-profile distances are expensive (multi-start per user and family); cache them across runs.
 
     The key holds everything an entry depends on: family, user id, the
-    user's curve, the number of floor starts, the prior's moments, and ``FLOOR_VERSION``.
+    user's curve, the number of best-profile distance starts, the prior's moments, and ``FLOOR_VERSION``.
     """
 
     def __init__(self, path) -> None:
@@ -368,7 +368,7 @@ class FloorCache:
         try:
             self._data = json.loads(self.path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            # Losing this file loses every previously cached floor, not just the latest
+            # Losing this file loses every previously cached best-profile distance, not just the latest
             # write -- fail loudly and name the file, rather than silently starting over.
             raise RuntimeError(
                 f"FloorCache: {self.path} is corrupt and cannot be parsed as JSON "
@@ -377,7 +377,7 @@ class FloorCache:
     @staticmethod
     def _key(family: str, user_id: str, curve: np.ndarray, floor_starts: int, prior_hash: str) -> str:
         # The curve's hash is part of the key: a rerun with other factors or timing reuses
-        # user ids for different users, and must not reuse their floors.
+        # user ids for different users, and must not reuse their best-profile distances.
         digest = hashlib.sha1(np.ascontiguousarray(curve, dtype=float).tobytes()).hexdigest()[:16]
         return f"{FLOOR_VERSION}::{family}::{user_id}::{digest}::starts{int(floor_starts)}::prior{prior_hash}"
 

@@ -413,7 +413,7 @@ def main(argv=None) -> int:
         "fmDropSingle": f1(-single), "fmDropPess": f1(-pess), "fmFixGap": f1(gap),
         "fmBaldLo": f1(min(bald)), "fmBaldHi": f1(max(bald)),
     }
-    tex = ["% fig4m_text.tex: written by scripts/paper_v2_fig4m.py (amp-free worktree); do not edit by hand."]
+    tex = ["% fig4m_text.tex: written by scripts/paper_v2_fig4m.py (repository); do not edit by hand."]
     tex += [f"\\def\\{k_}{{{v}}}" for k_, v in macro.items()]
     (args.dest / "fig4m_text.tex").write_text("\n".join(tex) + "\n", encoding="utf-8")
 

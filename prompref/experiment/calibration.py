@@ -21,7 +21,7 @@ Definitions:
 - ``tau_gen`` is generic assistance, :func:`~prompref.experiment.metrics.prior_mean_curve`
   (the curve ``d_prior`` is the distance of). ``z_gen`` is its ProMP projection
   (``VonMisesBasis.project``, the least-squares weights the data prior is fitted with) in the
-  posterior's whitened coordinates. It is not clipped to the trust ball.
+  posterior's normalized coordinates. It is not clipped to the trust search region.
 - ``tau*_i`` is particle i's curve: ``space.design.curve(space.to_theta(z*_i))``, batched.
 
 Nothing here draws a random number or changes the learner: the logging reads the posterior's
@@ -53,7 +53,7 @@ SNAPSHOT_KS = (0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 40)
 
 
 def check_space(space: LearnerSpace) -> None:
-    """The logging needs a device-clipped, unstructured ProMP behind full-rank whitening."""
+    """The logging needs a device-clipped, unstructured ProMP behind full-rank normalization."""
     design = space.design
     if not isinstance(design, DeviceDesign) or type(design.inner) is not PrompS0:
         raise ValueError("calibration logging needs a device-clipped PrompS0 design, got "
@@ -64,7 +64,7 @@ def check_space(space: LearnerSpace) -> None:
 
 
 def generic_z(space: LearnerSpace, generic_curve: np.ndarray) -> np.ndarray:
-    """Generic assistance in the space's whitened coordinates: the ProMP projection of its curve
+    """Generic assistance in the space's normalized coordinates: the ProMP projection of its curve
     (least-squares basis weights, ``VonMisesBasis.project``), unclipped."""
     theta = space.design.basis.project(np.asarray(generic_curve, dtype=float))
     return space.to_z(theta)
@@ -74,7 +74,7 @@ def particle_curves(space: LearnerSpace, zstar: np.ndarray) -> np.ndarray:
     """``(N, n_phase)`` device-clipped curves of ``N`` points ``z*``, row i equal to
     ``space.design.curve(space.to_theta(zstar[i]))`` (batched; equal up to rounding)."""
     design = space.design
-    theta = design.project(space.whitening.to_w(np.atleast_2d(np.asarray(zstar, dtype=float))))
+    theta = design.project(space.normalization.to_w(np.atleast_2d(np.asarray(zstar, dtype=float))))
     weights = design.to_weights(theta)
     return physics_clip(weights @ design.basis.design.T, design.limit)
 

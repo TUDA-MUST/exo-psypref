@@ -1,14 +1,14 @@
-"""Test XSN: family floors on other sources of preferred profiles.
+"""Test XSN: family best-profile distances on other sources of preferred profiles.
 
 Usage:
-  python scripts/icorr_amp_xsn.py floors [--workers 8]
+  python scripts/icorr_amp_xsn.py best-profile distances [--workers 8]
   python scripts/icorr_amp_xsn.py report
 
 Profile i of a fold is paired with FULL's user i: each
-source's curve is reduced to its unit bouts and composed at the user's peaks (wide) or at 12 / 12
+source's curve is reduced to its unit parts and composed at the user's peaks (wide) or at 12 / 12
 Nm (fixed). Sources: the phase-randomized surrogate of the user's preferred profile and the
 earlier X's Schaefer, Franks, Ramella and Park generators (X's keys and seeds); FULL's users
-are FAM's floors (fam_floors.jsonl), reused. Families and fit rules are FAM's.
+are FAM's best-profile distances (fam_floors.jsonl), reused. Families and fit rules are FAM's.
 Outputs in <out>/icorr/amp_free/: xsn_floors.jsonl (resumable), amp_xsn_report.md.
 """
 
@@ -57,7 +57,7 @@ def _franks(run_dir: str, fold: str):
 
 
 def profile(job: dict, source: str, out: Path) -> np.ndarray:
-    """The source's preferred profile paired with FULL's user ``job``: unit bouts at its peaks."""
+    """The source's preferred profile paired with FULL's user ``job``: unit parts at its peaks."""
     if source == "surrogate":
         ideal, _, _ = FAM._user(job)
         rng = np.random.default_rng(X._seed("xsn-surrogate", job["user"], job["setting"]))
@@ -66,7 +66,7 @@ def profile(job: dict, source: str, out: Path) -> np.ndarray:
         run_dir = out / "phase5-schaefer"
         franks = _franks(str(run_dir), job["fold"]) if source == "franks" else None
         _, curve = X.published_ideal(source, X.ideal_key(job["fold"], source, job["index"]), franks_prior=franks)
-    return AF.compose(job["amps"][0], job["amps"][1], *AF.unit_bouts(curve))
+    return AF.compose(job["amps"][0], job["amps"][1], *AF.unit_parts(curve))
 
 
 def _key(r: dict) -> tuple:
@@ -74,7 +74,7 @@ def _key(r: dict) -> tuple:
 
 
 def floor_one(job: dict, out: str) -> list[dict]:
-    """Every family's floor for one user, setting and source."""
+    """Every family's best-profile distance for one user, setting and source."""
     out_p, rows = Path(out), []
     base = {k: v for k, v in job.items() if not k.startswith("_") and k != "candidate"}
     try:
@@ -131,7 +131,7 @@ def report(out: Path) -> None:
     rng = np.random.default_rng(AF.SEED_FULL + 71)
 
     def med(setting, source, fam):
-        """Median floor in JND with its interval (users resampled within folds)."""
+        """Median best-profile distance in JND with its interval (users resampled within folds)."""
         items = [dict(fold=fold[u], v=fl[u, setting, source, fam] / JND) for u in users
                  if (u, setting, source, fam) in fl]
         return R._boot(items, lambda x: float(np.median([i["v"] for i in x])), rng)
@@ -143,8 +143,8 @@ def report(out: Path) -> None:
         return R._boot(items, lambda x: float(np.median([i["a"] for i in x]) - np.median([i["b"] for i in x])), rng)
 
     all_sources = ("users",) + SOURCES
-    L = ["# Registration XSN: family floors on other sources of preferred profiles", "",
-         f"Spec section 24 (c1a5c00). {len(fl)} floors ({len(errors)} failed fits). Median floor in JND "
+    L = ["# Test plan XSN: family floors on other sources of preferred profiles", "",
+         f"Design note 24 (c1a5c00). {len(fl)} floors ({len(errors)} failed fits). Median floor in JND "
          f"({JND:.3f} Nm) with 95 % intervals from {R.N_BOOT} draws, users resampled within folds. Users: "
          "FAM's floors (fam_floors.jsonl).", ""]
     pxn = {1: [], 2: [], 3: [], 4: []}

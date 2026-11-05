@@ -16,7 +16,7 @@ the run scripts build, never from memory:
   where that code exists). Per prior and fold: the participation
   ratio (sum ev)^2 / sum ev^2 of the weight covariance's eigenvalues, the directions holding
   90 % and 95 % of the variance, the same in curve space (Phi Sigma Phi^T on the 101-point grid),
-  and the learner's search dimension d and ball radius (the ``LearnerSpace`` the runs build).
+  and the learner's search dimension d and search region radius (the ``LearnerSpace`` the runs build).
   Intervals: R._boot's resampling (2,000 draws, percentile) over the fold's 20,000 training
   rows, vectorized; they measure Monte Carlo precision of the generator's population, not
   between-subject spread, which the five folds' min-max shows.
@@ -171,7 +171,7 @@ def _prior(d: Path, fold_index: int, fold: str, setting: str, k: int, checks: li
             checks.append(dict(check=f"{setting} K = {k}, {fold}: the bootstrap rows give {name} exactly",
                                ok=bool(np.array_equal(ref[0], mu) and np.array_equal(ref[1], sigma))))
         space = AF.promp_space(mu, sigma, limit=hi, basis=basis)
-    if not np.allclose(space.whitening.mu, mu, rtol=0, atol=0):
+    if not np.allclose(space.normalization.mu, mu, rtol=0, atol=0):
         raise RuntimeError(f"{fold} {setting} K = {k}: the space's mean is not the prior's")
     return rows, space, sigma, (VonMisesBasis(k) if basis is None else basis)
 
@@ -189,9 +189,9 @@ def priors(out: Path, checks: list, missing: list) -> list[dict]:
             rows, space, sigma, basis = got
             chol = np.linalg.cholesky(basis.design.T @ basis.design / basis.design.shape[0])
             est = _stats(sigma, chol)
-            # the space's own participation ratio (Whitening.d_eff) must be the one computed here
+            # the space's own participation ratio (Normalization.d_eff) must be the one computed here
             checks.append(dict(check=f"{setting} K = {k}, {fold.name}: Whitening.d_eff equals the "
-                                     "participation ratio", ok=bool(abs(space.whitening.d_eff - est[0]) < 1e-9 * est[0])))
+                                     "participation ratio", ok=bool(abs(space.normalization.d_eff - est[0]) < 1e-9 * est[0])))
             rng = np.random.default_rng([AF.SEED_FULL, BOOT_SALT, zlib.crc32(f"{setting}|{k}".encode()), i])
             lo, hi = _boot_counts(rows.shape[0], lambda c: _stats(_cov_counts(rows, c), chol), rng)
             row = dict(setting=setting, K=k, fold=fold.name, fold_index=i, n_rows=int(rows.shape[0]),
@@ -288,7 +288,7 @@ def _describe(design, learner) -> dict:
                     space_params=int(sp.design.n_params))
     for o in objs:
         a = getattr(o, "__dict__", {})
-        if "es" in a:   # SortCMALearner: pycma on the ball as a box design
+        if "es" in a:   # SortCMALearner: pycma on the search region as a box design
             info.update(cma_dim=int(o.design.n_params), cma_popsize=int(o.es.popsize),
                         cma_sigma0=float(o.es.sigma0))
         if type(o).__name__ == "GPEUBOLearner":
@@ -403,19 +403,19 @@ def _spec_checks(summary: list[dict], checks: list) -> None:
     m = re.search(rf"participation ratio of the training weights' covariance\) is {num}–{num} at "
                   rf"K = 8 and {num}–{num} at K = 12", text)
     if m is None:
-        checks.append(dict(check="spec section 28's participation ratios: sentence not found", ok=None))
+        checks.append(dict(check="design note 28's participation ratios: sentence not found", ok=None))
         return
     rep = [float(x) for x in m.groups()]
     got = {e["K"]: e["pr"] for e in summary if e["setting"] == "fixed 12"}
     comp = [round(got[8]["min"], 1), round(got[8]["max"], 1), round(got[12]["min"], 1), round(got[12]["max"], 1)]
-    checks.append(dict(check="spec section 28: the fixed-level priors' participation ratio, min-max over "
+    checks.append(dict(check="design note 28: the fixed-level priors' participation ratio, min-max over "
                              "folds, K = 8 and K = 12", ok=comp == rep,
                        detail=f"reported {rep[0]}–{rep[1]} / {rep[2]}–{rep[3]}; computed {got[8]['min']:.3f}–"
                               f"{got[8]['max']:.3f} / {got[12]['min']:.3f}–{got[12]['max']:.3f}"))
 
 
 def _radius_checks(out: Path, summary: list[dict], checks: list) -> None:
-    """LONG's floor table and PRC's header report the K = 8 search ball's radius."""
+    """LONG's best-profile distance table and PRC's header report the K = 8 search search region's radius."""
     r8 = [e for e in summary if e["setting"] == "fixed 12" and e["K"] == 8][0]["radius"][0]
     d = _dir(out)
     long_md = d / "amp_long_report.md"
@@ -492,7 +492,7 @@ def report(out: Path) -> None:
             g["detail"].append(c["detail"])
 
     L = ["# Post hoc: the fold priors' dimensions and every optimizer's parameter count", "",
-         f"Post hoc, not registered (amp-free {_head()}); no verdict is changed or re-judged. Spec "
+         f"Post hoc (amp-free {_head()}); no verdict is changed or re-judged. Spec "
          "section 28 (KS) asks for each prior's effective dimension and the search dimension. Every "
          "number below is computed by scripts/icorr_posthoc_dims.py from the stored fold files and from "
          "the spaces and designs the run scripts build.", "",
@@ -532,14 +532,14 @@ def report(out: Path) -> None:
                  f"{_ci_int(r['n90'])} | {_ci_int(r['n95'])} | {_ci(r['pr_curve'])} | {_ci_int(r['n90_curve'])} | "
                  f"{_ci_int(r['n95_curve'])} |")
     L += ["", "## 2. Parameter counts of every optimizer's search space, as run", "",
-          "Built by each registration's own run_one for user 0 of every fold and stopped before the "
+          "Built by each test plan's own run_one for user 0 of every fold and stopped before the "
           "first comparison. Family: the curve family the wearer is shown and its parameter count. "
           "d / radius: the learner's whitened search space. Inner: the optimizer's own search "
           "dimension (CMA-ES: pycma's dimension, population and σ₀; Arens' GP: candidates × dimension; "
           "GP-BALD / GP-qEUBO: the GP's input dimension; Ramella et al.: the fixed batch × parameters; "
           "PsyPref: the posterior's particle state, z* plus its noise scale and lapse).", ""]
     for setting in F.SETTINGS:
-        L += [f"### {setting}", "", "| registration | optimizer | family shown (parameters) | d | radius | inner | "
+        L += [f"### {setting}", "", "| test plan | optimizer | family shown (parameters) | d | radius | inner | "
               "identical in all folds |", "|---|---|---|---|---|---|---|"]
         for c in [c for c in counts if c["setting"] == setting]:
             inner = []

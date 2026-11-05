@@ -126,7 +126,7 @@ def table(d: Path, dest: Path) -> None:
     hw = [100 * max(e["est"] - e["lo"], e["hi"] - e["est"]) for st in SETTINGS
           for e in (t1[st]["rows"][k]["k"]["24"] for k in ("psypref", "gp_bald", "best", "cmaes_sch4"))]
     ranges = ", ".join(f"{min(others[st]):.1f}--{max(others[st]):.1f}" for st in SETTINGS[:2]) + f" and {min(others[SETTINGS[2]]):.1f}--{max(others[SETTINGS[2]]):.1f}"
-    L = ["% table_main.tex: Table I of the ICORR paper. Written by the amp-free worktree's",
+    L = ["% table_main.tex: Table I of the ICORR paper. Written by the repository's",
          "% scripts/paper_v2_table_main.py from out/icorr/amp_free; do not edit by hand. Post hoc tabulation.",
          "% Markers: Fig. 2's hollow orange square (CMA-ES) and triangle (Arens' GP), defined inside the float.",
          r"\begin{table}[t]", T.MARK_DEFS,

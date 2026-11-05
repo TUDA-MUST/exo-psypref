@@ -2,7 +2,7 @@
 
 Usage:
   python scripts/icorr_amp_ks.py prep [--workers 6]
-  python scripts/icorr_amp_ks.py floors [--workers 8]
+  python scripts/icorr_amp_ks.py best-profile distances [--workers 8]
   python scripts/icorr_amp_ks.py smoke [--workers 6]
   python scripts/icorr_amp_ks.py run [--workers 8]
   python scripts/icorr_amp_ks.py report
@@ -16,8 +16,8 @@ sessions. The priors are the training shapes projected onto K von Mises bases
 (``AF.build_fold_parts``, ``fold-<name>-K<n>.npz``, as K12's). K = 8 is LONG's PsyPref rows and
 FULL's GP-BALD / CMP's cmaes4 rows of the same users. Each session records when every answer was
 given, the machine and the search dimension d, as LONG's. ``prep`` builds the K = 16 and 24 parts
-and checks K = 12 against the stored parts R5 used; ``floors`` fits each user's reachable floor at
-K = 12, 16, 24 (LONG's definition and starts) and checks the K = 8 refit against LONG's floors;
+and checks K = 12 against the stored parts R5 used; ``best-profile distances`` fits each user's reachable best-profile distance at
+K = 12, 16, 24 (LONG's definition and starts) and checks the K = 8 refit against LONG's best-profile distances;
 ``smoke`` checks the defaults and K = 12 against the stored rows and times one user per arm.
 ``run`` starts only on a machine where smoke's checks passed. Outputs in <out>/icorr/amp_free/:
 fold-<name>-K16/K24.npz, ks_sessions.jsonl and ks_floors.jsonl (both resumable), ks_smoke.jsonl,
@@ -243,7 +243,7 @@ def run(out: Path, workers: int) -> None:
                 print(f"{n}/{len(todo)}", flush=True)
 
 
-# ----------------------------------------------------------------------------- floors
+# ----------------------------------------------------------------------------- best-profile distances
 
 def _space_and_ideal(job: dict):
     """The space PsyPref searches at the job's K and the preferred curve, as FULL's run_one builds
@@ -257,10 +257,10 @@ def _space_and_ideal(job: dict):
 
 
 def floor_one(job: dict, out: str) -> dict:
-    """One user's reachable floor in one setting at the job's K: LONG's ``floor_one`` (section 27's
+    """One user's reachable best-profile distance in one setting at the job's K: LONG's ``floor_one`` (section 27's
     target and starts, the same seed per user) on the K-basis space, the unconstrained refit from
-    the same starts plus the in-ball optimum, and FAM's ProMP-K floor (AF.promp_floor) alongside.
-    At K = 8 it is LONG's floor."""
+    the same starts plus the in-search region optimum, and FAM's ProMP-K best-profile distance (AF.promp_floor) alongside.
+    At K = 8 it is LONG's best-profile distance."""
     base = {k: v for k, v in job.items()
             if not k.startswith("_") and k not in ("candidate", "n_comp", "ties")}
     try:
@@ -278,7 +278,7 @@ def floor_one(job: dict, out: str) -> dict:
         g = rng.normal(size=(LONG.N_DRAWS, space.d))
         u = rng.random(LONG.N_DRAWS)
         draws = g / np.linalg.norm(g, axis=1, keepdims=True) * (space.radius * u ** (1.0 / space.d))[:, None]
-        starts = [space.clip_to_ball(z_ls), np.zeros(space.d)] + list(draws)
+        starts = [space.clip_to_search_region(z_ls), np.zeros(space.d)] + list(draws)
 
         def mse(z):
             return float(np.mean((space.design.curve(space.to_theta(z)) - ideal) ** 2))
@@ -307,7 +307,7 @@ def _floor_jobs(out: Path, bases=BASES) -> list[dict]:
 
 
 def floors(out: Path, workers: int) -> None:
-    """The reachable floors at K = 12, 16, 24 (ks_floors.jsonl, resumable); then the K = 8 refit
+    """The reachable best-profile distances at K = 12, 16, 24 (ks_floors.jsonl, resumable); then the K = 8 refit
     of every user-setting against LONG's long_floors.jsonl (not written)."""
     d = F._dir(out)
     path = d / "ks_floors.jsonl"
@@ -379,7 +379,7 @@ def smoke(out: Path, workers: int) -> None:
     and CMA-ES rows and CMP's cmaes4 rows bit for bit (2 users per setting); (i-b) at n_basis 12,
     otherwise FULL's defaults, it must reproduce ROB's R5 rows (the parts R5 used); (ii) one user
     per setting for each arm at its budget: seconds per comparison, and at K = 12 the first 40
-    distances against R5's; (iii) floors and excess of (ii)'s users; the projected wall time at 8
+    distances against R5's; (iii) best-profile distances and excess of (ii)'s users; the projected wall time at 8
     workers. Appends the machine and the results to ks_smoke.jsonl, which ``run`` checks."""
     d = F._dir(out)
     print(f"Machine: {LONG._machine_name(LONG._machine())}", flush=True)
@@ -523,8 +523,8 @@ def report(out: Path) -> None:
     def boot(rows, stat):
         return R._boot(sorted(rows, key=lambda r: r["user"]), stat, rng)
 
-    L = ["# Registration KS: more parameters at the same budget", "",
-         f"Spec section 28 (84def93). {len(ok)} sessions, {len(errors)} errors. FULL's users with index 0-19 "
+    L = ["# Test plan KS: more parameters at the same budget", "",
+         f"Design note 28 (84def93). {len(ok)} sessions, {len(errors)} errors. FULL's users with index 0-19 "
          f"per fold, main condition (s = {AF.S} Nm, λ = {AF.LAPSE}), wide and fixed 12. PsyPref as LONG's "
          f"(PsyPref-T's factories) at K = {', '.join(map(str, BASES))} to {N_LONG} comparisons; GP-BALD and "
          f"CMA-ES on the ProMP with population 4 at K = {K_CMP} to {N_COMP}, on the same K-{K_CMP} space and "
@@ -628,7 +628,7 @@ def report(out: Path) -> None:
             L.append(f"| {s} | {k} | {len(ck)} | " + " | ".join(prefs + diffs) + " |")
     L.append("")
 
-    # Floors and the excess over them
+    # Best-profile distances and the excess over them
     L += ["## Reachable floors and the excess over them", "",
           "Floor f: LONG's definition and starts (the smallest RMS distance over PsyPref's search ball under "
           "the device limits) on each K's space; K = 8 is LONG's. Medians over users in JND; excess "

@@ -1,6 +1,6 @@
 """The Phase 5 prior arms.
 
-All arms of a fold and family share one whitening and differ only in prior density and
+All arms of a fold and family share one normalization and differ only in prior density and
 search radius. The radius holds 99 % of the arm's prior mass:
 - a Gaussian: the chi quantile, times ``sqrt(scale)``;
 - a multivariate t, whose ``|z|^2 / d`` follows ``F(d, nu)``: ``sqrt(d F^-1_0.99(d, nu))``.
@@ -18,7 +18,7 @@ import numpy as np
 from scipy.stats import chi
 from scipy.stats import f as f_dist
 
-from .smc import BowlPrior
+from .smc import IdealPointPrior
 
 QUANTILE = 0.99
 
@@ -36,7 +36,7 @@ class Arm:
             return float(np.sqrt(self.scale) * chi.ppf(quantile, d))
         return float(np.sqrt(d * f_dist.ppf(quantile, d, self.nu)))
 
-    def bowl_prior(self, base: BowlPrior = BowlPrior()) -> BowlPrior:
+    def ideal_point_prior(self, base: IdealPointPrior = IdealPointPrior()) -> IdealPointPrior:
         """``base`` with this arm's z* prior; the ell and lambda priors stay ``base``'s (P10)."""
         return replace(base, nu=self.nu, scale=self.scale)
 

@@ -1,6 +1,6 @@
 """The one interface every profile family satisfies.
 
-Learners are generic over ``Design`` and never learn which family they are in; oracles
+Learners are generic over ``Design`` and never learn which family they are in; simulated users
 see only curves. That is what lets a six-parameter semi-trapezoid and a sixteen-weight
 ProMP be scored on the same scale.
 """

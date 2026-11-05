@@ -1,4 +1,4 @@
-"""The ICORR reframe's robustness wearers: out-of-generator ideals (O) and random smooth utilities (R).
+"""The ICORR reframe's robustness simulated users: out-of-generator ideals (O) and random smooth utilities (R).
 
 Everything here writes or reads **new** files beside a Phase 5a run; the exported users, the
 priors and the population code (``prompref/population``, ``prompref/priors/data_prior.py``)
@@ -13,7 +13,7 @@ Molinaro-generated curve:
   limits exactly as the Schaefer report section 3.6 counts them: every gap between adjacent
   landmarks within 10-40 %ST, the extension peak t2 at most 50 and the flexion peak t4 at
   least 50, with t1 unwrapped to [50, 150);
-- one peak magnitude for both bouts, as Schaefer's family has one (12 Nm there): the simulated
+- one peak magnitude for both parts, as Schaefer's family has one (12 Nm there): the simulated
   population's median ideal peak ``max |tau*|`` times ``1 + 0.26 z``, z ~ N(0, 1), clipped to
   [0, 12] Nm (:data:`MAGNITUDE_RULE`);
 - the profile is ``SchaeferDesign(peak, peak).curve(t)``, the analytic profile of
@@ -22,7 +22,7 @@ Molinaro-generated curve:
 They are written as ``RUN/ood/users/<fold>.{json,npz}`` in the exported users' own schema
 (``users-v1``), so :func:`~prompref.population.export.load_fold_users` reads them, and outside
 ``RUN/users``, where every ``*.json`` with a ``.npz`` beside it is taken for a fold. Their
-``families`` hold the promp_s0 floor and reach radii, computed with the fold's own prior by
+``families`` hold the promp_s0 best-profile distance and reach radii, computed with the fold's own prior by
 5a's ``user_floors`` (``scripts/icorr_robust_prep.py``).
 
 **R. Random smooth utilities.** The fold's sidecar ``RUN/random_utility/<fold>.json`` holds the
@@ -55,21 +55,21 @@ from ..user.smooth_utility import (CENTRE_SALT, LENGTHSCALE, N_FEATURES, RFF_SAL
 
 OOD_USER_SET = "ood"
 #: The decision of 2026-10-19: the
-#: primary O analysis gives each bout its own population-median peak. Same timings, z and
+#: primary O analysis gives each part its own population-median peak. Same timings, z and
 #: answer seeds as "ood"; only the magnitude rule differs. "ood" stays as the labelled
 #: common-peak sensitivity run.
-OOD_PER_BOUT_USER_SET = "ood-pb"
+OOD_PER_PART_USER_SET = "ood-pb"
 #: The second review round's user sets (our design notes, R2
 #: before any code or run; built by ``scripts/icorr_r2_prep.py``, :mod:`prompref.experiment.r2`):
 #: XD's users from other datasets (Fukuchi young and older adults, Reznick level walking and
 #: inclines) and HT's heavy-tailed generator (a) and population-family mixture (b). Each is stored
-#: like the OOD users, in the exported users' schema with its promp_s0 floors.
+#: like the OOD users, in the exported users' schema with its promp_s0 best-profile distances.
 R2_USER_SETS = ("xd-fy", "xd-fo", "xd-r", "ht-gen", "ht-mix")
 #: Values of ``Phase5Point.user_set``; ``None`` is the run's exported users.
-USER_SETS = (OOD_USER_SET, OOD_PER_BOUT_USER_SET) + R2_USER_SETS
+USER_SETS = (OOD_USER_SET, OOD_PER_PART_USER_SET) + R2_USER_SETS
 OOD_DIR = "ood"
 #: Each OOD user set's base directory under the run (an R2 set's is its own name).
-OOD_DIRS = {OOD_USER_SET: OOD_DIR, OOD_PER_BOUT_USER_SET: "ood-pb",
+OOD_DIRS = {OOD_USER_SET: OOD_DIR, OOD_PER_PART_USER_SET: "ood-pb",
             **{name: name for name in R2_USER_SETS}}
 #: Population users per fold.
 OOD_N_POPULATION = 40
@@ -81,12 +81,12 @@ OOD_NU = 10.0
 OOD_MAGNITUDE_CV = 0.26
 #: Device limits of the Schaefer report section 3.6 (paper, Methods), %ST.
 GAP_MIN, GAP_MAX = 10.0, 40.0
-#: How the peak magnitude is set: one magnitude for both bouts, the population median of
+#: How the peak magnitude is set: one magnitude for both parts, the population median of
 #: max |tau*| times (1 + CV z). Written into each OOD users file's config.
 MAGNITUDE_RULE = "single-peak: median over population ideals of max|tau*|, x (1 + cv z), clip [0, 12]"
 #: The ruled primary rule (user set "ood-pb"): extension and flexion peaks each their own
 #: population median, times the same (1 + CV z).
-MAGNITUDE_RULE_PER_BOUT = ("per-bout: extension peak = median over population ideals of -min tau*, "
+MAGNITUDE_RULE_PER_PART = ("per-bout: extension peak = median over population ideals of -min tau*, "
                            "flexion peak = median of max tau*, each x (1 + cv z) with one z per "
                            "user, clip [0, 12]")
 #: Give up on a user after this many rejected timing draws (the expected share is 14 %).
@@ -161,9 +161,9 @@ def draw_peak(rng: np.random.Generator, median_peak_nm: float,
     return peak, z
 
 
-def draw_peaks_per_bout(rng: np.random.Generator, median_ext_nm: float, median_flex_nm: float,
+def draw_peaks_per_part(rng: np.random.Generator, median_ext_nm: float, median_flex_nm: float,
                         cv: float = OOD_MAGNITUDE_CV) -> tuple[float, float, float]:
-    """``(extension peak, flexion peak, z)``: each bout's median times the same ``1 + cv z``,
+    """``(extension peak, flexion peak, z)``: each part's median times the same ``1 + cv z``,
     clipped to [0, TORQUE_LIMIT_NM]. z is the first and only draw, as in :func:`draw_peak`,
     so the same generator gives the same z under both rules."""
     z = float(rng.standard_normal())
@@ -216,15 +216,15 @@ def fold_sequence(fold: str) -> np.random.SeedSequence:
 
 def make_ood_users(fold: str, dist: TimingDistribution, median_peak_nm: float | None,
                    n_population: int = OOD_N_POPULATION, *,
-                   median_peaks_per_bout: tuple[float, float] | None = None) -> list[OodUser]:
+                   median_peaks_per_part: tuple[float, float] | None = None) -> list[OodUser]:
     """The fold's out-of-generator population users, ``<fold>/ood000`` onward, each seeded
     from its own child stream (so user i does not depend on how many draws user i - 1
     rejected).
 
-    The magnitude rule: one common peak ``median_peak_nm`` for both bouts (user set "ood"), or,
-    with ``median_peaks_per_bout = (extension, flexion)``, each bout its own median (user set
+    The magnitude rule: one common peak ``median_peak_nm`` for both parts (user set "ood"), or,
+    with ``median_peaks_per_part = (extension, flexion)``, each part its own median (user set
     "ood-pb"). Timings, z and answer seeds are the same under both rules."""
-    if (median_peak_nm is None) == (median_peaks_per_bout is None):
+    if (median_peak_nm is None) == (median_peaks_per_part is None):
         raise ValueError("give either median_peak_nm (common peak) or median_peaks_per_bout")
     root = fold_sequence(fold)
     draws, answers = child_sequence(root, 0), child_sequence(root, 1)
@@ -234,13 +234,13 @@ def make_ood_users(fold: str, dist: TimingDistribution, median_peak_nm: float | 
         t, rejected = draw_timing(np.random.default_rng(child_sequence(own, 0)), dist)
         magnitude = np.random.default_rng(child_sequence(own, 1))
         seed = int(child_sequence(answers, i).generate_state(1, dtype=np.uint64)[0])
-        if median_peaks_per_bout is None:
+        if median_peaks_per_part is None:
             peak, z = draw_peak(magnitude, median_peak_nm)
             draw = dict(t_pct_st=[float(v) for v in t], peak_nm=peak, z_magnitude=z,
                         rejected_timing_draws=int(rejected))
             curve = schaefer_profile(t, peak)
         else:
-            ext, flex, z = draw_peaks_per_bout(magnitude, *median_peaks_per_bout)
+            ext, flex, z = draw_peaks_per_part(magnitude, *median_peaks_per_part)
             draw = dict(t_pct_st=[float(v) for v in t], peak_ext_nm=ext, peak_flex_nm=flex,
                         z_magnitude=z, rejected_timing_draws=int(rejected))
             curve = schaefer_profile(t, ext, flex)
@@ -263,7 +263,7 @@ def ood_floors_cache_path(run_dir, fold: str, user_set: str = OOD_USER_SET) -> P
 
 def write_ood_users(run_dir, fold: str, users: list[OodUser], floors: list[dict],
                     config: dict, user_set: str = OOD_USER_SET) -> Path:
-    """``RUN/<ood dir>/users/<fold>.{json,npz}`` in the ``users-v1`` schema. ``floors`` are
+    """``RUN/<ood dir>/users/<fold>.{json,npz}`` in the ``users-v1`` schema. ``best-profile distances`` are
     ``user_floors`` entries in user order; ``families`` gets promp_s0's four values."""
     if len(floors) != len(users):
         raise ValueError(f"{len(floors)} floors for {len(users)} users")
@@ -294,7 +294,7 @@ def load_ood_users(run_dir, fold: str, user_set: str = OOD_USER_SET) -> dict:
         raise FileNotFoundError(f"{path} is missing: run scripts/icorr_r2_prep.py --run {run_dir} "
                                 f"--step {user_set} first")
     if not path.exists():
-        magnitude = " --magnitude per-bout" if user_set == OOD_PER_BOUT_USER_SET else ""
+        magnitude = " --magnitude per-bout" if user_set == OOD_PER_PART_USER_SET else ""
         raise FileNotFoundError(f"{path} is missing: run scripts/icorr_robust_prep.py --run "
                                 f"{run_dir} --step ood{magnitude} first")
     return load_fold_users(root, fold)

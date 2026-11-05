@@ -13,7 +13,7 @@ users.
 | Part | Model | Value | Source |
 |---|---|---|---|
 | Users | Each fold holds out one of five walking subjects. The prior comes from the other four, the users from the held-out one. | 5 folds × 40 users = 200 users | Molinaro et al., AB30–AB34 |
-| Preferred profile | $\tau^* = a\,u^- + b\,u^+$, with $u^-$ and $u^+$ the unit extension and flexion bouts of a user's shape | Peaks log-uniform in 3–35 Nm, or both at 12 Nm | Our choice |
+| Preferred profile | $\tau^* = a\,u^- + b\,u^+$, with $u^-$ and $u^+$ the unit extension and flexion parts of a user's shape | Peaks log-uniform in 3–35 Nm, or both at 12 Nm | Our choice |
 | Personal shape | The held-out subject's moment curve, with a personal lag and personal landmark offsets | Lag centre and spreads from the summary statistics of Schäfer et al.'s 11 participants, Student-t with $\nu = 10$ | Schäfer et al., summary only |
 | Distance | $d(c) = \mathrm{RMS}(c - \tau^*)$ over the gait cycle | – | – |
 | Answer | $P(A \succ B) = \lambda/2 + (1-\lambda)\,\Phi\big((d(B) - d(A))/\sigma\big)$ | $\sigma = 1$ Nm, $\lambda = 0.1$ | $\sigma$: see below. $\lambda$: our choice |
@@ -110,11 +110,11 @@ Fig. 4 measures PsyPref against the strongest of the first six, in every row and
 
 | Name in the paper | Name in the code | Searches | Where |
 |---|---|---|---|
-| PsyPref | `psypref` | 8 ProMP weights, in the prior ball from walking data. At 3–35 Nm, as `metric_psypref` inside `TwoBoutGuard` | `prompref/learning/smc.py`, `acquisition.py`, `psychometric.py`; `prompref/experiment/stress.py`, `amp_free.py` |
-| Arens' GP | `g` | 8 ProMP weights, in PsyPref's prior ball | `prompref/learning/gp_ucb.py`, `preference_gp.py` |
-| Arens' GP, generic start, no gate | `g_generic_nogate` | The same, started from generic assistance, without its gate. Fig. 2's comparator at 3–35 Nm | `prompref/experiment/review.py` |
-| LineCoSpar | `d_z` | 8 ProMP weights, in PsyPref's prior ball | `prompref/learning/linecospar.py` |
-| CMA-ES | `cmaes` | 8 ProMP weights, in PsyPref's prior ball. pycma's default population, initial step 1.0 of the prior's scale | `prompref/learning/sortcma.py` |
+| PsyPref | `psypref` | 8 ProMP weights, in the prior's search region from walking data. At 3–35 Nm, as `metric_psypref` inside `TwoPartGuard` | `prompref/learning/smc.py`, `acquisition.py`, `psychometric.py`; `prompref/experiment/stress.py`, `amp_free.py` |
+| Arens' GP | `g` | 8 ProMP weights, in the prior's search region | `prompref/learning/gp_ucb.py`, `preference_gp.py` |
+| Arens' GP from the prior's mean, no gate | `g_generic_nogate` | The same, started from the prior's mean, without its gate. Fig. 2's comparator at 3–35 Nm | `prompref/experiment/review.py` |
+| LineCoSpar | `d_z` | 8 ProMP weights, in the prior's search region | `prompref/learning/linecospar.py` |
+| CMA-ES | `cmaes` | 8 ProMP weights, in the prior's search region. pycma's default population, initial step 1.0 of the prior's scale | `prompref/learning/sortcma.py` |
 | CMA-ES, population 4 | `cmaes4` | The same, with population 4 and initial step 0.5. Fig. 2's comparator at fixed 12 Nm | `prompref/learning/sortcma.py` |
 | CMA-ES, 4–6 param. | `cmaes_sch4` | Schäfer et al.'s family: four timings, plus both peaks in 3–35 Nm. At fixed 12 Nm, the four timings only. Population 4, initial step 0.5 of the prior's scale | `prompref/learning/sortcma.py`, `prompref/experiment/amp_free.py` |
 | GP-BALD | `gp_bald` | 8 ProMP weights. Main condition, $\sigma = 2$ Nm and users from other datasets. Not part of Fig. 4's leads | `prompref/learning/gp_eubo.py` |

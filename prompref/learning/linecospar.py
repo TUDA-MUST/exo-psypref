@@ -30,7 +30,7 @@ Four things this module does that are easy to get wrong:
 - **Every proposal is a real comparison, including the first.** The reference spends its
   first Thompson sample filling an empty buffer. Our harness charges every ``propose``
   against the budget, so the random start point is the first buffer entry -- which is
-  also what a wearer walking the starting gait experiences.
+  also what a simulated user walking the starting gait experiences.
 """
 
 from __future__ import annotations

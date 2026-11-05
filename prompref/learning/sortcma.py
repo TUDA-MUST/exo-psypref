@@ -1,4 +1,4 @@
-"""SortCMA: CMA-ES ranked by the wearer's pairwise answers.
+"""SortCMA: CMA-ES ranked by the simulated user's pairwise answers.
 
 After "Optimizing Algorithms From Pairwise User Preferences" (arXiv 2308.04571, IROS 2023):
 each generation's lambda offspring are sorted with the user as comparator, and the order is
@@ -63,8 +63,8 @@ class SortCMALearner:
         self._finalizer()
 
     def _start_generation(self) -> None:
-        # Each offspring is clipped into the design (the trust ball) before it is shown, and CMA-ES
-        # is later told these same clipped vectors, so it ranks what the wearer saw (review
+        # Each offspring is clipped into the design (the trust search region) before it is shown, and CMA-ES
+        # is later told these same clipped vectors, so it ranks what the simulated user saw (review
         # I2). pycma takes a told vector it did not send through its bounds' inverse and its
         # Mahalanobis-length repair, as for any injected solution.
         self._offspring = [self.design.project(np.asarray(x, dtype=float)) for x in self.es.ask()]
@@ -112,7 +112,7 @@ class SortCMALearner:
 
     def best(self) -> np.ndarray:
         """pycma's documented estimate, ``result.xfavorite``: the distribution mean in phenotype
-        space (``es.mean`` is the genotype, which can lie outside the bounds), ball-clipped."""
+        space (``es.mean`` is the genotype, which can lie outside the bounds), search region-clipped."""
         return self.design.project(np.asarray(self.es.result.xfavorite, dtype=float))
 
     def posterior_summary(self) -> dict:

@@ -1,6 +1,6 @@
 """Held-out users on disk, so Phase 5 sessions never need the Molinaro drive.
 
-A Phase 5a fold file holds each user's factor draw, answer seed, floors and reach radii,
+A Phase 5a fold file holds each user's factor draw, answer seed, best-profile distances and reach radii,
 but not the curve, and rebuilding a curve needs the raw trials on S:. The export runs once
 per fold:
 1. regenerate the fold's users from its own stream and config;

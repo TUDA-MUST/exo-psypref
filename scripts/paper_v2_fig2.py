@@ -20,7 +20,7 @@ comparator and explain the arrow, each placed from the data and checked against 
     name in that panel and "8 weights"), not the three-line "CMA-ES or Arens' GP, 8 weights".
 The label boxes use the widths and heights LaTeX measured for their text at \scriptsize in
 IEEEtran (LABEL_BOX); the script stops if a box comes closer than CLEAR_PT to a curve, the
-comparator's markers, the arrow and its dot, the generic or the ceiling line, or leaves the axis.
+comparator's markers, the arrow and its dot, the generic or the best-profile level line, or leaves the axis.
 
 Variant c (2026-11-02): only fig2c_users.csv and fig2c_meta.csv, for figures/fig2c.tex, whose fourth
 panel draws the share of users at least 1 JND better than generic assistance against comparisons,
@@ -29,8 +29,8 @@ pooled over the settings, instead of the bars at k = 24. Checked against fig2_us
 Post hoc. Preference over generic assistance ("chosen over generic assistance (%)") against
 comparisons k = 0-40 in the three settings 3-12 Nm (medium), 3-35 Nm (wide), fixed 12 Nm, for
   - PsyPref and GP-BALD: FULL's rows (full_sessions.jsonl);
-  - the best published comparator per setting: CMA-ES on the ProMP with population 4 (cmaes4) in medium and
-    fixed 12, Arens' GP with a generic start and no gate (g_generic_nogate) in wide, CMP's rows
+  - the strongest other optimizer comparator per setting: CMA-ES on the ProMP with population 4 (cmaes4) in medium and
+    fixed 12, Arens' GP with a start at the prior's mean and no gate (g_generic_nogate) in wide, CMP's rows
     (cmp_sessions.jsonl);
   - CMA-ES on Schaefer's family in its planned configuration,
     FULL's rows.
@@ -39,7 +39,7 @@ amp_table1.json (1.0 Nm, 0.1); the stored distances[i] is d after i + 1 comparis
 the mean over the 200 users; its 95 % band from 2000 bootstrap draws, users resampled within
 their fold (walking subject), rows sorted by user, one index draw per replicate shared by all
 curves of a setting (the users are paired), fixed seed. k = 0 (the start curve, no session) is
-amp_table1.json's estimate and interval; the ceiling (preference at each user's best 8-weight
+amp_table1.json's estimate and interval; the best-profile level (preference at each user's best 8-weight
 profile) and the first k at which PsyPref's mean reaches the comparator's k = 40 level are
 amp_table1.json's too. The title's distance of generic assistance is the median d0 (Nm) of the
 200 users.
@@ -83,7 +83,7 @@ GP-BALD, amp_table1.json's psypref_minus_points (to 1e-9).
 Outputs (figures/data/):
   fig2_curves_{a,b,c}.csv  k, then per curve the mean and (PsyPref, comparator) band, in %
   fig2_panels.csv          one row per panel: comparator code, Schaefer variant, median d0,
-                           ceiling, comparator's k = 40 level, first k and its interval, the
+                           best-profile level, comparator's k = 40 level, first k and its interval, the
                            direct labels' vertical positions (spread so they do not overlap;
                            fig2.tex uses the last panel's, where the labels stand), the line ends,
                            and the clipped Schaefer curve's k = 0 value and entry k

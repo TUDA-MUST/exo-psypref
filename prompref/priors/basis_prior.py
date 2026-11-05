@@ -6,7 +6,7 @@ and take the mean and covariance of the weights. A K-basis prior is the same rec
 the unchanged ``fit_promp_prior`` with ``VonMisesBasis(K)``, on the same training curves,
 regenerated from the fold's own "training" stream (``scripts/icorr_k_priors.py`` refuses to
 write one unless its K = 8 refit reproduces the stored prior bit for bit). It is stored
-beside the K = 8 prior as ``RUN/priors/<fold>-promp_s0-k<K>``, and its floors as
+beside the K = 8 prior as ``RUN/priors/<fold>-promp_s0-k<K>``, and its best-profile distances as
 ``RUN/users/<fold>-promp_s0-k<K>.json``.
 
 Nothing here edits ``data_prior.py`` or the population package: their hashes are part of
@@ -30,7 +30,7 @@ from ..designs.promp import PrompS0
 from .data_prior import (MAX_FIT_RMS_NM, PROMP_DATA_BOUND_NM, DataPrior, _project_weights,
                          fit_promp_prior, share_at_bound)
 
-#: The script that writes K priors and their floors.
+#: The script that writes K priors and their best-profile distances.
 BASIS_SCRIPT = "scripts/icorr_k_priors.py"
 
 #: The provenance a K prior copies from its fold's K = 8 prior (``fit_fold_priors``'s

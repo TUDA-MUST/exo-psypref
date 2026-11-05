@@ -14,7 +14,7 @@ written; no stored row is changed.
     equals data/fig1_meta.csv's user.
   * Session: FAM's "PsyPref with projection" onto Schaefer et al.'s family (ii) (four timings and
     two free peaks, 6 parameters) in 3-35 Nm, built and run exactly as icorr_amp_fam.run_one
-    builds it (AM with the two-bout guard on the K = 8 ProMP; AF.FamilyLens: each proposal shown
+    builds it (AM with the two-part guard on the K = 8 ProMP; AF.FamilyLens: each proposal shown
     as its device-clipped bounded least-squares fit from the family's initial guess, the previous
     fit and the box centre; PsyPref told the ProMP projection of the curve shown; the delivered
     curve the fit to PsyPref's identified curve). run_session is wrapped for the call only: the
@@ -39,8 +39,8 @@ written; no stored row is changed.
   lam/2 + (1 - lam) Phi((d0 - d24) / s), s = 1 Nm, lam = 0.1), per setting (3-35 Nm = "wide",
   fixed 12 Nm; FAM has no 3-12 Nm) and row:
   * Schaefer et al.'s family ((ii), 6 parameters, in 3-35 Nm; (i), 4, at fixed 12 Nm), Franks et
-    al.'s (8 / 6), PCHIP ((ii) 6 / 4): the family's best profile (ceiling: mean preference at each
-    user's floor, fam_floors.jsonl) and PsyPref with projection onto it (fam_sessions.jsonl). The
+    al.'s (8 / 6), PCHIP ((ii) 6 / 4): the family's best profile (best-profile level: mean preference at each
+    user's best-profile distance, fam_floors.jsonl) and PsyPref with projection onto it (fam_sessions.jsonl). The
     semi-trapezoid, also in FAM, is not drawn: our implementation does not reproduce the torques
     measured by Ramella et al. (scripts/provenance/trap_*.py, paper/notes/trapezoid_check_2026-11-02.md);
   * ProMP (8 weights): the best 8-weight profile and PsyPref on the ProMP itself (FULL's rows,
@@ -50,8 +50,8 @@ written; no stored row is changed.
   within their walking subject): the families' from fam_numbers.json, the
   ProMP row's and CMA-ES's from amp_table1.json (Table I, Fig. 2). Families without a projection
   run (Schaefer (i) and PCHIP (i) with their published fixed peaks in 3-35 Nm; the ProMP with
-  K = 4, 12-24) are not drawn: they carry no PsyPref result. Their ceilings in 3-35 Nm are written to fig3p_text.tex for the caption and the Results text, with the
-  paired ceiling differences to Schaefer (ii) as fam_report.md prints them.
+  K = 4, 12-24) are not drawn: they carry no PsyPref result. Their best-profile levels in 3-35 Nm are written to fig3p_text.tex for the caption and the Results text, with the
+  paired best-profile level differences to Schaefer (ii) as fam_report.md prints them.
   Paired differences at k = 24 (projection minus CMA-ES on Schaefer's family, minus PsyPref on the
   ProMP): point estimates recomputed here, intervals as fam_report.md prints them.
   Axis: one scale (pt per point) for both panels, 45-100 %; the script stops if any drawn value or
@@ -63,9 +63,9 @@ Self-checks (the script stops if one fails):
     exactly;
   * every recomputed estimate equals fam_numbers.json's (1e-12), and the ProMP row and CMA-ES equal
     amp_table1.json's estimates (1e-12) and Fig. 2's data at k = 24 (fig2_curves_b/c.csv,
-    fig2_panels.csv's ceilings; 1e-6 points);
+    fig2_panels.csv's best-profile levels; 1e-6 points);
   * every recomputed paired difference equals fam_report.md's printed value (0.1 point), the
-    paired ceiling differences of Schaefer (ii) minus Schaefer (i) and minus PCHIP (i) in 3-35 Nm
+    paired best-profile level differences of Schaefer (ii) minus Schaefer (i) and minus PCHIP (i) in 3-35 Nm
     too; PFM1's and PFM5's thresholds are read from fam_report.md's prediction lines;
   * every number in fig3p_text.tex is formatted from the checked values (no typed number);
   * the rows' users are the same 200 in every cell, and the paired cells share user, fold, d0;
@@ -77,7 +77,7 @@ Outputs (figures/data/, every file prefixed fig3p_):
                        preferred (the user's preferred profile); delivered (after 24 comparisons)
   fig3p_nodes.csv      profile (1, 2, 3 = delivered), node (1-4), t (% gait cycle), v (Nm)
   fig3p_rows.csv       (b): one row per drawn row, top to bottom: key, parameter counts (np_w,
-                       np_f), per setting (suffix _w 3-35 Nm, _f fixed 12 Nm) the ceiling and
+                       np_f), per setting (suffix _w 3-35 Nm, _f fixed 12 Nm) the best-profile level and
                        PsyPref (%, with lo/hi)
   fig3p_meta.csv       axis ranges (xmin_w, xmin_f, xmax), k, n, s, lapse, CMA-ES (% and
                        interval) per setting, the printed paired differences, the example's
@@ -123,7 +123,7 @@ import icorr_amp_fam as FAM  # noqa: E402
 import icorr_amp_full as FULL  # noqa: E402
 import paper_v2_fig1 as FIG1  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 DEFAULT_CSV = ROOT / "figures" / "data"
 SETTINGS = (("w", "wide"), ("f", "fixed 12"))
@@ -138,7 +138,7 @@ N_USERS = 200
 #: (b)'s axis, %: one scale, 45-100 in both panels
 XMIN = {"wide": 45.0, "fixed 12": 45.0}
 XMAX = 100.0
-PUBLISHED = ("schaefer_i", "pchip_i")   # 3-35 Nm, published fixed peaks: ceilings only (PFM1)
+PUBLISHED = ("schaefer_i", "pchip_i")   # 3-35 Nm, published fixed peaks: best-profile levels only (PFM1)
 EX_SETTING, EX_FAMILY = "wide", "schaefer_ii"
 K_PAIR_MIN, K_ID = 6, 24     # the pair: asked after at least six answers (rule below); delivered after 24
 GLYPH_PAD = 0.06             # the glyphs' y limits: the drawn curves' range +- 6 %
@@ -225,7 +225,7 @@ def replay_report(d: Path) -> tuple[str, dict]:
 
 # ---------------------------------------------------------------- the recorded session
 class InnerRec:
-    """Passes every call to the lens's inner learner (AM behind the two-bout guard) and records
+    """Passes every call to the lens's inner learner (AM behind the two-part guard) and records
     its proposals (ProMP parameters), what it is told (the projections) and its best."""
 
     def __init__(self, inner) -> None:
@@ -419,7 +419,7 @@ def main(argv=None) -> int:
     checks.append("estimates recomputed from the rows equal fam_numbers.json, amp_table1.json "
                   "and Fig. 2's data")
 
-    # ---- (b) 2a. the published fixed-peak families in 3-35 Nm: ceilings only (PFM1)
+    # ---- (b) 2a. the published fixed-peak families in 3-35 Nm: best-profile levels only (PFM1)
     pub = {}
     for family in PUBLISHED:
         fl = cell_floor("wide", family)
@@ -472,7 +472,7 @@ def main(argv=None) -> int:
         fail(f"fam_report.md's verdicts: {verdicts}")
     dtext = {(s, f, o): (e, lo, hi) for s, f, o, _, e, lo, hi in diffs}
 
-    # ---- (b) 3a. paired ceiling differences in 3-35 Nm (fam_report.md's "Ceiling differences")
+    # ---- (b) 3a. paired best-profile level differences in 3-35 Nm (fam_report.md's "Best-profile level differences")
     cpat = re.compile(r"^- \('(\w+)', '(\w+)'\): ([+-]\d+\.\d) \[([+-]\d+\.\d), ([+-]\d+\.\d)\]$")
     cprinted = {}
     for line in md_stored.split("## Ceiling differences", 1)[-1].splitlines():
@@ -604,7 +604,7 @@ def main(argv=None) -> int:
         for sfx, setting in SETTINGS:
             e = est[setting, key]
             # everything drawn lies inside its panel: the bar (generic assistance, 50 %, to the
-            # ceiling), PsyPref and its interval
+            # best-profile level), PsyPref and its interval
             for what in ("ceil", "psy", "psy_lo", "psy_hi"):
                 if not XMIN[setting] <= e[what] <= XMAX:
                     fail(f"{setting} {key} {what} {e[what]:.2f} outside {XMIN[setting]}-{XMAX}")
@@ -657,7 +657,7 @@ def main(argv=None) -> int:
     for s, f in (("wide", "schaefer_ii"), ("fixed 12", "schaefer_i")):
         if float(dtext[s, f, CMA][1]) <= 0:
             fail(f"{s}: PsyPref with projection is not ahead of CMA-ES (paired interval)")
-    # PFM1 as the text words it: both published ceilings above the threshold, PCHIP (i) less and
+    # PFM1 as the text words it: both published best-profile levels above the threshold, PCHIP (i) less and
     # Schaefer (i) at least the predicted points below Schaefer (ii)
     if not (pub["schaefer_i"]["ceil"] > pfm1_ceil and pub["pchip_i"]["ceil"] > pfm1_ceil):
         fail("the text says both published fixed-peak ceilings lie above PFM1's threshold")
@@ -712,7 +712,7 @@ def main(argv=None) -> int:
         # the example (a)
         "pjExKpair": str(k_pair),
     }
-    text_lines = ["% fig3p_text.tex: written by scripts/paper_v2_fig3p.py (amp-free worktree); do not edit "
+    text_lines = ["% fig3p_text.tex: written by scripts/paper_v2_fig3p.py (repository); do not edit "
                   "by hand.",
                   "% Every number of Fig. 3's caption and the draft Results paragraph, formatted from "
                   "values the script checked",
@@ -724,7 +724,7 @@ def main(argv=None) -> int:
     prov = [
         ["(b) ceilings and PsyPref with projection, estimates",
          "recomputed from out/icorr/amp_free/fam_floors.jsonl and fam_sessions.jsonl; equal to fam_numbers.json"],
-        ["(b) their 95 % intervals", "fam_numbers.json (registration FAM, report regenerated identically here)"],
+        ["(b) their 95 % intervals", "fam_numbers.json (test plan FAM, report regenerated identically here)"],
         ["(b) ProMP row and CMA-ES on Schaefer's family",
          "recomputed from full_sessions.jsonl (psypref, cmaes_sch4) and fam_floors.jsonl (promp8); "
          "intervals amp_table1.json (Table I); equal to Fig. 2's fig2_curves_b/c.csv and fig2_panels.csv"],

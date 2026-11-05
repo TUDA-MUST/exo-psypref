@@ -6,7 +6,7 @@ with a learned perceptual metric (S2).
 
     P(A > B) = lam/2 + (1 - lam) Phi(Delta / ell^2),  Delta = 1/2 (|z_B - z*|^2 - |z_A - z*|^2),
 
-with the identity metric in the whitened coordinates z. PsyPref-M replaces the identity by a metric
+with the identity metric in the normalized coordinates z. PsyPref-M replaces the identity by a metric
 ``M_c`` that weights the gait phases by
 
     w_c(phi) = exp(sum_j c_j f_j(phi)) / mean_phi exp(sum_j c_j f_j(phi)),
@@ -26,7 +26,7 @@ phase weighting's change *relative to* the uniform weighting, carried over to A'
 where ``G_w = J^T diag(w) J / N`` and ``Q^T Q / N = I``. The symmetric root is the one choice that
 does not depend on how the z coordinates are ordered or rotated. Where A's metric is the curve
 metric (``G_1 = I``), ``M_c`` is exactly the weighted curve metric ``G_w``. The mean-1 normalisation
-of ``w_c`` keeps the overall scale with ``ell``, as the wearers' weights are normalised.
+of ``w_c`` keeps the overall scale with ``ell``, as the simulated users' weights are normalised.
 
 **Exact reduction.** ``Delta`` is computed as A's ``Delta`` plus a correction that is linear in
 ``w_c - 1``. At ``c = 0`` the weight is 1 exactly, the correction is 0.0 exactly, and every
@@ -48,7 +48,7 @@ from ..learning.acquisition import P_FLOOR, TRIM_QUANTILE, _log_det_cov, trim_ma
 from ..learning.candidates import (candidate_duels, clip_into_region, coordinate_directions,
                                    step_region, truncate_duel)
 from ..learning.psychometric import _STREAM_SALT, PROBE_LEVELS, PsychometricLearner
-from ..learning.smc import BowlPrior, SMCPosterior, log_prior
+from ..learning.smc import IdealPointPrior, SMCPosterior, log_prior
 from ..user.phase_weight import harmonic_basis
 
 #: PsyPref-M's phase weighting: Fourier harmonics 1-2, 4 coefficients, prior SD 0.5.
@@ -91,13 +91,13 @@ class PhaseMetric:
     @classmethod
     def from_space(cls, space) -> "PhaseMetric":
         """The metric of a ProMP learner space: ``J = Phi U diag(sqrt(eigenvalues))``, the basis
-        matrix times the whitening's map from z to weights (the device clip is left out, as A's
-        bowl leaves it out)."""
+        matrix times the normalization's map from z to weights (the device clip is left out, as A's
+        ideal-point model leaves it out)."""
         basis = space.design.basis
-        whitening = space.whitening
-        if whitening.d != whitening.mu.size:
+        normalization = space.normalization
+        if normalization.d != normalization.mu.size:
             raise ValueError("PsyPref-M needs a full-rank whitening (d = number of weights)")
-        jac = np.asarray(basis.design, dtype=float) @ (whitening._u * whitening._scale)
+        jac = np.asarray(basis.design, dtype=float) @ (normalization._u * normalization._scale)
         return cls(jac)
 
     def weights(self, coef: np.ndarray) -> np.ndarray:
@@ -127,7 +127,7 @@ class PhaseMetric:
         return 0.5 * (excess @ (b * b - a * a).T) - (excess * s) @ (b - a).T
 
 
-def bowl_part(x: np.ndarray, d: int) -> np.ndarray:
+def ideal_point_part(x: np.ndarray, d: int) -> np.ndarray:
     """A's own particle columns ``(z*, log ell, logit lam)`` as a C-contiguous (n, d + 2) array, laid
     out exactly as A's particles are, so every computation on them matches A's bit for bit."""
     return np.ascontiguousarray(np.atleast_2d(x)[:, :d + 2])
@@ -142,7 +142,7 @@ def metric_per_duel_log_likelihood(x: np.ndarray, z_a: np.ndarray, z_b: np.ndarr
     z_a, z_b = np.atleast_2d(z_a), np.atleast_2d(z_b)
     prefers_a = np.atleast_1d(np.asarray(prefers_a, dtype=bool))
     d = z_a.shape[1]
-    xa = bowl_part(x, d)
+    xa = ideal_point_part(x, d)
     z_star, log_ell, t = xa[:, :d], xa[:, d], xa[:, d + 1]
     delta = (z_star @ (z_a - z_b).T
              - 0.5 * (np.sum(z_a * z_a, axis=1) - np.sum(z_b * z_b, axis=1))[None, :])
@@ -167,10 +167,10 @@ def metric_expected_information_gain(x: np.ndarray, w: np.ndarray, d: int, z_a: 
     x = np.atleast_2d(np.asarray(x, dtype=float))
     w = np.asarray(w, dtype=float)
     if trim is not None:
-        keep = trim_mask(bowl_part(x, d), w, d, trim)
+        keep = trim_mask(ideal_point_part(x, d), w, d, trim)
         x, w = x[keep], w[keep]
         w = w / w.sum()
-    xa = bowl_part(x, d)
+    xa = ideal_point_part(x, d)
     zs = xa[:, :d]
     outer = (zs[:, :, None] * zs[:, None, :]).reshape(len(zs), d * d)
     probs = np.exp(metric_per_duel_log_likelihood(x, z_a, z_b, np.ones(len(np.atleast_2d(z_a)),
@@ -193,7 +193,7 @@ class MetricPosterior(SMCPosterior):
     A in everything but the metric (its sessions then reproduce A's)."""
 
     def __init__(self, d: int, rng: np.random.Generator, metric: PhaseMetric,
-                 n_particles: int = 4000, prior: BowlPrior = BowlPrior(),
+                 n_particles: int = 4000, prior: IdealPointPrior = IdealPointPrior(),
                  n_moves: int | None = None, ess_fraction: float = 0.5,
                  free_metric: bool = True) -> None:
         super().__init__(d, rng, n_particles=n_particles, prior=prior, n_moves=n_moves,
@@ -217,7 +217,7 @@ class MetricPosterior(SMCPosterior):
 
     def log_target(self, x: np.ndarray) -> np.ndarray:
         x = np.atleast_2d(x)
-        lp = log_prior(bowl_part(x, self.d), self.d, self.prior)
+        lp = log_prior(ideal_point_part(x, self.d), self.d, self.prior)
         coef = x[:, self.d + 2:]
         lp = lp - 0.5 * np.sum(coef * coef, axis=1) / METRIC_PRIOR_SD**2
         if self._prefers_a:
@@ -256,7 +256,7 @@ class MetricPosterior(SMCPosterior):
                 proposal = self.x + self.rng.normal(size=self.x.shape) @ chol.T
             else:
                 proposal = self.x.copy()
-                proposal[:, :free] = (bowl_part(self.x, self.d)
+                proposal[:, :free] = (ideal_point_part(self.x, self.d)
                                       + self.rng.normal(size=(self.n, free)) @ chol.T)
             candidate = self.log_target(proposal)
             accept = np.log(self.rng.random(self.n)) < candidate - current
@@ -266,12 +266,12 @@ class MetricPosterior(SMCPosterior):
 
     def mean(self) -> np.ndarray:
         w = self.weights()
-        return np.concatenate([w @ bowl_part(self.x, self.d), w @ self.coef()])
+        return np.concatenate([w @ ideal_point_part(self.x, self.d), w @ self.coef()])
 
     def sd(self) -> np.ndarray:
         w = self.weights()
         parts = []
-        for block in (bowl_part(self.x, self.d), np.ascontiguousarray(self.coef())):
+        for block in (ideal_point_part(self.x, self.d), np.ascontiguousarray(self.coef())):
             m = w @ block
             parts.append(np.sqrt(w @ (block - m) ** 2))
         return np.concatenate(parts)
@@ -282,7 +282,7 @@ class MetricLearner(PsychometricLearner):
     and its likelihood in the update, the acquisition and the one-step predictive."""
 
     def __init__(self, design, seed: int = 0, *, space, n_particles: int = 4000,
-                 prior: BowlPrior = BowlPrior(), metric: PhaseMetric | None = None,
+                 prior: IdealPointPrior = IdealPointPrior(), metric: PhaseMetric | None = None,
                  free_metric: bool = True, **kwargs) -> None:
         if "duels" in kwargs:
             raise ValueError("PsyPref-M is A with EIG duels")
@@ -321,7 +321,7 @@ class MetricLearner(PsychometricLearner):
         if z_a is not None:
             kind, multiple = "probe", k
         else:
-            cands = candidate_duels(bowl_part(post.x, own.d), post.weights(), own, duel, rng,
+            cands = candidate_duels(ideal_point_part(post.x, own.d), post.weights(), own, duel, rng,
                                     ell_hat=ell, max_mult=self.max_mult,
                                     directions=self.duel_directions, **region)
             trim = TRIM_QUANTILE if self.prior.nu is not None else None

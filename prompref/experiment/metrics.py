@@ -16,7 +16,7 @@ from typing import Sequence
 import numpy as np
 from scipy.optimize import minimize
 
-from ..user.oracle import rms_distance
+from ..user.simulated_user import rms_distance
 
 
 def design_floor(design, ideal_nm: np.ndarray, n_starts: int = 40,
@@ -78,8 +78,8 @@ def n90(distances: Sequence[float], d_prior: float, d_floor: float) -> int | Non
     return None
 
 
-#: Below this (Nm RMS) the floor is treated as degenerate and ``delivered_over_floor``
-#: is not reported at all. A floor this small means the ideal is *exactly* reachable by
+#: Below this (Nm RMS) the best-profile distance is treated as degenerate and ``delivered_over_floor``
+#: is not reported at all. A best-profile distance this small means the ideal is *exactly* reachable by
 #: the family -- which is true of any stand-in ideal drawn from the family being tuned,
 #: as ``sweep._ideal_for`` currently does.
 DEGENERATE_FLOOR_NM = 1e-6
@@ -90,7 +90,7 @@ def summarise_run(distances: Sequence[float], d_prior: float,
     """One run's scores, ready to be written as a JSONL row.
 
     ``delivered_over_floor`` is ``None``, not ``inf`` and not a large finite number,
-    whenever ``d_floor`` is degenerate. With a floor at ~1e-9 the ratio is nothing but
+    whenever ``d_floor`` is degenerate. With a best-profile distance at ~1e-9 the ratio is nothing but
     the optimiser's residual -- it came out around 1e8 -- and a number like that is worse
     than a missing one, because it looks like a measurement and can be averaged,
     plotted and compared. ``None`` cannot. The ratio becomes meaningful again once a

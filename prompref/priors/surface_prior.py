@@ -2,8 +2,8 @@
 
 Each surface family PsyPref's proposals can be projected onto needs, beside its box, a Gaussian
 prior: the projection's fitter starts one of its three fits at the prior mean,
-and the floors (``prompref.population.users.user_floors``) draw their starts from it and
-tie-break toward it. They offer the ``design`` / ``whitening`` / ``space(radius)`` interface
+and the best-profile distances (``prompref.population.users.user_floors``) draw their starts from it and
+tie-break toward it. They offer the ``design`` / ``normalization`` / ``space(radius)`` interface
 of ``FranksPrior`` and ``TimingPrior``, so ``arm_space`` takes them as it takes those.
 
 - ``schaefer_peaks``, Schaefer et al.'s family with free peaks (P, family (ii)): the four
@@ -15,7 +15,7 @@ of ``FranksPrior`` and ``TimingPrior``, so ``arm_space`` takes them as it takes 
   max(0, -min) and the flexion peak max(0, max), each at most 12 Nm. Timings and peaks are
   independent in the prior (block-diagonal covariance).
 - ``trapezoid_surface``, Ramella et al.'s semi-trapezoid: the moment-matched Gaussian of its own
-  box (``flat_whitening``), the whitening C1's floors were computed with. Ramella's box is the
+  box (``flat_normalization``), the normalization C1's best-profile distances were computed with. Ramella's box is the
   family as published; no population knowledge is added.
 
 ``prompref/priors/data_prior.py`` and ``prompref/population/`` are not touched.
@@ -29,11 +29,11 @@ from pathlib import Path
 
 import numpy as np
 
-from ..designs.pchip_park import PUBLISHED_HIGH, PUBLISHED_LOW, PchipDesign, bout_width
+from ..designs.pchip_park import PUBLISHED_HIGH, PUBLISHED_LOW, PchipDesign, part_width
 from ..designs.schaefer_peaks import PEAK_HIGH, SchaeferPeaksDesign, representative
 from ..designs.trapezoid_surface import TrapezoidSurface
 from ..population.curves import physics_clip
-from ..prior import Whitening
+from ..prior import Normalization
 
 #: Families whose box is stored with their prior.
 BOXED = ("pchip",)
@@ -77,13 +77,13 @@ class SurfacePrior:
             return PchipDesign(self.low, self.high, prior=(self.mu, self.sigma))
         return SURFACE_DESIGNS[self.family](prior=(self.mu, self.sigma))
 
-    def whitening(self) -> Whitening:
-        return Whitening(self.mu, self.sigma, self.mu.size)
+    def normalization(self) -> Normalization:
+        return Normalization(self.mu, self.sigma, self.mu.size)
 
     def space(self, radius: float):
         from ..learning.space import LearnerSpace
 
-        return LearnerSpace(self.design(), self.whitening(), float(radius))
+        return LearnerSpace(self.design(), self.normalization(), float(radius))
 
     def save(self, path) -> None:
         payload = dict(family=self.family, mu=self.mu.tolist(), sigma=self.sigma.tolist(),
@@ -156,19 +156,19 @@ def pchip_features(curves) -> np.ndarray:
         tflexp = float(i_flex) if float(i_flex) > textp else float(i_flex) + 100.0
         if tflexp >= textp + 100.0:
             tflexp -= 100.0
-        out.append([tflexp, bout_width(c, i_flex, 1.0), textp, bout_width(c, i_ext, -1.0),
+        out.append([tflexp, part_width(c, i_flex, 1.0), textp, part_width(c, i_ext, -1.0),
                     min(max(float(c[i_flex]), 0.0), PEAK_HIGH),
                     min(max(-float(c[i_ext]), 0.0), PEAK_HIGH)])
     return np.array(out)
 
 
-#: a bout is readable when its region is 4-95 %GC wide and its peak at least 0.5 Nm.
+#: a part is readable when its region is 4-95 %GC wide and its peak at least 0.5 Nm.
 READABLE_WIDTH = (4.0, 95.0)
 READABLE_PEAK_NM = 0.5
 
 
-def two_bouts_readable(feats) -> np.ndarray:
-    """Per row of :func:`pchip_features`, whether both bouts can be read off the curve."""
+def two_parts_readable(feats) -> np.ndarray:
+    """Per row of :func:`pchip_features`, whether both parts can be read off the curve."""
     f = np.atleast_2d(np.asarray(feats, dtype=float))
     widths, peaks = f[:, [1, 3]], f[:, [4, 5]]
     return (np.all((widths >= READABLE_WIDTH[0]) & (widths <= READABLE_WIDTH[1]), axis=1)
@@ -185,8 +185,8 @@ def pchip_prior(promp_prior, fold: str, *, n_draws: int = 2000, seed=0) -> Surfa
     design = promp_prior.design()
     curves = [physics_clip(design.curve(w)) for w in design.sample_prior(rng, int(n_draws))]
     all_feats = pchip_features(curves)
-    # quantities are read only off draws in which both bouts are readable.
-    readable = two_bouts_readable(all_feats)
+    # quantities are read only off draws in which both parts are readable.
+    readable = two_parts_readable(all_feats)
     feats = all_feats[readable]
     lo_q, hi_q = np.percentile(feats, PCHIP_COVER, axis=0)
     low = np.minimum(np.r_[PUBLISHED_LOW[:4], 0.0, 0.0], np.r_[lo_q[:4], 0.0, 0.0])

@@ -24,7 +24,7 @@ from ..designs.promp import PrompS0
 from ..population.factors import FactorSwitches, ShiftSpread, TimingSpread
 from ..population.folds import child_sequence
 from ..population.generator import TrainingSet, generate_training_curves
-from ..prior import Whitening
+from ..prior import Normalization
 
 FAMILIES = ("promp_s0", "dual_gauss")
 MAX_FIT_RMS_NM = 0.5
@@ -72,8 +72,8 @@ class DataPrior:
         self.mu = np.asarray(self.mu, dtype=float)
         self.sigma = np.asarray(self.sigma, dtype=float)
 
-    def whitening(self) -> Whitening:
-        return Whitening(self.mu, self.sigma, self.mu.size)
+    def normalization(self) -> Normalization:
+        return Normalization(self.mu, self.sigma, self.mu.size)
 
     def design(self) -> PrompS0 | DualGaussDesign:
         if self.family == "promp_s0":
@@ -81,18 +81,18 @@ class DataPrior:
         return DualGaussDesign(prior=(self.mu, self.sigma), **self.design_kwargs)
 
     def space(self, radius: float):
-        """The learner space of this prior: its design, *this* whitening, and ``radius``.
+        """The learner space of this prior: its design, *this* normalization, and ``radius``.
 
         Final review I2: 5b and 5c must build learners here, never with
         ``LearnerSpace.build(prior.design)``. For every family but PrompS0,
         ``learner_prior`` takes the moments of 4000 box-clipped prior draws, so the
         dual-Gaussian space would get a shrunken mu and Sigma (mu off by up to 0.19, eigenvalue
-        ratios 0.81-0.99) and radii that do not match the 5a diagnostics. One whitening per
+        ratios 0.81-0.99) and radii that do not match the 5a diagnostics. One normalization per
         fold and family serves 5a, 5b and 5c.
         """
         from ..learning.space import LearnerSpace
 
-        return LearnerSpace(self.design(), self.whitening(), float(radius))
+        return LearnerSpace(self.design(), self.normalization(), float(radius))
 
     def save(self, stem) -> None:
         # Build file names by appending, not by Path.with_suffix:

@@ -1,6 +1,6 @@
 """Two split Gaussians on the circular gait cycle.
 
-An extension bout (negative) and a flexion bout (positive), each with an amplitude, a
+An extension part (negative) and a flexion part (positive), each with an amplitude, a
 peak time, and separate rise and fall widths -- so a fast rise with a slow release is
 expressible. Parameters are transformed so a Gaussian or Student-t prior over them makes
 sense: log amplitudes, log widths, and peak times as offsets from population reference

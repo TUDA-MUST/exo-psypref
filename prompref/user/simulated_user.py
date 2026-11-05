@@ -1,9 +1,9 @@
 """The simulated observer: a utility over curves plus a psychometric response model.
 
 Utility levels are selected by fields rather than subclasses:
-``asymmetry`` and ``plateau_nm`` give the wrong-family oracle O3, ``familiarity_weight``
-plus ``habitual_nm`` give the familiarity-bias oracle O6, and the plain settings give the
-curve-L2 oracle O2.
+``asymmetry`` and ``plateau_nm`` give the wrong-family simulated user O3, ``familiarity_weight``
+plus ``habitual_nm`` give the familiarity-bias simulated user O6, and the plain settings give the
+curve-L2 simulated user O2.
 
 Three modelling decisions worth stating:
 
@@ -28,14 +28,14 @@ Three modelling decisions worth stating:
   utility is still linear in the (single) distance, so ``s`` still carries the slope and
   stays in Nm.
 
-Phase 5e adds two wearers who do not judge by A's own model, and a device that
+Phase 5e adds two simulated users who do not judge by A's own model, and a device that
 does not deliver exactly what it is told:
 
 - ``metric="landmark"`` judges four features of a curve -- the extension and flexion peaks'
   magnitude and timing -- each in literature JNDs, and maps one feature-JND to one RMS-JND.
 - ``metric="weber"`` keeps the RMS utility but widens the per-duel scale with the torque
   shown, after the Hatzfeld form JND = k (RMS + a).
-- ``device_noise_nm`` perturbs each curve the wearer feels with smooth noise from its own
+- ``device_noise_nm`` perturbs each curve the simulated user feels with smooth noise from its own
   generator. Only the observer sees it: learners propose parameters, and the session scores
   the identified curve against the ideal without it.
 
@@ -43,19 +43,19 @@ does not deliver exactly what it is told:
 
 The ICORR reframe's robustness tests add two more:
 
-- ``utility_divisor`` divides the landmark wearer's utility by its cell's decisiveness ratio,
-  so it answers as decisively as the plain s = 1.0 RMS wearer (the home-advantage test at
+- ``utility_divisor`` divides the landmark simulated user's utility by its cell's decisiveness ratio,
+  so it answers as decisively as the plain s = 1.0 RMS simulated user (the home-advantage test at
   matched decisiveness). 1.0 leaves the utility untouched, and every earlier path skips it.
 - ``metric="random_smooth"`` answers by a random smooth utility of the curve's Fourier
   features (:mod:`prompref.user.smooth_utility`), given as ``smooth_utility``.
 
-The phase-weighted wearers of the same section (W-bio, W-pref) add one more, off by default:
+The phase-weighted simulated users of the same section (W-bio, W-pref) add one more, off by default:
 
 - ``metric="phase_weighted"`` judges by the phase-weighted RMS distance
   ``d_w = sqrt(mean_phi w(phi) (tau - tau*)^2)`` to the target, with ``phase_weight`` the weight
   curve on the curve's grid (mean 1 over all its points, as ``rms_distance`` averages them), and
   multiplies it by ``utility_scale``, the per-user matched-decisiveness scale. With ``w = 1`` and a
-  scale of 1 it is the RMS wearer. Every other metric skips both fields.
+  scale of 1 it is the RMS simulated user. Every other metric skips both fields.
 
 The stress tests of the same section add two
 answer models, both off by default:
@@ -63,10 +63,10 @@ answer models, both off by default:
 - ``link`` replaces the probit of a duel by a logistic ("logistic"), a Student-t with 3 degrees
   of freedom ("student_t") or, for the second review round's HT (c), a Cauchy ("cauchy", Student-t
   with 1 degree of freedom) at the scale ``s * link_scale``. ``link_scale`` is measured once so that
-  the median |p - 1/2| on prior-scale pairs equals the plain s = 1.0 wearer's. "probit" (the
+  the median |p - 1/2| on prior-scale pairs equals the plain s = 1.0 simulated user's. "probit" (the
   default) never reads ``link_scale``.
 - ``no_pref_hard`` turns the "no preference" band of ``allow_no_preference`` into a hard rule on
-  the wearer's true utility difference: an attentive wearer answers "no preference" exactly when
+  the simulated user's true utility difference: an attentive simulated user answers "no preference" exactly when
   ``|u_A - u_B| < no_pref_threshold * s``, and otherwise answers by the probit; a lapse is a coin
   flip between A and B, as without the band. False (the default) keeps our design notes's soft band, where
   the noisy difference falls inside the band and the lapse is spread over all three answers.
@@ -88,11 +88,11 @@ from .jnd import true_jnd
 #: Response codes.
 PREFER_A, PREFER_B, NO_PREFERENCE = 0, 1, 2
 
-#: How the wearer compares two curves. "rms" is A's own model. "random_smooth" is
+#: How the simulated user compares two curves. "rms" is A's own model. "random_smooth" is
 #: the random smooth utility.
 METRICS = ("rms", "landmark", "weber", "random_smooth", "phase_weighted")
 RANDOM_SMOOTH = "random_smooth"
-#: The ICORR reframe's phase-weighted wearers.
+#: The ICORR reframe's phase-weighted simulated users.
 PHASE_WEIGHTED = "phase_weighted"
 #: A phase weight's mean must be 1 to within this.
 PHASE_WEIGHT_MEAN_TOL = 1e-9
@@ -103,18 +103,18 @@ PHASE_WEIGHT_MEAN_TOL = 1e-9
 #: this static value by default, 0.25 in the walking-calibrated cell,
 #: because walking thresholds are 3-4x the static ones.
 LANDMARK_MAG_FRACTION = 0.10
-#: The magnitude JND never falls below this, in Nm (E4b): max(|peak| x fraction, floor). A
-#: floor on the JND itself, so a near-zero peak cannot get a vanishing JND. It replaces the
-#: earlier 0.1 Nm floor on the *peak*, which left a JND of 0.01 Nm.
+#: The magnitude JND never falls below this, in Nm (E4b): max(|peak| x fraction, best-profile distance). A
+#: best-profile distance on the JND itself, so a near-zero peak cannot get a vanishing JND. It replaces the
+#: earlier 0.1 Nm best-profile distance on the *peak*, which left a JND of 0.01 Nm.
 LANDMARK_MAG_FLOOR_NM = 0.5
 LANDMARK_TIME_JND_PCT = 2.8
 #: Points within this of a curve's extremum are tied with it. A peak clipped at the device
 #: limit is a plateau: 91 of the 264 users exported for the six Phase 5 folds touch +-12 Nm,
 #: with up to 37 of the cycle's 100 points at the limit.
 LANDMARK_TIE_NM = 1e-9
-#: A curve whose maximum is at most this has no flexion bout, and one whose minimum is at
-#: least minus this has no extension bout: that bout's peak has no timing.
-LANDMARK_BOUT_NM = 0.05
+#: A curve whose maximum is at most this has no flexion part, and one whose minimum is at
+#: least minus this has no extension part: that part's peak has no timing.
+LANDMARK_PART_NM = 0.05
 
 #: Weber observer (E4): s_eff = s (RMS_pair + a) / (RMS_typ + a). RMS_typ is the
 #: population-median RMS of the ideals, so s_eff equals s at typical torque.
@@ -127,7 +127,7 @@ WEBER_RMS_TYP_NM = 4.83
 #: Device noise (E5): a random Fourier series over these harmonics of the gait cycle.
 NOISE_HARMONICS = (1, 2, 3, 4)
 
-#: ICORR stress test S5: the duel's link. "probit" is every earlier wearer's. "cauchy" is the
+#: ICORR stress test S5: the duel's link. "probit" is every earlier simulated user's. "cauchy" is the
 #: second review round's heavy-tailed answers (our design notes, R2, HT (c), planned
 #: 2026-10-22 before any code or run): Student-t noise with one degree of freedom.
 LINKS = ("probit", "logistic", "student_t", "cauchy")
@@ -238,9 +238,9 @@ def landmark_distance(curve: np.ndarray, target: np.ndarray,
     least half a newton metre; timing differences wrap round the cycle, so a peak at 98 %GC
     and one at 1 %GC are 3 %GC apart.
 
-    A bout's timing term needs that bout in both curves: a curve whose
-    maximum is at most :data:`LANDMARK_BOUT_NM` has no flexion bout, and one whose minimum
-    is at least ``-LANDMARK_BOUT_NM`` has no extension bout. Without it, the bout's
+    A part's timing term needs that part in both curves: a curve whose
+    maximum is at most :data:`LANDMARK_PART_NM` has no flexion part, and one whose minimum
+    is at least ``-LANDMARK_PART_NM`` has no extension part. Without it, the part's
     magnitude term stays, against the target's peak with the same JND.
     """
     c_ext, c_ext_pct, c_flex, c_flex_pct = landmark_features(curve)
@@ -248,10 +248,10 @@ def landmark_distance(curve: np.ndarray, target: np.ndarray,
     ext_jnd = max(abs(t_ext) * mag_fraction, LANDMARK_MAG_FLOOR_NM)
     flex_jnd = max(abs(t_flex) * mag_fraction, LANDMARK_MAG_FLOOR_NM)
     terms = [(c_ext - t_ext) / ext_jnd]
-    if c_ext < -LANDMARK_BOUT_NM and t_ext < -LANDMARK_BOUT_NM:
+    if c_ext < -LANDMARK_PART_NM and t_ext < -LANDMARK_PART_NM:
         terms.append(_wrap_pct(c_ext_pct - t_ext_pct) / LANDMARK_TIME_JND_PCT)
     terms.append((c_flex - t_flex) / flex_jnd)
-    if c_flex > LANDMARK_BOUT_NM and t_flex > LANDMARK_BOUT_NM:
+    if c_flex > LANDMARK_PART_NM and t_flex > LANDMARK_PART_NM:
         terms.append(_wrap_pct(c_flex_pct - t_flex_pct) / LANDMARK_TIME_JND_PCT)
     return float(np.sqrt(sum(term * term for term in terms)))
 
@@ -284,8 +284,8 @@ def smooth_noise(rng: np.random.Generator, rms_nm: float, n_points: int = N_PHAS
 def squared_distance_hessian(basis: VonMisesBasis) -> np.ndarray:
     """``2 Phi^T Phi / N`` -- the Hessian of ``d^2(w)`` in basis-weight space.
 
-    A curve distance is exactly a quadratic bowl in weight space. That is the geometric
-    fact the bowl-shaped preference model rests on, and it is what the Phase 1 gate
+    A curve distance is exactly a quadratic ideal-point model in weight space. That is the geometric
+    fact the ideal-point model-shaped preference model rests on, and it is what the Phase 1 gate
     checks. Note it is the *squared* distance that is quadratic; the Hessian of the norm
     itself is not the Gram matrix, which is why the utility stays linear in distance.
     """
@@ -294,7 +294,7 @@ def squared_distance_hessian(basis: VonMisesBasis) -> np.ndarray:
 
 @dataclass
 class Observer:
-    """A simulated wearer who prefers whichever curve sits closer to their ideal.
+    """A simulated simulated user who prefers whichever curve sits closer to their ideal.
 
     ``order_bias`` and ``no_pref_threshold`` (its ``c``)
     are both **in units of ``s``**, not in Nm, and both are multiplied by ``s`` before
@@ -320,9 +320,9 @@ class Observer:
     no_pref_threshold: float = 0.5
     asymmetry: float = 1.0
     plateau_nm: float = 0.0
-    #: Phase 5e: how the wearer compares curves, one of :data:`METRICS`.
+    #: Phase 5e: how the simulated user compares curves, one of :data:`METRICS`.
     metric: str = "rms"
-    #: Phase 5e: RMS in Nm of the smooth noise added to each curve the wearer
+    #: Phase 5e: RMS in Nm of the smooth noise added to each curve the simulated user
     #: feels, drawn from ``noise_rng`` -- a generator of its own, so the answer stream is
     #: consumed exactly as without noise.
     device_noise_nm: float = 0.0
@@ -337,14 +337,14 @@ class Observer:
     #: ICORR reframe, random smooth utility: a callable curve -> utility (already scaled),
     #: required by ``metric="random_smooth"`` and read by nothing else.
     smooth_utility: object | None = None
-    #: ICORR reframe, phase-weighted wearers: the weight curve w(phi) on the curve's grid (mean 1,
+    #: ICORR reframe, phase-weighted simulated users: the weight curve w(phi) on the curve's grid (mean 1,
     #: periodic), required by ``metric="phase_weighted"`` and read by nothing else.
     phase_weight: np.ndarray | None = None
-    #: ICORR reframe, phase-weighted wearers: the per-user matched-decisiveness scale the weighted
+    #: ICORR reframe, phase-weighted simulated users: the per-user matched-decisiveness scale the weighted
     #: distance is multiplied by. Only ``metric="phase_weighted"`` reads it; 1.0 elsewhere.
     utility_scale: float = 1.0
     #: ICORR stress test S5: the duel's link, one of :data:`LINKS`, at the scale
-    #: ``s * link_scale``. "probit" reads neither and is every earlier wearer.
+    #: ``s * link_scale``. "probit" reads neither and is every earlier simulated user.
     link: str = "probit"
     link_scale: float = 1.0
     #: ICORR stress test S7: the hard "no preference" rule (module docstring). Needs
@@ -430,7 +430,7 @@ class Observer:
             self.effective_ideal_nm = (self.ideal_nm + w * self.habitual_nm) / (1.0 + w)
         else:
             # No arithmetic here: familiarity_weight=0 must reduce to ideal_nm exactly,
-            # bit-for-bit, since every other oracle variant (O2, O3) depends on it.
+            # bit-for-bit, since every other simulated user variant (O2, O3) depends on it.
             self.effective_ideal_nm = self.ideal_nm
 
     def utility(self, curve: np.ndarray) -> float:
@@ -479,10 +479,10 @@ class Observer:
         return landmark_distance(curve, self.effective_ideal_nm, self.landmark_mag_fraction)
 
     def own_distance(self, curve: np.ndarray) -> float:
-        """The wearer's own distance of ``curve``: ``-utility``, in Nm or
+        """The simulated user's own distance of ``curve``: ``-utility``, in Nm or
         Nm-equivalent. Noise-free, like ``utility``.
 
-        It is the distance this wearer answers by, which need not be the RMS distance to the
+        It is the distance this simulated user answers by, which need not be the RMS distance to the
         ideal that every session is scored in: the landmark observer's feature distance x
         ``true_jnd(s)``, the asymmetric weighted RMS, or the RMS to the familiarity-shifted
         target. The Weber observer changes only the probit scale of a duel, not the utility,
@@ -544,7 +544,7 @@ class Observer:
         )
 
     def perceived(self, curve_a: np.ndarray, curve_b: np.ndarray) -> tuple:
-        """The two curves as the wearer feels them.
+        """The two curves as the simulated user feels them.
 
         Without device noise these are the curves themselves. With it, each gets its own
         :func:`smooth_noise` draw from ``noise_rng`` -- A's first, then B's -- added to a

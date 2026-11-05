@@ -1,10 +1,10 @@
 """Test AF: removing the amplitude assumption (pilot, 2026-10-27).
 
 A preferred profile is ``a_ext * s_minus + a_flex * s_plus``: the main population's shape
-(lag, landmark spread) with each bout normalized to a unit peak, times amplitudes from a user
+(lag, landmark spread) with each part normalized to a unit peak, times amplitudes from a user
 scenario. The population code is called, never changed: shapes come from its own generator at
 a small common scale (no curve reaches any clip) and are then normalized. Because a ProMP
-projection is linear, each training shape is stored as the weights of its two unit bouts, and
+projection is linear, each training shape is stored as the weights of its two unit parts, and
 any amplitude distribution gives its prior's moments from them without regenerating curves.
 """
 
@@ -31,8 +31,8 @@ from ..population.generator import (MAX_CONSECUTIVE_REJECTIONS, OrderViolation, 
 from ..population.curves import stride_curves
 from ..population.factors import sample_draw
 from ..priors.data_prior import DataPrior
-from ..prior import Whitening
-from ..user.oracle import Observer, rms_distance
+from ..prior import Normalization
+from ..user.simulated_user import Observer, rms_distance
 from .run import run_session
 from dataclasses import dataclass, field
 
@@ -65,7 +65,7 @@ def fold_streams(fold_index: int) -> dict[str, np.random.SeedSequence]:
     return {name: child_sequence(root, i) for i, name in enumerate(STREAMS)}
 
 
-def unit_bouts(curve: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def unit_parts(curve: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """The extension part with peak -1 and the flexion part with peak +1."""
     curve = np.asarray(curve, dtype=float)
     neg, pos = np.minimum(curve, 0.0), np.maximum(curve, 0.0)
@@ -93,7 +93,7 @@ def population_config(run_dir: Path, fold: str):
 
 
 def training_parts(trials, n: int, rng, switches, timing, shift):
-    """``n`` per-stride unit-bout pairs, as ``generate_training_curves`` draws its strides."""
+    """``n`` per-stride unit-part pairs, as ``generate_training_curves`` draws its strides."""
     minus, plus = [], []
     for _ in range(n):
         trial = trials[int(rng.integers(len(trials)))]
@@ -107,7 +107,7 @@ def training_parts(trials, n: int, rng, switches, timing, shift):
                                 [cycles[stride]])[0]
             try:
                 curve = _finish(raw, draw)
-                s_minus, s_plus = unit_bouts(curve)
+                s_minus, s_plus = unit_parts(curve)
             except OrderViolation:
                 continue
             if np.max(np.abs(curve)) >= 11.9:
@@ -121,14 +121,14 @@ def training_parts(trials, n: int, rng, switches, timing, shift):
 
 
 def user_shapes(trials, n: int, rng, switches, timing, shift):
-    """``n`` held-out users' unit-bout pairs (mean over clear cycles, as ``user_curve``)."""
+    """``n`` held-out users' unit-part pairs (mean over clear cycles, as ``user_curve``)."""
     out = []
     while len(out) < n:
         trial = trials[int(rng.integers(len(trials)))]
         draw = _shape_draw(rng, switches, timing, shift)
         try:
             curve = user_curve(trial, draw)
-            out.append((trial.subject, trial.side, *unit_bouts(curve)))
+            out.append((trial.subject, trial.side, *unit_parts(curve)))
         except (OrderViolation, ValueError):
             continue
     return out
@@ -158,7 +158,7 @@ def weight_moments(w_minus: np.ndarray, w_plus: np.ndarray, amps: np.ndarray):
 
 
 def generic_curve(s_minus: np.ndarray, s_plus: np.ndarray) -> np.ndarray:
-    """The fold's mean training shape, bouts renormalized, both peaks at GENERIC_PEAK_NM."""
+    """The fold's mean training shape, parts renormalized, both peaks at GENERIC_PEAK_NM."""
     m_minus = s_minus.mean(axis=0)
     m_plus = s_plus.mean(axis=0)
     return compose(GENERIC_PEAK_NM, GENERIC_PEAK_NM, m_minus / -m_minus.min(), m_plus / m_plus.max())
@@ -166,13 +166,13 @@ def generic_curve(s_minus: np.ndarray, s_plus: np.ndarray) -> np.ndarray:
 
 def promp_space(mu: np.ndarray, sigma: np.ndarray, limit: float = LIMIT_NM,
                 basis: VonMisesBasis | None = None, arm: str = "tight") -> LearnerSpace:
-    whitening = Whitening(mu, sigma, mu.size)
+    normalization = Normalization(mu, sigma, mu.size)
     design = DeviceDesign(PrompS0(basis=basis, prior=(mu, sigma), bound_nm=BOUND_NM), limit=limit)
-    return LearnerSpace(design, whitening, ARMS[arm].radius(mu.size))
+    return LearnerSpace(design, normalization, ARMS[arm].radius(mu.size))
 
 
 class AmplitudeDesign(BoxDesign):
-    """Candidate C's first stage: the generic shape with free log-peaks per bout."""
+    """Candidate C's first stage: the generic shape with free log-peaks per part."""
 
     param_names = ("log_a_ext", "log_a_flex")
 
@@ -188,11 +188,11 @@ class AmplitudeDesign(BoxDesign):
 class FactorizedDesign(BoxDesign):
     """Candidate B: a ProMP shape and two free log-peaks.
 
-    The ProMP curve's bouts are renormalized to unit peaks, so its weights carry shape only
-    and the last two parameters set the peaks; a bout below ``MIN_BOUT_NM`` is divided by
-    ``MIN_BOUT_NM`` instead, so a vanishing bout stays small rather than being blown up."""
+    The ProMP curve's parts are renormalized to unit peaks, so its weights carry shape only
+    and the last two parameters set the peaks; a part below ``MIN_PART_NM`` is divided by
+    ``MIN_PART_NM`` instead, so a vanishing part stays small rather than being blown up."""
 
-    MIN_BOUT_NM = 0.05
+    MIN_PART_NM = 0.05
 
     def __init__(self, basis: VonMisesBasis | None = None, shape_bound: float = 5.0,
                  peak_box: tuple[float, float] = (0.5, LIMIT_NM)) -> None:
@@ -207,8 +207,8 @@ class FactorizedDesign(BoxDesign):
         theta = self.project(theta)
         shape = self.basis.design @ theta[:-2]
         neg, pos = np.minimum(shape, 0.0), np.maximum(shape, 0.0)
-        neg = neg / max(-neg.min(), self.MIN_BOUT_NM)
-        pos = pos / max(pos.max(), self.MIN_BOUT_NM)
+        neg = neg / max(-neg.min(), self.MIN_PART_NM)
+        pos = pos / max(pos.max(), self.MIN_PART_NM)
         return compose(math.exp(theta[-2]), math.exp(theta[-1]), neg, pos)
 
 
@@ -224,7 +224,7 @@ def factorized_space(w_minus: np.ndarray, w_plus: np.ndarray, band=BAND_NM,
     sigma[:k, :k] = np.cov(w, rowvar=False)
     sigma[k:, k:] = np.diag(np.full(2, (hi - lo) ** 2 / 12.0))
     design = DeviceDesign(FactorizedDesign(peak_box=peak_box), limit=limit)
-    return LearnerSpace(design, Whitening(mu, sigma, k + 2), ARMS["tight"].radius(k + 2))
+    return LearnerSpace(design, Normalization(mu, sigma, k + 2), ARMS["tight"].radius(k + 2))
 
 
 class FixedLevelDesign(BoxDesign):
@@ -241,8 +241,8 @@ class FixedLevelDesign(BoxDesign):
     def curve(self, theta: np.ndarray) -> np.ndarray:
         shape = self.basis.design @ self.project(theta)
         neg, pos = np.minimum(shape, 0.0), np.maximum(shape, 0.0)
-        neg = neg / max(-neg.min(), FactorizedDesign.MIN_BOUT_NM)
-        pos = pos / max(pos.max(), FactorizedDesign.MIN_BOUT_NM)
+        neg = neg / max(-neg.min(), FactorizedDesign.MIN_PART_NM)
+        pos = pos / max(pos.max(), FactorizedDesign.MIN_PART_NM)
         return compose(self.level, self.level, neg, pos)
 
 
@@ -251,16 +251,16 @@ def fixed_level_space(w_minus: np.ndarray, w_plus: np.ndarray, level_nm: float,
     w = w_minus + w_plus
     mu, sigma = w.mean(axis=0), np.cov(w, rowvar=False)
     design = DeviceDesign(FixedLevelDesign(level_nm, basis=basis), limit=level_nm + 1e-9)
-    return LearnerSpace(design, Whitening(mu, sigma, mu.size), ARMS[arm].radius(mu.size))
+    return LearnerSpace(design, Normalization(mu, sigma, mu.size), ARMS[arm].radius(mu.size))
 
 
 def amplitude_space(generic: np.ndarray) -> LearnerSpace:
-    s_minus, s_plus = unit_bouts(generic)
+    s_minus, s_plus = unit_parts(generic)
     lo, hi = math.log(BAND_NM[0]), math.log(BAND_NM[1])
     mu = np.full(2, 0.5 * (lo + hi))
     sigma = np.diag(np.full(2, (hi - lo) ** 2 / 12.0))
     design = DeviceDesign(AmplitudeDesign(s_minus, s_plus), limit=LIMIT_NM)
-    return LearnerSpace(design, Whitening(mu, sigma, 2), ARMS["tight"].radius(2))
+    return LearnerSpace(design, Normalization(mu, sigma, 2), ARMS["tight"].radius(2))
 
 
 def _tie_factories(ties: str):
@@ -280,7 +280,7 @@ def psypref(space: LearnerSpace, seed: int, arm: str = "tight",
     if ties is not None:
         return _tie_factories(ties)[0](space, seed, arm=arm)
     return PsychometricLearner(space.design, seed=seed, duels="eig", space=space,
-                               prior=ARMS[arm].bowl_prior())
+                               prior=ARMS[arm].ideal_point_prior())
 
 
 def _session(design, learner, observer, rng, n, generic):
@@ -345,7 +345,7 @@ def build_fold(fold_index: int, run_dir: Path, out_dir: Path) -> Path:
     basis = VonMisesBasis()
     w_minus = basis.project(s_minus.T).T
     w_plus = basis.project(s_plus.T).T
-    # Candidate A: the training shapes at amplitudes log-uniform over the band, per bout
+    # Candidate A: the training shapes at amplitudes log-uniform over the band, per part
     amps_a = _loguniform(np.random.default_rng(streams["train_amp"]), *BAND_NM, (N_TRAIN, 2))
     mu_a, sigma_a = weight_moments(w_minus, w_plus, amps_a)
     ref = DataPrior.load(run_dir / "priors" / f"{fold.name}-promp_s0")
@@ -397,7 +397,7 @@ def jobs_for_fold(fold_index: int, fold_name: str, data: dict) -> list[dict]:
 # --------------------------------------------------------------------------- test AM
 
 class FixedCurveMetric:
-    """Test AM's N1: a fixed metric ``M`` in PsyPref's bowl, in PsyPref-M's interface
+    """Test AM's N1: a fixed metric ``M`` in PsyPref's ideal-point model, in PsyPref-M's interface
     (:class:`~prompref.experiment.stress.PhaseMetric`) with no coefficients.
 
     ``correction`` is ``Delta_M - Delta_I`` = 1/2 [(z_B - z*)^T E (z_B - z*) - (z_A - z*)^T E
@@ -437,7 +437,7 @@ def metric_psypref(space: LearnerSpace, seed: int, arm: str = "tight", ties: str
 
     if ties is not None:
         return _tie_factories(ties)[1](space, seed, arm=arm)
-    return MetricLearner(space.design, seed, space=space, prior=ARMS[arm].bowl_prior(),
+    return MetricLearner(space.design, seed, space=space, prior=ARMS[arm].ideal_point_prior(),
                          metric=FixedCurveMetric(curve_metric_at_centre(space)), free_metric=False)
 
 
@@ -459,8 +459,8 @@ class ProbitPeakDesign(FactorizedDesign):
         theta[-2:] = self.log_lo + self.log_span * ndtr(theta[-2:])
         shape = self.basis.design @ theta[:-2]
         neg, pos = np.minimum(shape, 0.0), np.maximum(shape, 0.0)
-        neg = neg / max(-neg.min(), self.MIN_BOUT_NM)
-        pos = pos / max(pos.max(), self.MIN_BOUT_NM)
+        neg = neg / max(-neg.min(), self.MIN_PART_NM)
+        pos = pos / max(pos.max(), self.MIN_PART_NM)
         return compose(math.exp(theta[-2]), math.exp(theta[-1]), neg, pos)
 
 
@@ -472,7 +472,7 @@ def probit_space(w_minus: np.ndarray, w_plus: np.ndarray, peak_range) -> Learner
     sigma[:k, :k] = np.cov(w, rowvar=False)
     sigma[k:, k:] = np.eye(2)
     design = DeviceDesign(ProbitPeakDesign(peak_range), limit=peak_range[1])
-    return LearnerSpace(design, Whitening(mu, sigma, k + 2), ARMS["tight"].radius(k + 2))
+    return LearnerSpace(design, Normalization(mu, sigma, k + 2), ARMS["tight"].radius(k + 2))
 
 
 # --------------------------------------------------------------------------- test FP
@@ -580,9 +580,9 @@ def build_fold_parts(fold_index: int, run_dir: Path, out_dir: Path, n_basis: int
     return out
 
 
-class TwoBoutGuard:
-    """Test K12's guard: when the delivered curve lacks a bout (a peak below
-    ``min_peak``), deliver the two-bout curve nearest in z to the posterior mean among
+class TwoPartGuard:
+    """Test K12's guard: when the delivered curve lacks a part (a peak below
+    ``min_peak``), deliver the two-part curve nearest in z to the posterior mean among
     ``n`` posterior particles instead. ``fired`` counts the calls that needed it."""
 
     def __init__(self, learner, space: LearnerSpace, min_peak: float, n: int = 500,
@@ -598,12 +598,12 @@ class TwoBoutGuard:
     def update(self, theta_a, theta_b, response: int) -> None:
         self.learner.update(theta_a, theta_b, response)
 
-    def _two_bout(self, theta) -> bool:
+    def _two_part(self, theta) -> bool:
         return min(peaks(self.space.design.curve(theta))) >= self.min_peak
 
     def best(self):
         theta = self.learner.best()
-        self.fired_last = not self._two_bout(theta)
+        self.fired_last = not self._two_part(theta)
         if not self.fired_last:
             return theta
         self.fired += 1
@@ -612,7 +612,7 @@ class TwoBoutGuard:
         idx = self.rng.choice(len(post.x), size=min(self.n, len(post.x)), p=post.weights())
         zs = post.x[idx, :d]
         z_mean = post.zstar_mean()
-        ok = [z for z in zs if self._two_bout(self.space.to_theta(z))]
+        ok = [z for z in zs if self._two_part(self.space.to_theta(z))]
         if not ok:
             return theta
         z = min(ok, key=lambda v: float(np.sum((v - z_mean) ** 2)))
@@ -635,10 +635,10 @@ G_JND_SCALE, G_CANDIDATES = 1.0, 2048
 def comparator(name: str, space: LearnerSpace, seed: int, s: float = S):
     """A comparator on ``space`` with the main condition's settings (phase5.build_learner)."""
     from ..learning.linecospar import LENGTHSCALE, STEP
-    from ..learning.whitened import WhitenedLearner
+    from ..learning.normalized import WhitenedLearner
     from ..user.jnd import gate_value
 
-    prior = ARMS["tight"].bowl_prior()
+    prior = ARMS["tight"].ideal_point_prior()
     if name == "gp_bald":
         from ..learning.gp_eubo import GPEUBOLearner  # with botorch installed
 
@@ -669,10 +669,10 @@ def comparator(name: str, space: LearnerSpace, seed: int, s: float = S):
         return WhitenedLearner(space, GPEUBOLearner(space, seed=seed, prior=prior,
                                                     acquisition="eubo"))
     if name in ("g_generic", "g_generic_nogate"):
-        from .review import generic_start_g
+        from .review import prior_mean_start_g
 
         jnd = gate_value(s, G_JND_SCALE) if name == "g_generic" else None
-        return generic_start_g(space, seed, prior=prior, jnd=jnd, n_candidates=G_CANDIDATES)
+        return prior_mean_start_g(space, seed, prior=prior, jnd=jnd, n_candidates=G_CANDIDATES)
     if name == "ramella":
         from ..learning.batch_mi import BatchMILearner
         from ..learning.space import SpacePriorDesign
@@ -701,7 +701,7 @@ def schaefer_range_space(run_dir: Path, fold: str, lo: float, hi: float) -> Lear
     sigma[4, 4] = sigma[5, 5] = (hi - lo) ** 2 / 12.0
     design = SchaeferPeaksDesign(prior=(mu, sigma), low=np.concatenate([TIMING_LOW, [lo, lo]]),
                                  high=np.concatenate([TIMING_HIGH, [hi, hi]]))
-    return LearnerSpace(DeviceDesign(design, limit=hi), Whitening(mu, sigma, 6), ARMS["tight"].radius(6))
+    return LearnerSpace(DeviceDesign(design, limit=hi), Normalization(mu, sigma, 6), ARMS["tight"].radius(6))
 
 
 def schaefer_fixed_space(run_dir: Path, fold: str, level: float) -> LearnerSpace:
@@ -710,13 +710,13 @@ def schaefer_fixed_space(run_dir: Path, fold: str, level: float) -> LearnerSpace
 
     m4, s4 = _schaefer_timing(run_dir, fold)
     design = SchaeferDesign(level, level, prior=(m4, s4))
-    return LearnerSpace(DeviceDesign(design, limit=level + 1e-9), Whitening(m4, s4, 4),
+    return LearnerSpace(DeviceDesign(design, limit=level + 1e-9), Normalization(m4, s4, 4),
                         ARMS["tight"].radius(4))
 
 
 def build_full_users(fold_index: int, run_dir: Path, out_dir: Path, ranges: dict) -> Path:
     """The full runs' users of one fold: 40 new shapes, answer seeds, and preferred peaks per
-    range (log-uniform per bout), from streams of their own (SEED_FULL)."""
+    range (log-uniform per part), from streams of their own (SEED_FULL)."""
     fold = loso_folds()[fold_index]
     shift, switches, timing = population_config(run_dir, fold.name)
     root = np.random.SeedSequence([SEED_FULL, int(fold_index)])
@@ -868,7 +868,7 @@ def _starts(design, target) -> list:
 
 
 def family_floor(design: DeviceDesign, target: np.ndarray, seed) -> tuple[np.ndarray, float]:
-    """A user's floor in a family: the fit from the initial guess, the box centre and
+    """A user's best-profile distance in a family: the fit from the initial guess, the box centre and
     ``FLOOR_DRAWS`` uniform box draws."""
     rng = np.random.default_rng(seed)
     draws = rng.uniform(design.low, design.high, size=(FLOOR_DRAWS, len(design.low)))
@@ -876,7 +876,7 @@ def family_floor(design: DeviceDesign, target: np.ndarray, seed) -> tuple[np.nda
 
 
 def promp_floor(target: np.ndarray, n_basis: int, peak_range=None, level=None) -> float:
-    """A user's floor in the K-basis ProMP: in a range the least-squares projection refined
+    """A user's best-profile distance in the K-basis ProMP: in a range the least-squares projection refined
     under the device clip; at a level the renormalized design refined from it."""
     from scipy.optimize import least_squares
 
@@ -897,7 +897,7 @@ def promp_floor(target: np.ndarray, n_basis: int, peak_range=None, level=None) -
 
 class FamilyLens:
     """FAM's projection (section 19; Phase 5d's ``LensLearner`` with the setting's clip):
-    PsyPref proposes in the ProMP, the wearer sees each proposal's best family fit, PsyPref is
+    PsyPref proposes in the ProMP, the simulated user sees each proposal's best family fit, PsyPref is
     told ``to_inner`` of the curve shown, and the delivered curve is the fit to its optimum."""
 
     def __init__(self, inner, inner_design, family: DeviceDesign, to_inner) -> None:

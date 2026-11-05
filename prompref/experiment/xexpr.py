@@ -15,7 +15,7 @@ Generators (rows), 200 ideals each, every one device-clipped (R29, +/-12 Nm):
   10-20 %GC, flexion peak time 55-65 %GC, rise times 10-20 %GC; uniform, not rounded;
 - ``park``: Park et al. (2025), p. 2151: tflexp 65-92.5 %, tflexd 20-47.5 %, textp 15-45 %,
   textd 20-60 %, uflex 6-13 Nm, uniform; uext fixed at 15 Nm (p. 2149), so the device clips the
-  extension bout to 12 Nm.
+  extension part to 12 Nm.
 
 Ideals of a family generator are assigned to the folds 40 at a time, in fold order, so every ideal
 has a fold whose priors and boxes the representations use. Each ideal's draw has its own seed,
@@ -26,7 +26,7 @@ Representations (columns): the ProMP with K = 8, 12, 16 and 24 von Mises bases, 
 least squares on the basis without the prior, then device-clipped; and the interpretable families
 Franks (the fold's Phase 5d box), Schaefer (ii) (``schaefer_peaks``), the semi-trapezoid
 (``TrapezoidSurface``, C1's box) and PCHIP (ii) (``pchip``, the fold's level-walking box), each by
-the floors' bounded multi-start fit (``physics_floor``: L-BFGS-B on the device-clipped mean squared
+the best-profile distances' bounded multi-start fit (``physics_floor``: L-BFGS-B on the device-clipped mean squared
 error, the family's initial guess plus 20 prior draws).
 """
 
@@ -137,7 +137,7 @@ def promp_floor(ideal, n_basis: int) -> float:
 
 
 def family_floor(design, ideal, seed: np.random.SeedSequence) -> float:
-    """The floors' bounded multi-start fit (``physics_floor``), its value in Nm (no tie-break: the
+    """The best-profile distances' bounded multi-start fit (``physics_floor``), its value in Nm (no tie-break: the
     value is the multi-start minimum either way)."""
     floor, _ = physics_floor(design, np.asarray(ideal, dtype=float), n_starts=N_STARTS, seed=seed)
     return float(floor)

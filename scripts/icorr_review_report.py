@@ -142,7 +142,7 @@ RULINGS = (
     ("R1. Users and completeness.",
      "Population users only: the 200 of the five LOSO folds, in load_sim's order. Every new cell "
      "must hold exactly these users, once each, with no error row, 40 comparisons and its "
-     "registered fields (PS: C2, s = 0.5, λ = 0; SortCMA: popsize 4 or 6, σ0 unchanged; G: generic "
+     "planned fields (PS: C2, s = 0.5, λ = 0; SortCMA: popsize 4 or 6, σ0 unchanged; G: generic "
      "start, jnd_scale 1.0 or none; A-wide: the wide arm; A-no-lapse: the flag, against the "
      "λ = 0.1 wearer). Every cell's d_prior and d_floor must equal e-main A's bit for bit, and "
      "every new SortCMA row must equal the stored e-tune or e-oracle row of the same user and "
@@ -164,7 +164,7 @@ RULINGS = (
      "wholly on the other side, uncertain otherwise."),
     ("R4. PS.",
      "Held only if the lower end of C2's mean win rate at k = 24 lies strictly above 0.5; failed "
-     "if the upper end lies below 0.5; uncertain otherwise. A failed PS carries the registered "
+     "if the upper end lies below 0.5; uncertain otherwise. A failed PS carries the planned "
      "consequence: W5 is withdrawn from the paper until C2 has been checked. A PS that is not held "
      "(failed or uncertain) is stated in the report's first line and triggers an inspection of C2, "
      "fixed here: (a) an audit of preftune's `numpy_core.py` and prompref's `batch_mi.py` against "
@@ -243,15 +243,15 @@ RULINGS = (
 
 #: What the analyst could see before the decision were committed (printed after them).
 BLINDING_NOTE = (
-    "The rulings were written before any e-rev row was read. Before the script was committed, it "
+    "The decision were written before any e-rev row was read. Before the script was committed, it "
     "was tested end to end on synthetic rows built from stored rows only (e-main's A and G "
     "relabelled as the new A and G cells, W5's C2 relabelled as PS). The synthetic SortCMA rows "
     "were the stored e-tune and e-oracle sessions at popsize 4 and 6 and σ multiplier 1.0, which "
     "the cross-check of R1 shows are the very sessions the new cells reproduce. PF1's outcome, "
     "the SortCMA rows of the 12-versus-40 table and of the best-comparator table were therefore "
-    "visible to the analyst at that test, after the rulings were written and before they were "
-    "committed. No ruling was changed after the test. PA3 and PA4 were registered after PA2 and "
-    "every other verdict above had been read; their rulings (R14–R16) were committed after that "
+    "visible to the analyst at that test, after the decision were written and before they were "
+    "committed. No decision was changed after the test. PA3 and PA4 were planned after PA2 and "
+    "every other verdict above had been read; their decision (R14–R16) were committed after that "
     "and before any e-rev-abl2 row existed. The stored e-lapse A rows were known from Phase 5e.")
 
 
@@ -308,7 +308,7 @@ def gate_block(df: pd.DataFrame | None, block: str, keys) -> dict:
         out[key] = jf.in_order(c, keys)
         n += len(c)
     if n != len(df):
-        raise SystemExit(f"{block}: {len(df) - n} population rows outside the registered cells")
+        raise SystemExit(f"{block}: {len(df) - n} population rows outside the planned cells")
     return out
 
 
@@ -323,7 +323,7 @@ def stored_cells(main: pd.DataFrame, ek: pd.DataFrame, keys, lapse: pd.DataFrame
 
 def sortcma_cross_check(out: Path, keys, rows_dir: Path | None = None) -> dict:
     """R1: every new SortCMA row (popsize 4, 6; sigma multiplier None) against the stored e-tune or
-    e-oracle row of the same user and popsize at sigma multiplier 1.0, every field but session_s
+    e-simulated user row of the same user and popsize at sigma multiplier 1.0, every field but session_s
     and cma_sigma_mult."""
     want = set(keys)
 
@@ -365,7 +365,7 @@ def errors(df: pd.DataFrame) -> np.ndarray:
 
 
 def win_curve(df: pd.DataFrame) -> np.ndarray:
-    """(users, 40) win probabilities against generic assistance, the row's own wearer (R2)."""
+    """(users, 40) win probabilities against generic assistance, the row's own simulated user (R2)."""
     return jf.win_probability(rr.col(df, "d_prior")[:, None], errors(df), rr.col(df, "s")[:, None],
                               rr.col(df, "lapse")[:, None])
 
@@ -528,7 +528,7 @@ def label(key: str) -> str:
 
 
 def verdict_section(v: dict) -> list[str]:
-    out = ["## 1. Registered verdicts", "",
+    out = ["## 1. Planned verdicts", "",
            "Simulated room, k = 24, the 200 population users; estimate [95 % CI] by the "
            "verdict estimator (R3).", "",
            "| # | Prediction (spec §9a) | Verdict | Numbers |", "|---|---|---|---|"]
@@ -566,10 +566,10 @@ def verdict_section(v: dict) -> list[str]:
     out += ["", "PF3 and PF3b (GP-EUBO, GP-BALD) run in their own lane; they are not part of "
             "this report.", ""]
     if ps["state"] == "failed":
-        out += ["**PS failed.** By the registration, our C2 implementation is suspect, and W5 is "
+        out += ["**PS failed.** By the test plan, our C2 implementation is suspect, and W5 is "
                 "withdrawn from the paper until it has been checked (§6).", ""]
     elif ps["state"] == "uncertain":
-        out += ["**PS is uncertain.** Its interval straddles 0.5. The registered consequence "
+        out += ["**PS is uncertain.** Its interval straddles 0.5. The planned consequence "
                 "(W5 withdrawn) attaches to a failed PS; the inspection of R4 runs anyway (§6).",
                 ""]
     return out
@@ -816,14 +816,14 @@ def main(argv=None) -> int:
         p("")
     p("# ICORR review response: comparator fairness, ablations and a sanity check")
     p("")
-    p(f"Generated by `scripts/icorr_review_report.py`, run started {started}, at worktree commit "
-      f"{git_head()}. Spec: `docs/superpowers/specs/2026-10-17-icorr-user-tuning-reframe-design.md`"
+    p(f"Generated by `scripts/icorr_review_report.py`, run started {started}, at repository commit "
+      f"{git_head()}. Spec: `our design notes`"
       " §9a, \"Review response: comparator fairness, ablations and a sanity check\" (PS, PF1, "
-      "PF2, PA1, PA2 registered 2026-10-20 before any code or run). Build: commit c5d76ae "
+      "PF2, PA1, PA2 planned 2026-10-20 before any code or run). Build: commit c5d76ae "
       "(`prompref/experiment/review.py`). Rows: " + ", ".join(
           f"`out/icorr/{b}.jsonl` ({n} rows)" for b, n in counts.items())
       + "; `out/phase5e/e-main.jsonl`, `out/icorr/e-k.jsonl` and `out/phase5e/e-lapse.jsonl` "
-      "(stored cells). No session was run. PA3 and PA4 (registered 2026-10-20 after PA2; build "
+      "(stored cells). No session was run. PA3 and PA4 (planned 2026-10-20 after PA2; build "
       "commit 86b5a9c, block e-rev-abl2) are judged with the same estimator.")
     p("")
     p("**Cells.** Main condition (s = 1.0, λ = 0.1), ProMP, data prior, the 200 population users, "
@@ -836,7 +836,7 @@ def main(argv=None) -> int:
       "inferred, probe share 0) against the λ = 0.1 and λ = 0.3 wearers; A itself at λ = 0.3 is "
       "e-lapse's stored cell.")
     p("")
-    p("## 0. Rulings (fixed and committed before any outcome was read)")
+    p("## 0. Decision (fixed and committed before any outcome was read)")
     p("")
     for head, text in RULINGS:
         p(f"- **{head}** {text}")
@@ -854,7 +854,7 @@ def main(argv=None) -> int:
     p("")
     p("Every check passed; otherwise nothing would have been written (R1).")
     p("- " + ", ".join(f"{b}: {n} rows" for b, n in counts.items()) + ", 0 error rows; each new "
-      "cell holds the 200 population users once, in load_sim's order, with its registered "
+      "cell holds the 200 population users once, in load_sim's order, with its planned "
       "fields. The stored A at λ = 0.3 (e-lapse) holds the same 200 users once each.")
     p("- d_prior and d_floor of every cell equal e-main A's bit for bit (" + ", ".join(
         label(k) for k in checks if k != "a") + ").")

@@ -1,22 +1,22 @@
-"""ICORR stress test S5: the link scales matched to the main wearer.
+"""ICORR stress test S5: the link scales matched to the main simulated user.
 
 Usage:
     python scripts/icorr_stress_prep.py --run <main>/out/phase5-schaefer [--out <main>/out/icorr]
 
-S5 lets the wearer answer by a logistic link (S5a) or by Student-t noise with nu = 3 (S5b) instead of
+S5 lets the simulated user answer by a logistic link (S5a) or by Student-t noise with nu = 3 (S5b) instead of
 the probit, "matched to the main user's median |dp| on prior-scale pairs". Here:
 
 - **Pairs.** REPORT section 9's prior-scale pairs (``phase5e_perturbation.duel_pairs``, 200 per user,
   seeded from the user id), for all 200 population users of the five LOSO folds.
-- **|dp|** is |p - 1/2| of the attentive wearer (lapse 0; the lapse multiplies every |dp| by the
+- **|dp|** is |p - 1/2| of the attentive simulated user (lapse 0; the lapse multiplies every |dp| by the
   same 1 - lambda and drops out), with ``du`` the RMS utility difference of the pair against the
-  user's ideal. The main wearer's p is Phi(du / 1.0).
+  user's ideal. The main simulated user's p is Phi(du / 1.0).
 - **One scale per link, pooled.** kappa solves median over all 40,000 pairs of
   |F(|du| / kappa) - 1/2| = the same median for the probit, by Brent's method (both sides are
   monotone in |du|, so this matches the link at the median pair). A link is a property of the answer
   model, not of a user's metric, so one pooled scale serves every user; the per-user achieved
   ratios are reported.
-- **Check.** The achieved median |dp| through ``build_observer``, as a session builds the wearer,
+- **Check.** The achieved median |dp| through ``build_observer``, as a session builds the simulated user,
   on the measurement pairs and on fresh pairs (``icorr_robust_prep.OOS_SEED``).
 
 Writes ``OUT/stress_prep_links.json``; ``prompref.experiment.icorr_grid.LINK_SCALES`` carries the
@@ -43,7 +43,7 @@ import phase5e_perturbation as pert  # noqa: E402
 from prompref.experiment import phase5 as p5  # noqa: E402
 from prompref.experiment.phase5 import STRESS_LINKS, Phase5Point, build_observer  # noqa: E402
 from prompref.experiment.phase5c_grid import LOSO  # noqa: E402
-from prompref.user.oracle import Observer, link_cdf  # noqa: E402
+from prompref.user.simulated_user import Observer, link_cdf  # noqa: E402
 
 SCHEMA = "stress-links-v1"
 
@@ -84,8 +84,8 @@ def matched_scale(du: np.ndarray, link: str) -> float:
 
 
 def achieved(run: str, users, all_pairs, link: str, kappa: float) -> dict:
-    """The median |dp| of the S5 wearer built as a session builds it (lapse 0), pooled and per user,
-    against the plain s = 1.0 probit wearer on the same pairs."""
+    """The median |dp| of the S5 simulated user built as a session builds it (lapse 0), pooled and per user,
+    against the plain s = 1.0 probit simulated user on the same pairs."""
     cell, plain_dp, per_user = [], [], []
     for (fold, uid), duels in zip(users, all_pairs):
         user = p5._users(run, fold)[uid]

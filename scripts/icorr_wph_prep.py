@@ -1,4 +1,4 @@
-"""Per-user scales and floors of the phase-weighted wearers (our design notes, "Phase-weighted wearers"; decision of 2026-10-19:
+"""Per-user scales and best-profile distances of the phase-weighted simulated users (our design notes, "Phase-weighted simulated users"; decision of 2026-10-19:
 W-pref runs now, W-bio once its hip-angle data can be read, with no substitute weighting).
 
 Usage:
@@ -13,16 +13,16 @@ For each LOSO fold and each population user, written to ``RUN/phase_weight/<cell
   from ``OUT/wph_bio_weight.json`` (``scripts/icorr_wph_bio_weight.py``; refused if missing);
 - the matched scale: kappa = 1 / REPORT section 9's decisiveness ratio, the median over the user's
   200 prior-scale pairs (``phase5e_perturbation.duel_pairs``) of |Delta d_w| / |Delta d_rms|
-  against the plain s = 1.0 wearer, as R's ``step_random`` scales its utility;
-- the wearer's own distance of generic assistance, built exactly as a session builds it;
-- the floor in the wearer's own metric, the weighted projection behind the device
+  against the plain s = 1.0 simulated user, as R's ``step_random`` scales its utility;
+- the simulated user's own distance of generic assistance, built exactly as a session builds it;
+- the best-profile distance in the simulated user's own metric, the weighted projection behind the device
   (``phase_weighted.weighted_floor``), unscaled and scaled.
 
 Checks, in ``OUT/wph_prep_<cell>.json``:
 
-- the same floor routine with w = 1 against the stored 5a RMS floors of all users;
+- the same best-profile distance routine with w = 1 against the stored 5a RMS best-profile distances of all users;
 - the achieved decisiveness ratio of the cell, through ``build_observer`` as a session builds the
-  wearer: on the measurement pairs (1 per user by construction) and on fresh pairs (another seed);
+  simulated user: on the measurement pairs (1 per user by construction) and on fresh pairs (another seed);
 - the weights: mean, periodicity, the SD of log w over the 101-point grid (and over the 100
   distinct points, for context).
 """
@@ -48,14 +48,14 @@ from prompref.experiment.metrics import prior_mean_curve  # noqa: E402
 from prompref.experiment.phase5c_grid import LOSO  # noqa: E402
 from prompref.experiment.phase_weighted import (PHASE_WEIGHT_SCHEMA,  # noqa: E402
                                                 cell_constants, phase_weight_path, weighted_floor)
-from prompref.user.oracle import PHASE_WEIGHTED, Observer, weighted_rms_distance  # noqa: E402
+from prompref.user.simulated_user import PHASE_WEIGHTED, Observer, weighted_rms_distance  # noqa: E402
 from prompref.user.phase_weight import (PHASE_WEIGHTINGS, PREF_CELLS,  # noqa: E402
                                         bio_weight_path, load_bio_weight, pref_weight)
 
-#: The w = 1 floor check: the routine may beat 5a's multi-start floor, never miss it by more.
+#: The w = 1 best-profile distance check: the routine may beat 5a's multi-start best-profile distance, never miss it by more.
 FLOOR_TOL_NM = 1e-6
-#: The floor's prior-draw starts (5a's floors use 20), seeded [FLOOR_SEED, crc32(user id)]; the
-#: weighted floor also starts from the w = 1 floor's weights.
+#: The best-profile distance's prior-draw starts (5a's best-profile distances use 20), seeded [FLOOR_SEED, crc32(user id)]; the
+#: weighted best-profile distance also starts from the w = 1 best-profile distance's weights.
 FLOOR_STARTS = 20
 FLOOR_SEED = 0x3F100E
 
@@ -78,7 +78,7 @@ def user_entry(run: str, fold: str, user, weight: np.ndarray, generic: np.ndarra
                         - weighted_rms_distance(b, user.curve_nm, weight)) for a, b in duels])
     raw_ratio = pert.decisiveness_ratio(d_w, d_rms)
     scale = 1.0 / raw_ratio
-    wearer = Observer(ideal_nm=user.curve_nm, s=1.0, lapse=0.1, metric=PHASE_WEIGHTED,
+    simulated_user = Observer(ideal_nm=user.curve_nm, s=1.0, lapse=0.1, metric=PHASE_WEIGHTED,
                       phase_weight=weight, utility_scale=scale)
     seed = [FLOOR_SEED, zlib.crc32(user.user_id.encode("utf-8"))]
     rms_check = weighted_floor(design, user.curve_nm, np.ones_like(weight), n_starts=FLOOR_STARTS,
@@ -87,7 +87,7 @@ def user_entry(run: str, fold: str, user, weight: np.ndarray, generic: np.ndarra
                            extra_starts=[rms_check["theta"]])
     entry = dict(answer_seed=int(user.answer_seed), raw_ratio=float(raw_ratio), scale=float(scale),
                  generic_w_nm=float(weighted_rms_distance(generic, user.curve_nm, weight)),
-                 own_generic=float(wearer.own_distance(generic)),
+                 own_generic=float(simulated_user.own_distance(generic)),
                  floor_w_nm=floor["floor_nm"], own_floor=float(scale * floor["floor_nm"]),
                  floor_theta=floor["theta"], proj_nm=floor["proj_nm"],
                  proj_clipped_nm=floor["proj_clipped_nm"], proj_in_box=floor["proj_in_box"],

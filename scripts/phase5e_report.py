@@ -54,7 +54,7 @@ N90_MAX = 40
 BLOCKS = ("e-main", "e-s", "e-observer", "e-noise", "e-drift", "e-lapse", "e-tune", "e-tuned",
           "e-oracle")
 NOT_RUN = "not run yet"
-#: The wearer's own distance per comparison, and the landmark
+#: The simulated user's own distance per comparison, and the landmark
 #: observer's feature distance in feature-JNDs.
 OWN = "own_distances"
 FEATURE = "own_feature_jnd"
@@ -119,10 +119,10 @@ CONDS = [
 ]
 BY_ID = {c.cid: c for c in CONDS}
 COND_JND = {c.cid: c.jnd for c in CONDS}
-#: our design notes-E7: the cells QE2 requires A to lead in, with E4b's walking landmark cell
+#: our design notes: the cells QE2 requires A to lead in, with E4b's walking landmark cell
 QE2_CELLS = ("s2", "het", "landmark", "landmark25", "weber", "asym", "famil", "noise", "drift1",
              "drift2", "lapse2", "lapse3")
-#: the observer-model cells, whose rows carry the wearer's own distance (E4a)
+#: the observer-model cells, whose rows carry the simulated user's own distance (E4a)
 VARIANT_CELLS = ("landmark", "landmark25", "weber", "asym", "famil")
 
 
@@ -161,7 +161,7 @@ def has_field(df, field: str, k: int = K_MAIN) -> bool:
 
 def values_at(df, k: int, field: str = "distances") -> pd.Series:
     """The per-comparison ``field`` after comparison k: ``distances`` (the RMS error of the
-    identified assistance) or, in an observer-variant cell, the wearer's own distance (E4a)."""
+    identified assistance) or, in an observer-variant cell, the simulated user's own distance (E4a)."""
     if field == "distances":
         return sb.delivered_at(df, k)
     if not has_field(df, field, k):
@@ -274,7 +274,7 @@ class Ctx:
 
     def contrast(self, a, b, k: int, key=None, field: str = "distances"):
         """First cell minus second at comparison k: users, medians and the Δ-median CI, read in
-        ``field`` (the RMS error by default, or the wearer's own distance); ``None`` when no
+        ``field`` (the RMS error by default, or the simulated user's own distance); ``None`` when no
         user is common or a cell does not hold ``field``."""
         if key is not None and key in self._con:
             return self._con[key]
@@ -346,7 +346,7 @@ B7_HEAD = ("| {first} | n | median error (Nm) | median improvement (Nm) | Q≥1 
 
 def b7_row(name: str, df, k: int, jnd, n_boot: int) -> str:
     """One optimizer's B7 row at k, the levels in ``jnd`` Nm, with the physical improvement.
-    ``jnd`` is one yardstick for the cell, or one per row (each wearer's own JND)."""
+    ``jnd`` is one yardstick for the cell, or one per row (each simulated user's own JND)."""
     if not _present(df):
         return f"| {name} | {NOT_RUN} | — | — | — | — | — | — | — | — |"
     per_user = np.ndim(jnd) > 0
@@ -393,7 +393,7 @@ GATE_NOTE = ("G's true-JND gate (R34, oracle information no experimenter has) is
 
 def _intro() -> list[str]:
     return ["# Phase 5e: how far the short-budget claims carry", "",
-            "Spec E1-E10 and the amendments of its §4. Population users; the error of the "
+            "Spec E1-E10 and the change of its §4. Population users; the error of the "
             "identified assistance after k comparisons is `distances[k − 1]`, the RMS distance "
             "in Nm to the simulated wearer's ideal. Every statement is about the simulator, "
             "conditional on the assumptions of each cell. Δ median is the first cell minus the "
@@ -562,7 +562,7 @@ def _generic_distance(ctx: Ctx, cond: Cond) -> str:
 
 
 def _het_own_tables(ctx: Ctx) -> list[str]:
-    """The heterogeneous cell's B7 levels in each wearer's own JND, true_jnd(s_user)."""
+    """The heterogeneous cell's B7 levels in each simulated user's own JND, true_jnd(s_user)."""
     cond = BY_ID["het"]
     out = []
     for family in ("promp_s0", "franks"):
@@ -693,7 +693,7 @@ def _robust_section(ctx: Ctx) -> list[str]:
            "of these cells are in section 2. Every error here is the RMS distance to the "
            "ideal, A's own model class; section 8 scores the observer cells in the wearer's own "
            f"distance. The static landmark cell uses a 10 % magnitude JND, the walking one 25 % "
-           f"(spec amendment E4b), both floored at 0.5 Nm. {ASYMMETRY_NOTE} {GATE_NOTE}", ""]
+           f"(spec change E4b), both floored at 0.5 Nm. {ASYMMETRY_NOTE} {GATE_NOTE}", ""]
     for cid in ("landmark", "landmark25", "weber", "asym", "famil", "noise", "drift1", "drift2",
                 "lapse2", "lapse3"):
         cond = BY_ID[cid]
@@ -838,9 +838,9 @@ def _tuning_section(ctx: Ctx) -> list[str]:
     return out + [""]
 
 
-# --------------------------------------------------------------------------- oracle bound
+# --------------------------------------------------------------------------- simulated user bound
 
-ORACLE_LABEL = "upper bound on what tuning could buy; not a fair comparison"
+SIM_USER_LABEL = "upper bound on what tuning could buy; not a fair comparison"
 
 
 def _setting_df(df, learner: str, fields: dict):
@@ -854,11 +854,11 @@ def _setting_df(df, learner: str, fields: dict):
     return sel if len(sel) else None
 
 
-def _oracle_section(ctx: Ctx) -> list[str]:
+def _simulated_user_section(ctx: Ctx) -> list[str]:
     from phase5e_tune_select import select
 
     out = ["## 7. Oracle-tuned bound (E8a)", "",
-           f"**An {ORACLE_LABEL}.** Every e-tune setting, plus G at κ₀ = 4.5 and 6.5 and SortCMA "
+           f"**An {SIM_USER_LABEL}.** Every e-tune setting, plus G at κ₀ = 4.5 and 6.5 and SortCMA "
            f"at σ multiplier 0.25 for popsize 4, 6 and 10, runs on the four evaluation folds. "
            f"Each comparator's best setting is then picked *in sample*, on those same folds and "
            f"users, by the lowest median error at k = {K_MAIN} over population users (ties to "
@@ -886,7 +886,7 @@ def _oracle_section(ctx: Ctx) -> list[str]:
                    f"{t['n']}{prov(t['n'], expected=EXPECTED_N_TUNED)} | {t['median']:.3f} | "
                    f"{t['p75']:.3f} | {'yes' if t['chosen'] else ''} |")
     out += ["", f"Best setting in sample, error at k = {K_MAIN}, on the users the oracle-tuned, "
-            f"default (e-main) and A (e-main) cells hold in common ({ORACLE_LABEL}):", "",
+            f"default (e-main) and A (e-main) cells hold in common ({SIM_USER_LABEL}):", "",
             "| optimizer | best setting in sample | users | default median (Nm) "
             "| oracle-tuned median (Nm) | gain over the default (default − oracle-tuned) "
             "[95 % CI] | A − oracle-tuned [95 % CI] |",
@@ -1008,7 +1008,7 @@ def _own_section(ctx: Ctx) -> list[str]:
 # --------------------------------------------------------------------------- perturbation
 
 def _perturbation_cells() -> dict:
-    """The point fields of each condition's wearer; the s = 0.5 reference is s = 0.5."""
+    """The point fields of each condition's simulated user; the s = 0.5 reference is s = 0.5."""
     return {c.cid: (dict(s=0.5) if c.cid == "s05" else dict(c.fields)) for c in CONDS}
 
 
@@ -1246,11 +1246,11 @@ def _ci3(ci: dict) -> str:
     return sb._ci(ci)
 
 
-ANALYST = "Analyst's reading, not a registered consequence:"
-KILL = "Registered kill criterion:"
+ANALYST = "Analyst's reading, not a planned consequence:"
+KILL = "Planned kill criterion:"
 #: QE1 contrasts that rows existing before the design could already answer
 PRE_REGISTRATION = ("g", "cmaes")
-PRE_REGISTRATION_TAG = "computable before registration (prefix of 5c/5d rows)"
+PRE_REGISTRATION_TAG = "computable before test plan (prefix of 5c/5d rows)"
 
 
 def _qe1_contrasts(ctx: Ctx):
@@ -1302,7 +1302,7 @@ def _qe1_before(ctx: Ctx) -> str:
         else:
             parts.append(f"{_cstr(name, c)}, "
                          f"{'consistent' if _ahead(c) else 'not consistent'} with the prediction")
-    return ("  - **QE1, computed before registration (not confirmed predictions, not in the "
+    return ("  - **QE1, computed before test plan (not confirmed predictions, not in the "
             f"verdict above; k = {K_MAIN}, Δ median in Nm).** " + "; ".join(parts) + ". "
             "e-main is an exact prefix of the 5c/5d s = 1.0 rows, so these two could be "
             "computed from rows that existed before the spec.")
@@ -1330,7 +1330,7 @@ def _qe2(ctx: Ctx) -> str:
     if closest is not None:
         facts.append(f"{_n_range(cs)} per contrast, k = {K_MAIN}; closest comparator: "
                      f"{closest[1]} {sb._ci(closest[2]['diff'])}.")
-    facts.append("The registered cell list was extended, before any landmark cell ran, to "
+    facts.append("The planned cell list was extended, before any landmark cell ran, to "
                  "include the walking landmark cell (E4b); this is stricter than the original "
                  "criterion.")
     if killed:
@@ -1351,8 +1351,8 @@ def _qe3_stat(la, lg, ma, mg):
 
 def _qe3_read(ctx: Ctx, cid: str, field: str, ref: str) -> dict:
     """QE3's parts on landmark cell ``cid``, its errors read in ``field`` (the RMS error, or
-    the wearer's own distance), against reference cell ``ref``, read in the RMS error -- the
-    reference wearer judges by RMS, so that is its own distance too. ``lm`` is (a)'s contrast,
+    the simulated user's own distance), against reference cell ``ref``, read in the RMS error -- the
+    reference simulated user judges by RMS, so that is its own distance too. ``lm`` is (a)'s contrast,
     ``adv`` the reference advantage over G, ``diff`` D; ``present`` whether all four cells hold
     what they need."""
     lm = ctx.cell_contrast(cid, "promp_s0", "a", "g", field=field)
@@ -1430,7 +1430,7 @@ def _qe3(ctx: Ctx, field: str = "distances", head: str | None = None) -> str:
 
 def _qe3_lines(ctx: Ctx) -> list[str]:
     """QE3's planned verdict in the RMS error, then three sub-lines: the same criteria in
-    the wearer's own distance, QE3(b) against the s = 0.5 reference, and the walking cell."""
+    the simulated user's own distance, QE3(b) against the s = 0.5 reference, and the walking cell."""
     g_name = _label("promp_s0", "g")
     lines = [_qe3(ctx),
              _qe3(ctx, OWN, head=f"  - **QE3 in the wearer's own metric (landmark observer, "
@@ -1464,7 +1464,7 @@ def _qe3_lines(ctx: Ctx) -> list[str]:
             b = f"(b) D = {_ci3(r['diff'])} Nm, {_qe3_b_state(r['adv'], r['diff'])[0]}"
         parts.append(f"in {_metric_name(field)}: {a}; {b}")
     lines.append("  - **Walking-calibrated landmark cell (25 %), analyst's reading, not a "
-                 "registered verdict.** QE3's criteria applied to the cell of spec amendment "
+                 "planned verdict.** QE3's criteria applied to the cell of spec change "
                  "E4b (magnitude JND 25 % of the ideal's peak, timing JND 2.8 %GC; its "
                  "perturbation strength is in section 9): " + "; ".join(parts) + ".")
     lines.append(_qe3_decisiveness(ctx))
@@ -1560,16 +1560,16 @@ def _qe6(ctx: Ctx) -> str:
 
 def _qe_section(ctx: Ctx) -> list[str]:
     return ["## 11. Predictions QE1-QE6", "",
-            "Registered 2026-10-07 before any 5e session ran. Each line gives its verdict, the "
-            "values and, when a prediction does not come true, its consequence: the registered "
+            "Planned 2026-10-07 before any 5e session ran. Each line gives its verdict, the "
+            "values and, when a prediction does not come true, its consequence: the planned "
             "kill criterion for QE2 and QE6, the analyst's reading for QE1, QE3, QE4 and QE5. "
             "QE3(b), QE4(a) and QE6(a) compare changes between cells and are judged, by the "
-            "amendment at the end of spec §4, on a joint cluster-bootstrap interval of the "
+            "change at the end of spec §4, on a joint cluster-bootstrap interval of the "
             "difference: users resampled once per draw within each fold, across every array, "
             "common users only. The verdict is wholly on one side of the threshold or "
             "\"uncertain\". A verdict on fewer users than a complete cell is marked "
-            "provisional. By the amendment after the whole-branch review, QE3 is read in the "
-            "RMS error (its registered verdict) and in the landmark wearer's own distance, and "
+            "provisional. By the change after the whole-branch review, QE3 is read in the "
+            "RMS error (its planned verdict) and in the landmark wearer's own distance, and "
             "QE3(b) is also read against the s = 0.5 reference.", "",
             _qe1(ctx), _qe1_before(ctx), _qe2(ctx), *_qe3_lines(ctx), _qe4(ctx), _qe5(ctx), _qe6(ctx), ""]
 
@@ -1608,7 +1608,7 @@ def build_report(dir5e, dir5c, dir5d, n_boot: int = 10_000, *, run_dir=None, tou
               perturbation_cache=perturbation_cache)
     lines = _intro()
     for section in (_main_section, _contrast_section, _ranking_section, _s_sweep_section,
-                    _robust_section, _tuning_section, _oracle_section, _own_section,
+                    _robust_section, _tuning_section, _simulated_user_section, _own_section,
                     _perturbation_section, _gain_section, _qe_section):
         lines += section(ctx)
     lines += _methods_note()

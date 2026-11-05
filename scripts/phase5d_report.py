@@ -153,10 +153,10 @@ def _cost(d5, c5, n_boot):
 
 
 def _lens_ceiling(d5):
-    """(median, n) over the population a_lens users of the lens ceiling minus the Franks floor,
+    """(median, n) over the population a_lens users of the lens best-profile level minus the Franks best-profile distance,
     both read from the Franks sidecars at the rows' run_dir; None when no sidecar holds it.
 
-    The lens ceiling (``scripts/phase5d_franks.py``) is the distance from the ideal of the Franks
+    The lens best-profile level (``scripts/phase5d_franks.py``) is the distance from the ideal of the Franks
     fit to the user's best ProMP curve: what the lens delivers if A holds its best curve."""
     lens = d5.get("lens-franks")
     if lens is None or "run_dir" not in lens:

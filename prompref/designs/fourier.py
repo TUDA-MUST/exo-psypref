@@ -1,7 +1,7 @@
 """Truncated Fourier series over the gait cycle -- linear in its parameters.
 
-Its purpose is to break a confound. If a preference is a bowl in curve space then in a
-linear-in-parameters family it is exactly a quadratic bowl in parameter space, and in a
+Its purpose is to break a confound. If a preference is a ideal-point model in curve space then in a
+linear-in-parameters family it is exactly a quadratic ideal-point model in parameter space, and in a
 nonlinear family it is not. Without a linear family built on a different basis in the
 comparison, "flexible beats rigid" and "linear beats nonlinear" cannot be separated, and
 the ProMP is both.

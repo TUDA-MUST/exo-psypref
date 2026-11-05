@@ -15,22 +15,22 @@ plan's decision:
 - **GP5** makes the search domain a fixed candidate set, the finite domain the paper's own
   library assumes. Candidates are one draw from the search region's own prior measure per
   session, not a uniform grid over the design's box. A first draft drew a scrambled Sobol
-  sequence over the box instead; on the whitened path an earlier step wires, ``design.project`` clips
-  radially onto a ball, and in eight dimensions the ball inscribed in a cube holds only
-  ~1.6 % of its volume, so ~98 % of a box-uniform draw lands on the ball's *surface* -- a
+  sequence over the box instead; on the normalized path an earlier step wires, ``design.project`` clips
+  radially onto a search region, and in eight dimensions the search region inscribed in a cube holds only
+  ~1.6 % of its volume, so ~98 % of a box-uniform draw lands on the search region's *surface* -- a
   shell the arm's own prior mass does not sit on. The prior measure is also the one
   comparator C2 draws its batch from, so every comparator searches under the
-  same measure. See the an earlier step report's a later fix for the candidate-floor and gate
+  same measure. See the an earlier step report's a later fix for the candidate-best-profile distance and gate
   measurements this replacement is based on.
 - **The measure is the arm's, not the design's**. ``design.sample_prior``
   is the default, but on every Phase 5 harness path that design is a
   :class:`~prompref.learning.space.WhitenedDesign`, whose ``sample_prior`` is a *standard
-  normal* clipped to the ball -- the same draw in every arm, while the arm's own prior
+  normal* clipped to the search region -- the same draw in every arm, while the arm's own prior
   carries its Student-t tail through ``nu`` and ``scale``. Measured over 200k draws per arm
   at d = 8, the share of the arm's own prior mass beyond the radius a standard normal
   actually fills is 1.0 % at ``tight``, 10.7 % at t8, 19.4 % at t4, 31.5 % at t2 and 97.3 %
   at ``wide``: in four of five arms G searched a strictly narrower region than learner A's
-  particle filter and C2's batch, and it was narrowest on exactly the atypical wearers the
+  particle filter and C2's batch, and it was narrowest on exactly the atypical simulated users the
   heavy-tailed arms exist to represent. A baseline that loses for a reason we introduced is
   worth less than nothing, so ``prior=`` hands the learner the arm's own prior -- the same
   :meth:`~prompref.learning.smc.BowlPrior.sample_zstar` draw A and C2 use -- and the result
@@ -47,7 +47,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..designs.base import Design
-from ..user.oracle import NO_PREFERENCE, PREFER_A, PREFER_B, rms_distance
+from ..user.simulated_user import NO_PREFERENCE, PREFER_A, PREFER_B, rms_distance
 from .preference_gp import OUTPUT_SCALE, PREFERENCE_NOISE, PreferenceGP
 
 #: Arens et al.: the exploration weight and its step. The cap is.
@@ -57,26 +57,26 @@ KAPPA_MAX = 6.5
 #: the size of the per-session candidate draw from the prior measure.
 #:
 #: **Measured, not assumed**.
-#: The case for raising this to 32768 was that G's candidate floor -- the best its own
+#: The case for raising this to 32768 was that G's candidate best-profile distance -- the best its own
 #: domain can do -- exceeds its convergence threshold for every user measured, so the
 #: discretisation and not the learning bounded its headline number. Sixteen times the
-#: candidates does lower the floor about as spacing predicts (n^(-1/8)): 0.96 -> 0.60 Nm at
+#: candidates does lower the best-profile distance about as spacing predicts (n^(-1/8)): 0.96 -> 0.60 Nm at
 #: ``tight``, and 8-38 % across three real users in every arm, averaged over six candidate
 #: seeds.
 #:
-#: **But the floor is not what bounds the delivered curve, so buying floor buys nothing.**
+#: **But the best-profile distance is not what bounds the delivered curve, so buying best-profile distance buys nothing.**
 #: At 150 comparisons, 2048 -> 32768 on real users: at ``tight`` the delivered curve got
 #: *worse* (1.56 -> 1.77 Nm median over three users here; 1.72 -> 2.03 Nm over the
 #: coordinator's five-user smoke), while at t4 all three users improved (2.14 -> 1.45,
 #: 1.92 -> 1.63, 1.47 -> 1.46). Note the two measures move independently in both arms: at
-#: ``tight`` the floor improved 0.36 Nm while delivered worsened, and at t4 the floor got
+#: ``tight`` the best-profile distance improved 0.36 Nm while delivered worsened, and at t4 the best-profile distance got
 #: *worse* (0.70 -> 0.80) while delivered improved. So the effect of a denser domain at this
-#: budget is arm-dependent, and it is not mediated by the floor.
+#: budget is arm-dependent, and it is not mediated by the best-profile distance.
 #:
 #: Left at the plan's 2048 because the evidence does not point one way -- not because 32768
 #: was shown to be worse. What bounds G's result is two things, both properties of the
 #: published method in eight dimensions, and the paper should report both: the domain, whose
-#: floor is above G's threshold at *either* size, and the budget, which gives the GP about
+#: best-profile distance is above G's threshold at *either* size, and the budget, which gives the GP about
 #: twenty distinct observations however many candidates it is offered. ``n_candidates`` stays
 #: a constructor argument precisely so a 5c cell can vary it deliberately and say so.
 #:
@@ -109,9 +109,9 @@ class GPUCBLearner:
         """``prior`` is the measure the candidate set is drawn from (see the module
         docstring's second GP5 note). It is a :class:`~prompref.learning.smc.BowlPrior`
         -- anything offering ``sample_zstar(rng, n, d)`` -- and its draw is clipped
-        through ``design.project``, exactly as ``WhitenedDesign.sample_prior`` clips its
+        through ``design.project``, exactly as ``NormalizedDesign.sample_prior`` clips its
         own. ``None`` keeps ``design.sample_prior``, which is what a design searched in
-        its own parameters (rather than in an arm's whitened ball) wants.
+        its own parameters (rather than in an arm's normalized search region) wants.
         """
         if kappa_max < kappa0:
             raise ValueError(f"kappa_max {kappa_max} is below kappa0 {kappa0}")
@@ -158,10 +158,10 @@ class GPUCBLearner:
         """``n`` draws from ``prior``, clipped into ``design``'s feasible set.
 
         The clip is ``design.project`` rather than an explicit radial formula, for the
-        same reason ``WhitenedDesign.sample_prior`` and ``SpacePriorDesign.sample_prior``
+        same reason ``NormalizedDesign.sample_prior`` and ``SpacePriorDesign.sample_prior``
         use it: it is the one definition of "feasible" the whole space module shares, so
         a candidate here is feasible by exactly the test LineCoSpar and A's duels use. On
-        the whitened path it is the radial clip onto the arm's ball; on a design searched
+        the normalized path it is the radial clip onto the arm's search region; on a design searched
         in its own parameters it is that design's box.
         """
         z = prior.sample_zstar(self._rng, n, design.n_params)

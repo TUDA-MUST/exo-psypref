@@ -147,7 +147,7 @@ def main(argv=None) -> int:
         raise SystemExit("amp_yardstick.json is not the post hoc fixed-yardstick file this figure expects")
     sc = js["self_check"]
     if sc["points_matched"] != sc["points_total"] or not all(e["ok"] for e in sc["exact"]):
-        raise SystemExit("amp_yardstick.json's own self-check against the registered reports did not pass")
+        raise SystemExit("amp_yardstick.json's own self-check against the planned reports did not pass")
     loss, other = {}, {}
     for e in js["differences"]:
         if e["k"] != K:
@@ -586,7 +586,7 @@ def main(argv=None) -> int:
              "pess_w_tri": "fsPessWTri", "pess_f_tri": "fsPessFTri", "closest_tri": "fsClosestTri",
              "closest_sigma": "fsClosestSigma", "a5_w": "fsNoPrefW", "a5_f": "fsNoPrefF",
              "markers_light": "fsMarkersLight", "markers_all": "fsMarkersAll"}
-    tex = ["% fig4s_text.tex: written by scripts/paper_v2_fig4s.py (amp-free worktree); do not edit by hand.",
+    tex = ["% fig4s_text.tex: written by scripts/paper_v2_fig4s.py (repository); do not edit by hand.",
            "% Every number for Fig. 4S's caption and the draft texts, from amp_yardstick.json, amp_table1.json,",
            "% amp_rob2_report.md and amp_tie_report.md (PTI3, C1 and PRB1 as those reports state them), checked",
            "% by the script."]
@@ -630,9 +630,9 @@ def main(argv=None) -> int:
     print("row association (centre from own row's centre; baseline from own / nearest other row's baseline, pt): "
           + "; ".join(f"{k_} {t_} {a:.2f}, {b:.2f} / {d:.2f}" for k_, t_, a, b, d in assoc))
     failed = ", ".join(f"{e['condition']} {TAG[e['setting']]} {v:+.2f}" for e, v in zip(prb2, reg))
-    print(f"PRB2 registered: {len(prb2)} of {len(prb2_all)} cells below {PRB2_LIMIT:g} ({failed}); "
+    print(f"PRB2 planned: {len(prb2)} of {len(prb2_all)} cells below {PRB2_LIMIT:g} ({failed}); "
           f"fixed for the same cells {', '.join(f'{v:+.2f}' for v in fxd)}; amp_rob2_report.md verdict matches")
-    print(f"PTI3 as amp_tie_report.md states it: {pti3}; JSON registered {r3[0]:+.2f} [{r3[1]:+.2f}, {r3[2]:+.2f}], "
+    print(f"PTI3 as amp_tie_report.md states it: {pti3}; JSON planned {r3[0]:+.2f} [{r3[1]:+.2f}, {r3[2]:+.2f}], "
           f"fixed {f3[0]:+.2f} [{f3[1]:+.2f}, {f3[2]:+.2f}]")
     print(f"C1 fixed 12 vs CMA-ES on Schaefer: report {c1}; JSON {rc1[0]:+.2f} [{rc1[1]:+.2f}, {rc1[2]:+.2f}]; "
           f"PRB1 held {prb1_share} % (bar {prb1_bar} %)")

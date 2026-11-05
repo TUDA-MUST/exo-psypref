@@ -1,4 +1,4 @@
-"""Priors over ProMP basis weights, and the whitened space they induce.
+"""Priors over ProMP basis weights, and the normalized space they induce.
 
 The prior is this project's independent variable. Three sources:
 shaped to a parametric family, fitted to biological moments, or generically smooth --
@@ -64,7 +64,7 @@ def sigma_smooth(basis: VonMisesBasis, ridge: float = 1e-3) -> np.ndarray:
     ``(D^T D + ridge I)^-1``, which handed the DC direction variance ``1 / ridge`` --
     measured at 1000 against 2.906 for the next eigenvalue. The ridge, meant only to
     regularise, silently became the dominant term: ``d_eff`` collapsed from 3.47 to 1.11
-    at the first nonzero epsilon, and at every epsilon > 0 the top whitened direction was
+    at the first nonzero epsilon, and at every epsilon > 0 the top normalized direction was
     100 % a constant torque offset -- the one direction with no assistive role at all.
     Pricing DC is no longer the ridge's job, or anyone's; see our design notes
     """
@@ -112,14 +112,14 @@ def sigma_smooth_matched(basis: VonMisesBasis, sigma_param: np.ndarray) -> np.nd
     return 0.5 * (matched + matched.T)
 
 
-#: A whitening divides by the square root of every kept prior variance. Below this
+#: A normalization divides by the square root of every kept prior variance. Below this
 #: fraction of the largest, that division amplifies round-off into nonsense rather than
 #: into a meaningful scale.
 RANK_RTOL = 1e-8
 
 
 @dataclass
-class Whitening:
+class Normalization:
     """Maps basis weights to a space where the prior is ``N(0, I)``.
 
     One z-unit is one population standard deviation, so the space is perceptually
@@ -136,7 +136,7 @@ class Whitening:
         if not 1 <= self.d <= self.mu.size:
             # Out of range, d silently truncated to nothing (d <= 0 gives empty slices
             # and NaN round-trips) or padded past the spectrum, either way producing a
-            # whitening that looks like it worked. Refuse instead.
+            # normalization that looks like it worked. Refuse instead.
             raise ValueError(
                 f"d must be in [1, {self.mu.size}], got {self.d}"
             )
@@ -193,7 +193,7 @@ def perceptual_resolution(jnd75_z: np.ndarray, r_prior: float = 2.5
 
 
 def trust_radius(d: int, quantile: float = 0.99) -> float:
-    """Radius of the ball holding ``quantile`` of an ``N(0, I_d)`` prior's mass.
+    """Radius of the search region holding ``quantile`` of an ``N(0, I_d)`` prior's mass.
 
     design. The norm of a d-dimensional standard normal draw concentrates near
     sqrt(d), so a fixed radius is a d-dependent handicap: 2.5 keeps 99 % of the mass at

@@ -1,95 +1,112 @@
-# exo-psypref: evaluation code for PsyPref
+# PsyPref
 
-Supplement to our ICORR 2027 paper on speeding up user preference tuning of exoskeleton assistance with Bayesian adaptive
-methods from psychophysics. PsyPref is the optimizer the paper proposes. This repository holds the simulation that
-produced the paper's results. It contains no new human data, and everything in it was run in simulation.
+**Tune an exoskeleton's assistance curve from A/B comparisons, with few of them.**
 
-- [CONDITIONS.md](CONDITIONS.md): how each simulated user and robustness condition is modeled, the size we chose, and
-  where that size comes from.
-- `prompref/`: the Python package, whose name comes from ProMP preference tuning. It holds PsyPref, the comparators, the
-  simulated users and the profile families.
-- `preftune/`: the gait-phase grid, the loader for the walking data and an earlier learner core that `prompref` builds on.
-- `scripts/`: the sweeps behind each result and the scripts that turn their logs into figures.
-- `figures/`: the paper's figures as TikZ, with the data they plot.
+Assistance that fits the person often works best, and users can say which of two torque profiles feels better. PsyPref decides
+which two profiles to compare next and what to make of each answer, using Bayesian adaptive methods from psychophysics: prior
+knowledge, the most informative comparison, and a model of noisy answers. In simulation, this reaches after 3–8 comparisons what the
+strongest other optimizer reaches after 40.
 
-A guide to using PsyPref with other data, projections and priors will follow.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/session_dark.gif">
+  <img alt="A simulated tuning session: pairs of torque curves, the belief narrowing around the preferred profile, the effect of the prior's width and peak range, and a projection onto a curve family" src="assets/session_light.gif">
+</picture>
 
-## From a figure to its data
+> **Everything here is simulated.** No person has used PsyPref yet. It rests on assumptions that only experiments can test, above all that people judge whole curves and have one preferred profile. See [what the results depend on](#what-the-results-depend-on).
 
-| In the paper | Script | Logs it reads |
-|---|---|---|
-| Fig. 1 | `scripts/paper_v2_fig1.py`, `scripts/paper_v2_fig1j.py` | `full` |
-| Fig. 2 | `scripts/paper_v2_fig2.py --variant v1`, then `c` and `d` | `full`, `cmp`, `abl`, `rnd` |
-| Fig. 3 | `scripts/paper_v2_fig3p.py` | `fam_floors`, `fam`, `full`, `robust` |
-| Fig. 4 | `scripts/paper_v2_fig4l.py`, then `scripts/paper_v2_fig4m.py` | `full`, `robust`, `rob2`, `tie`, `s3`, `var`, `pri`, `cmp` |
-| Table I | `scripts/paper_v2_table_main.py --dest figures/tables` | `full`, `cmp`, `abl`, `rnd`, `pw`, `ks`, `ks2` |
-| Absolute benefit by noise level | `scripts/provenance/s3_headline.py`, `scripts/provenance/noise_benefit_shares.py` | `full`, `cmp`, `robust`, `s3`, `var` |
-| Direct choices between profiles | `scripts/provenance/direct_choices.py` | `full`, `cmp`, `long` |
-| Choices between 16 and 8 weights | `scripts/provenance/weights_direct_choices.py` | `long`, `ks`, `ks2` |
-| Distance removed, JND remaining | `scripts/provenance/distance_by_k.py` | `full`, `cmp` |
-| Participation ratio, best profile per family | `scripts/provenance/effective_dimension.py`, `scripts/provenance/reach_beyond_family.py` | `fam_floors`, `long`, `ks`, `ks2` |
-| Share of the widest pairs (reruns 30 sessions) | `scripts/provenance/pair_width_share.py` | `full` |
-
-Each log is `out/icorr/amp_free/<name>_sessions.jsonl`, written by `scripts/icorr_amp_<name>.py`, with one line per
-session. A line records the user, the setting, the optimizer, the distance to the preferred profile after each
-comparison, and the seed.
-
-## Three levels of reproduction
-
-Python 3.12 with the versions in `requirements.txt`. numpy must stay below 2.
+## Quick start
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/TUDA-MUST/exo-psypref.git
+cd exo-psypref
+pip install -e .
+python examples/quickstart.py
 ```
 
-The data bundle (`exo-psypref-data.zip`, attached to the release, with a DOI to follow) unpacks at the repository's root
-into `out/` and holds the logs, the users and the priors.
+```python
+from psypref import Prior, PsyPref
 
-1. **Figures from the logs.** Needs the bundle and takes minutes.
-   ```bash
-   python scripts/paper_v2_fig4l.py
-   python scripts/paper_v2_fig4m.py
-   cd figures && pdflatex test_fig4m.tex
-   ```
-2. **Sessions from the stored users.** Needs the bundle. This reruns one randomly drawn session per condition, setting and
-   optimizer and compares every number with the log, timings aside.
-   ```bash
-   python scripts/check_reproduction.py --workers 8
-   ```
-   A whole sweep reruns with `python scripts/icorr_amp_rob2.py run --workers 8`, after moving its log aside.
-3. **Users and priors from raw data.** Needs the public gait data listed below, unpacked under
-   `data/external_gait_data` and `data/molinaro/time_domain`. These are the `prep` commands of the sweeps.
+prior = Prior.from_walking(peak_range=(3, 12))   # hip torque peaks your device and protocol allow, in Nm
+tuner = PsyPref(prior)
 
-### What we checked
+for k in range(24):
+    a, b = tuner.ask()                  # two torque curves, 101 points over the gait cycle
+    tuner.tell(show_to_user(a, b))      # your code: "A", "B", or None for no preference
 
-From this repository and its bundle alone, on Windows with Python 3.12.3 and numpy 1.26.4:
+curve = tuner.identified()              # the identified assistance
+```
 
-- Level 1: all figure data and Table I came out identical to what the paper prints.
-- Level 2: 658 sessions across 16 sweeps equal their logs exactly, one drawn per condition, setting and optimizer.
-- Not rerun by the check: GP-BALD and GP-qEUBO (minutes per session), the adaptive-prior chains, the sweep with priors
-  from other users (`pan`), and the floors.
-- Level 3 was not run from this repository.
+Show each profile long enough to feel it. With 20 s per profile, as in Ramella et al.'s study, a comparison takes about 50 s, so 24
+comparisons take about 20 min. Present each pair in random order, and keep your controller's own torque limits in place.
 
-Another platform or BLAS may differ in the last digits.
+## How it works
 
-## Data
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/how_it_works_dark.png">
+  <img alt="Four panels: curves from the prior, a pair A and B, a narrower belief, and the identified assistance against generic assistance and the preferred profile" src="assets/how_it_works_light.png">
+</picture>
 
-| Data | Used for | In this repository |
-|---|---|---|
-| Molinaro et al., doi:10.35090/gatech/75759 | Prior and main users | Derived curves in the bundle, raw data not |
-| Fukuchi et al. 2018, Reznick et al. 2021 | Users from other datasets | Derived curves in the bundle, raw data not |
-| Schäfer et al. 2026, 11 participants | Centre and spread of the personal lag, spread of personal timing, and the family's timing distribution | Aggregates only: the mean and SD of the four preferred timings, inside the stored priors of CMA-ES, 4–6 param. (`out/phase5-schaefer/priors/*schaefer_peaks.json`). No raw or per-participant data |
+PsyPref describes the profile with eight weights of a probabilistic movement primitive (ProMP), a sum of basis functions over the gait cycle, and keeps a belief about the
+profile the user prefers. It begins with a prior built from other people's walking data, asks the pair expected to reveal most, and
+treats each answer as a noisy choice. It learns how sharply the user discriminates during the session, so nobody has to measure a
+just-noticeable difference (JND) first.
 
-Level 3 is therefore incomplete from this repository: the `prep` commands that draw new users also need the personal
-lag's statistics from Schäfer et al.'s participants. `icorr_amp_pri.py prc`, which places the participants' own preferred
-profiles on the simulated scale, needs their per-participant values, and its report is not included. The scripts that
-read Schäfer et al.'s raw logs (`schaefer_grounding.py`, `icorr_jnd_free.py`) take the location with `--data`.
+## Make it fit your study
 
-## Code comments
+| Your question | Where to look |
+|---|---|
+| Which prior? How wide? Which peak range? How many weights? | [Choosing a prior](docs/choosing_a_prior.md) |
+| My study needs named parameters, or my device only produces certain shapes | [Projection onto a family](docs/projections.md) |
+| Another joint, device or population | [Using PsyPref on another exoskeleton](docs/other_exoskeletons.md) |
 
-The code is the code that produced the logs, apart from file paths. Comments and docstrings were edited for this release,
-and the build compares syntax trees to confirm nothing else changed. Some comments keep short labels of tests, such as K12,
-from our design notes, which are not part of this repository.
+| You want | Call |
+|---|---|
+| Walking data, peaks free in a range | `Prior.from_walking(peak_range=(3, 12))` |
+| Walking data, peaks fixed | `Prior.from_walking(level=12.0)` |
+| Your own curves | `Prior.from_curves(curves, peak_range=(3, 12))` |
+| One-sided assistance, or curves that count as they are | `Prior.from_curves(curves, limit=40.0)` |
+| Some doubt about the prior | `prior.widened(2.0)` |
+| Pairs shown in an interpretable family | `PsyPref(prior, family="schaefer")`, or your own `Family` |
+| A session continued after a break | `PsyPref.replay(prior, tuner.answers, seed=seed)` |
+| A dry run before anyone walks | `SimulatedUser(preferred, noise=1.0)`, see [examples](examples/) |
+
+## What we found in simulation
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/speed_dark.png">
+  <img alt="Preference over generic assistance against comparisons, in three peak settings: PsyPref reaches the strongest other optimizer's 40-comparison level after 3, 5 and 8 comparisons" src="assets/speed_light.png">
+</picture>
+
+Means of 200 simulated users per setting, from 5 walking subjects, with 95 % intervals.
+
+- **Fewer comparisons.** After 3–8 comparisons, users would choose PsyPref's profile over generic assistance as often as the
+  profile that the strongest other optimizer reaches after 40. All optimizers share the prior here, except CMA-ES on a family.
+- **Prior and pairs carry the speed.** After 24 comparisons, a prior three times wider costs 15.4–21.4 points and random pairs 14.3–16.6,
+  against 2.5–5.8 for replacing the answer model.
+- **More weights do not slow it down,** but within one session they do not help either. They pay off in longer tuning.
+- **Not there yet.** After 24 comparisons, users stay 2.1–3.8 JND from their preferred profile, and they would still prefer profiles found later.
+
+### What the results depend on
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/robustness_dark.png">
+  <img alt="PsyPref's lead over the strongest other optimizer under broken assumptions: positive in most cases, but not secure for users who judge single features or have no single preferred profile" src="assets/robustness_light.png">
+</picture>
+
+PsyPref stays ahead in 68 of 75 robustness cases. Its lead does not survive users who judge single features or have no single preferred
+profile, and at fixed 12 Nm it trails on shapes from the comparator's own family and for users who break six assumptions at once. Where users
+discriminate more coarsely, the lead remains but the benefit shrinks: at fixed 12 Nm and a noise of 3 Nm, only 28 % of the users would
+benefit. Our simulated users answer by a model close to PsyPref's, and the prior fits them by construction, which favors PsyPref.
+How people judge assistance curves has not been measured, and that is what we consider the most useful next step.
+
+## Reproducing the paper
+
+The code, the logs and every figure's data are here. [REPRODUCE.md](REPRODUCE.md) leads from each figure to its script and data,
+and [CONDITIONS.md](CONDITIONS.md) lists every simulated condition with its size and source.
+
+```bash
+pytest tests/test_psypref_library.py   # with the data bundle: this library reruns the paper's sessions, to within 1e-12 Nm
+```
 
 ## How to cite
 
@@ -97,5 +114,4 @@ The paper's reference will follow.
 
 ## License
 
-The code is under the MIT License ([LICENSE](LICENSE)). The data bundle is under CC BY 4.0, subject to the terms of the
-source datasets.
+The code is under the [MIT License](LICENSE). The data are under CC BY 4.0, subject to the terms of the source datasets.

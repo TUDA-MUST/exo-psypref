@@ -11,7 +11,7 @@ What the paper states (journal pages):
   magnitude, Nm); uext, the peak extension magnitude, "set to the maximum value of 15 Nm", the
   hardware limit, because stair ascent demands more extension than the device gives.
 - p. 2150, eq. (1): T(x) = PCHIP(t, u, x) with t = [tflexp - tflexd/2, tflexp, tflexp + tflexd/2,
-  textp - textd/2, textp, textp + textd/2] and u = [0, uflex, 0, 0, uext, 0]: two bouts, each
+  textp - textd/2, textp, textp + textd/2] and u = [0, uflex, 0, 0, uext, 0]: two parts, each
   symmetric about its peak, through six nodes.
 - p. 2151: bounds, from stair-climbing pilots: tflexp 65-92.5 %, tflexd 20-47.5 %, textp 15-45 %,
   textd 20-60 % of the gait cycle, uflex 6-13 Nm; uext fixed at 15 Nm.
@@ -20,12 +20,12 @@ Implementation:
 - One scipy ``PchipInterpolator`` through the six nodes sorted in time (eq. (1) lists the flexion
   nodes first; a sorting interpolator such as MATLAB's ``pchip`` puts them in time order), made
   periodic over the cycle by a zero node at the previous flexion end and one at the next extension
-  onset. Torque is zero outside the bouts, and every bout starts and ends with zero slope (the
+  onset. Torque is zero outside the parts, and every part starts and ends with zero slope (the
   PCHIP derivative at a node next to a zero segment). Torque is flexion positive here, so the
-  extension bout enters as -uext.
-- The paper leaves overlapping bouts undefined (eq. (1) needs increasing nodes, and the published
-  box allows overlap). Where the two bouts would overlap on either side of the cycle, both
-  half-durations are scaled down by one common factor until the bouts touch; a touching pair of
+  extension part enters as -uext.
+- The paper leaves overlapping parts undefined (eq. (1) needs increasing nodes, and the published
+  box allows overlap). Where the two parts would overlap on either side of the cycle, both
+  half-durations are scaled down by one common factor until the parts touch; a touching pair of
   zero nodes is merged. ``project`` clips to the box only, so the reported parameters are the ones
   set; the curve uses the effective durations.
 
@@ -58,9 +58,9 @@ MERGE_TOL = 1e-9
 
 
 def effective_durations(tflexp, tflexd, textp, textd) -> tuple[float, float]:
-    """The durations the curve uses: both scaled by one factor where the bouts would overlap,
-    so that they touch (the extension bout precedes the flexion bout, which precedes the next
-    cycle's extension bout). Needs textp < tflexp < textp + 100."""
+    """The durations the curve uses: both scaled by one factor where the parts would overlap,
+    so that they touch (the extension part precedes the flexion part, which precedes the next
+    cycle's extension part). Needs textp < tflexp < textp + 100."""
     gap_1 = tflexp - textp
     gap_2 = textp + 100.0 - tflexp
     if gap_1 <= 0.0 or gap_2 <= 0.0:
@@ -89,7 +89,7 @@ def nodes(theta6) -> tuple[np.ndarray, np.ndarray, float]:
 
 
 class PchipDesign(BoxDesign):
-    """Park et al.'s two-bout PCHIP profile; six parameters, or five with uext fixed."""
+    """Park et al.'s two-part PCHIP profile; six parameters, or five with uext fixed."""
 
     def __init__(self, low, high, prior=None, fixed_uext: float | None = None) -> None:
         super().__init__(np.asarray(low, dtype=float), np.asarray(high, dtype=float))
@@ -129,8 +129,8 @@ class PchipDesign(BoxDesign):
         i_ext, i_flex = int(np.argmin(c)), int(np.argmax(c))
         textp = representative(float(PHASE[i_ext]), self.low[2], self.high[2])
         tflexp = representative(float(PHASE[i_flex]), self.low[0], self.high[0])
-        tflexd, textd = bout_width(c, i_flex, 1.0), bout_width(c, i_ext, -1.0)
-        # Start 2 % clear of touching bouts: where they overlap, the curve is flat in the sum of
+        tflexd, textd = part_width(c, i_flex, 1.0), part_width(c, i_ext, -1.0)
+        # Start 2 % clear of touching parts: where they overlap, the curve is flat in the sum of
         # the durations, and a least-squares start there stays there.
         half = 0.5 * (tflexd + textd)
         if half > 0.0 and tflexp > textp:
@@ -143,10 +143,10 @@ class PchipDesign(BoxDesign):
         return self.project(np.array(guess))
 
 
-def bout_width(c: np.ndarray, i: int, sign: float) -> float:
+def part_width(c: np.ndarray, i: int, sign: float) -> float:
     """The width (%GC) of the region of ``sign`` around sample ``i`` of the one-cycle curve ``c``
     (no duplicated end point): the contiguous samples of that sign plus one step on each side,
-    from the last sample before the bout to the first after it."""
+    from the last sample before the part to the first after it."""
     c = np.asarray(c, dtype=float)
     n = c.size
     left = right = 0

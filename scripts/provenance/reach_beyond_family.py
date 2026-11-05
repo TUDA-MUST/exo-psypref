@@ -1,6 +1,6 @@
 """Post hoc, read-only: can PsyPref get closer to the preference than any curve of a fixed family could?
 (a) Share of users whose identified profile is closer than their family's best curve, by K and k.
-(b) How much perceivable shape lies outside the family, and how much the search ball cuts off.
+(b) How much perceivable shape lies outside the family, and how much the search search region cuts off.
 (c) A yardstick from rate-distortion: bits needed for a distance, under a Gaussian source."""
 import json
 import sys

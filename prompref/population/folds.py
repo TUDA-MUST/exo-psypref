@@ -1,7 +1,7 @@
 """Leave-one-subject-out folds over the Molinaro subjects.
 
 With five subjects, a prior fitted to the same subjects its users come from would look
-better than it is for a new wearer. Every fold fits on four subjects and builds users
+better than it is for a new simulated user. Every fold fits on four subjects and builds users
 from the fifth; one in-sample fold is kept as a sanity bound.
 """
 

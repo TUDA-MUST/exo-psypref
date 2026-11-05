@@ -16,7 +16,7 @@ result numbers.
 
 Data: every curve is real and no session is run. The two ProMP curves are the pair PsyPref asked
 after six answers in the stored median-room session (loso-AB31/pop016, e-main), the pair Fig. 1
-shows, loaded through fig1_concepts.real_session (which checks the fold's whitening, basis and
+shows, loaded through fig1_concepts.real_session (which checks the fold's normalization, basis and
 ideal against the snapshot file). Each is fitted in the Franks et al. family with the lens's own
 code: SurfaceFitter (multi-start bounded least squares, device-clipped) on the fold's Franks
 prior box (phase5._franks_prior, arm_space "tight"), in the order the lens fits a pair. The
@@ -81,7 +81,7 @@ def curves(out: Path) -> dict:
     run = str(out / "phase5-schaefer")
     promp = p5.arm_space(p5._prior(run, fc.FOLD, "promp_s0"), ARM)
     franks = p5.arm_space(p5._franks_prior(run, fc.FOLD), ARM)
-    fitter = SurfaceFitter(franks.design, start_mean=franks.whitening.mu)
+    fitter = SurfaceFitter(franks.design, start_mean=franks.normalization.mu)
     pinv = np.linalg.pinv(promp.design.inner.basis.design)
     pair = s["pair"][K_PAIR]
     res = dict(phase=s["phase"], source=s["source"], promp=[], fit=[], back=[], nodes=[],

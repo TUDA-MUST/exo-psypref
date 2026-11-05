@@ -15,7 +15,7 @@ import numpy as np
 @runtime_checkable
 class PreferenceLearner(Protocol):
     def propose(self) -> tuple[np.ndarray, np.ndarray]:
-        """The next pair of design points to show the wearer."""
+        """The next pair of design points to show the simulated user."""
 
     def update(self, theta_a: np.ndarray, theta_b: np.ndarray, response: int) -> None:
         """Record an answer: 0 prefers A, 1 prefers B, 2 no preference."""

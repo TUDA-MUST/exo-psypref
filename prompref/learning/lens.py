@@ -1,8 +1,8 @@
 """The ProMP lens.
 
-Learner A stays unchanged in the fold's ProMP space, where its bowl likelihood is a fair model of
+Learner A stays unchanged in the fold's ProMP space, where its ideal-point model likelihood is a fair model of
 curve-distance preferences.
-The wearer only ever sees curves of an interpretable surface family: each duel end A proposes is
+The simulated user only ever sees curves of an interpretable surface family: each duel end A proposes is
 replaced by its best surface fit, A is told the ProMP projection of the curve actually shown,
 and the delivered curve is the surface fit to A's optimum. No random draws.
 """

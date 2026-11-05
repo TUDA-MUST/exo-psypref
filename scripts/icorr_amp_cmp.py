@@ -7,7 +7,7 @@ Usage:
 FULL's users, peaks, answer seeds and generic assistance
 in the three settings; each cell is a comparator of ``amp_free.comparator`` run by FULL's
 ``run_one``: GP-qEUBO, CMA-ES on the ProMP sized to the budget (population 4, sigma0 0.5), Arens'
-GP with a generic start (with and without the true-JND gate) and Ramella et al.'s learner.
+GP with a start at the prior's mean (with and without the true-JND gate) and Ramella et al.'s learner.
 Outputs in <out>/icorr/amp_free/: cmp_sessions.jsonl (resumable), amp_cmp_report.md.
 """
 
@@ -84,8 +84,8 @@ def report(out: Path) -> None:
     def cell(src, setting, cand):
         return {k[0]: r for k, r in src.items() if k[1:] == (setting, cand)}
 
-    L = ["# Registration CMP: the comparators in their design regime", "",
-         f"Spec section 23 (c1a5c00). {len(rows)} sessions, {len(errors)} errors. Preference over generic "
+    L = ["# Test plan CMP: the comparators in their design regime", "",
+         f"Design note 23 (c1a5c00). {len(rows)} sessions, {len(errors)} errors. Preference over generic "
          f"assistance at k = 24 (s = {AF.S} Nm, λ = {AF.LAPSE}); PsyPref − cell in points, paired; 95 % "
          f"intervals from {R.N_BOOT} draws, users resampled within folds. Stuck: the identified curve at "
          f"k = 40 within 0.1 JND ({STUCK:.3f} Nm) of generic assistance.", ""]

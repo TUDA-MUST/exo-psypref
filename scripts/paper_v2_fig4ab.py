@@ -159,7 +159,7 @@ def cell(loss, members, setting, merge_rule):
     low_rg = min(d["registered"][0] for d in live)
     if er["registered"][0] > low_rg + 1e-12:
         raise SystemExit(f"merged cell {[m[1] for m in members]} {setting}: the lowest fixed estimate "
-                         f"({ef['condition']}) is not the lowest registered one; split the row")
+                         f"({ef['condition']}) is not the lowest planned one; split the row")
     fx, rg = F4.pts(ef["fixed"]), F4.pts(er["registered"])
     show = math.nan if (er is ef and ef["same_yardstick"]) or abs(rg[0] - fx[0]) < 1e-9 else rg[0]
     ns = {e["n"] for e in cands}
@@ -222,7 +222,7 @@ def main(argv=None) -> int:
         raise SystemExit("amp_yardstick.json is not the post hoc fixed-yardstick file this figure expects")
     sc = js["self_check"]
     if sc["points_matched"] != sc["points_total"] or not all(e["ok"] for e in sc["exact"]):
-        raise SystemExit("amp_yardstick.json's own self-check against the registered reports did not pass")
+        raise SystemExit("amp_yardstick.json's own self-check against the planned reports did not pass")
     loss, other = {}, {}
     for e in js["differences"]:
         if e["k"] != K:
@@ -302,7 +302,7 @@ def main(argv=None) -> int:
         hollow = {(p[3], p[4], p[1]) for p in prov if p[2] == "hollow"}
         miss = [(e["condition"], e["setting"]) for e in prb2 if ("ROB2", e["condition"], e["setting"]) not in hollow]
         if miss:
-            raise SystemExit(f"{name}: PRB2 cells below {PRB2_LIMIT} registered not drawn: {miss}")
+            raise SystemExit(f"{name}: PRB2 cells below {PRB2_LIMIT} planned not drawn: {miss}")
     # (4) PsyPref (with its tie handling) against CMA-ES on Schaefer's family, every plotted cell
     vs_sch, not_ahead = [], set()
     for s, c in sorted(EXPECTED):
@@ -410,17 +410,17 @@ def main(argv=None) -> int:
     print(f"4B filled markers at or above {GUIDE:g}: {sum(g[0] for g in gB)} of {sum(g[1] for g in gB)}; "
           f"below: {[x for g in gB for x in g[2]]}")
     print(f"\nself-checks: {n_same} un-merged rows equal fig4_rows.csv; coverage {len(EXPECTED)} conditions in both; "
-          f"{len(prb2)} PRB2 cells below {PRB2_LIMIT:g} registered drawn hollow in both "
+          f"{len(prb2)} PRB2 cells below {PRB2_LIMIT:g} planned drawn hollow in both "
           f"({', '.join(e['condition'] + ' ' + TAG[e['setting']] for e in prb2)}); "
-          f"registered {max(100 * e['registered'][0] for e in prb2):+.1f} .. {min(100 * e['registered'][0] for e in prb2):+.1f}, "
+          f"planned {max(100 * e['registered'][0] for e in prb2):+.1f} .. {min(100 * e['registered'][0] for e in prb2):+.1f}, "
           f"fixed {max(100 * e['fixed'][0] for e in prb2):+.1f} .. {min(100 * e['fixed'][0] for e in prb2):+.1f}")
     print(f"PsyPref ahead of CMA-ES (Schaefer) on the fixed yardstick in {len(ahead)} of {len(vs_sch)} plotted cells "
           f"(lowest lower bound {min(ahead):+.1f}); not ahead:")
     for n_ in notes:
         if n_[0] == "not_ahead_of_cmaes_schaefer":
             print(f"  {n_[1]} {n_[2]} {n_[3]} {n_[4]} (n = {n_[6]}): fixed {n_[10]:+.1f} [{n_[11]:+.1f}, {n_[12]:+.1f}], "
-                  f"registered {n_[7]:+.1f} [{n_[8]:+.1f}, {n_[9]:+.1f}] (this script's bootstrap)")
-    print(f"  registered value to quote for the pessimistic user (PTI3, amp_tie_report.md): "
+                  f"planned {n_[7]:+.1f} [{n_[8]:+.1f}, {n_[9]:+.1f}] (this script's bootstrap)")
+    print(f"  planned value to quote for the pessimistic user (PTI3, amp_tie_report.md): "
           f"{pti3[0]:+.1f} [{pti3[1]:+.1f}, {pti3[2]:+.1f}]")
     print(f"same sessions: {n_pairs} hollow markers, each its filled marker's condition")
     print("label values: " + ", ".join(f"{k} = {v:.4g}" for k, v in lab.items()))

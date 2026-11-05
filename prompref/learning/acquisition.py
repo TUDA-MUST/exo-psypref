@@ -1,6 +1,6 @@
 """Expected information gain about z* for many candidate duels at once.
 
-Design-free, like ``smc.py``: it sees particles and whitened duel ends only. For a binary
+Design-free, like ``smc.py``: it sees particles and normalized duel ends only. For a binary
 answer the gain is exact to reweight both ways; the entropy of the ``z*`` marginal is
 approximated by a Gaussian's, ``0.5 log det Cov``. That proxy is never negative -- the
 law of total covariance and the concavity of log det -- which the Phase 4 gate checks.

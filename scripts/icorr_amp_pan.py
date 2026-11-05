@@ -207,8 +207,8 @@ def report(out: Path) -> None:
         return R._boot(items, lambda x: float(np.mean([P._p(i["a"]) - P._p(i["s"]) for i in x])
                                          / np.mean([P._p(i["o"]) - P._p(i["s"]) for i in x])), rng)
 
-    L = ["# Registration PAN: the prior updated with n curves of a new population", "",
-         f"Spec section 22 (6cbc3d0). {len(rows)} sessions, {len(errors)} errors; identification reruns: "
+    L = ["# Test plan PAN: the prior updated with n curves of a new population", "",
+         f"Design note 22 (6cbc3d0). {len(rows)} sessions, {len(errors)} errors; identification reruns: "
          f"{same} of {len(ident)} reproduce PAD's static S3 rows. Preference over generic assistance at "
          f"k = 24; paired differences in points; 95 % intervals from {R.N_BOOT} draws, users resampled "
          "within folds.", "",

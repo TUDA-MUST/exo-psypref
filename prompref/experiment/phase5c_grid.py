@@ -33,7 +33,7 @@ NOISE_CELLS = {
     "drift4": dict(drift_nm=4 * JND),
 }
 
-#: our design notes S16a: the preferred region anchored on each user's floor, k JND wide.
+#: our design notes S16a: the preferred region anchored on each user's best-profile distance, k JND wide.
 REGION_CELLS = {
     "region1": dict(plateau_over_floor_jnd=1.0),
     "region2": dict(plateau_over_floor_jnd=2.0),

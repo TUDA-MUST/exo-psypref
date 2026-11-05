@@ -6,15 +6,15 @@ Usage:  python scripts/paper_icorr_fig_families.py [--numbers <out>/icorr/proj_n
 Test P of the our design notes (section 9a), of scripts/icorr_proj_report.py, at
 the size the coordinator set on 2026-10-22: one IEEE column (3.5 in) and 1.2 in tall, one compact
 dot-and-interval panel. The families are ordered by parameter count on x. Per family:
-  - the attainable ceiling of the preference over generic assistance at the realistic room
+  - the attainable best-profile level of the preference over generic assistance at the realistic room
     (default the median-matched 1.47 Nm room), with its 95 % interval;
   - PsyPref's achieved preference after 24 comparisons where it ran (on the ProMP, or with each
     proposal projected onto the family);
-  - the median floor (best reachable RMS error, as simulated) in main JND units (0.674 Nm) as a
+  - the median best-profile distance (best reachable RMS error, as simulated) in main JND units (0.674 Nm) as a
     small label above the column, bold where it lies below 1 JND.
 Every entry is measured against the same generic assistance, the K = 8 ProMP prior mean: generic
-assistance is one physical profile, whatever is searched in. With --xsource, a grey bar behind each ceiling spans the lowest to the
-highest ceiling over XS's six other preferred-profile sources (surrogate, Schäfer (i) and (ii)
+assistance is one physical profile, whatever is searched in. With --xsource, a grey bar behind each best-profile level spans the lowest to the
+highest best-profile level over XS's six other preferred-profile sources (surrogate, Schäfer (i) and (ii)
 published, Franks box, Ramella, Park), against the same generic (XS baseline (a)), as simulated;
 use it with --room simulated. A family that was not built (PCHIP)
 keeps its slot, marked "not built". Every plotted number is read from proj_numbers.json, which

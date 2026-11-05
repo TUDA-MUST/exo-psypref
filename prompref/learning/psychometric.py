@@ -7,7 +7,7 @@ Random duels stay available unchanged: they are the baseline the acquisition mus
 A reasons in ``z`` (:class:`LearnerSpace`) and speaks design parameters to the harness.
 
 Duels and the trust region live in the eps = 0 space, the posterior in the learner's own. Drawing duels in each learner's own space and clipping them to a common
-ball would push 74 % of eps = 1's duel centres onto the boundary; drawing them in one
+search region would push 74 % of eps = 1's duel centres onto the boundary; drawing them in one
 space means every eps is shown the same curves and differs in its prior alone.
 """
 
@@ -22,7 +22,7 @@ from .acq_variants import (ACQUISITIONS, DIRECTION_SETS, WIDTHS, curve_metric,
 from .acquisition import TRIM_QUANTILE, expected_information_gain
 from .candidates import (DIRECTIONS, candidate_duels, clip_into_region, coordinate_directions,
                          step_region, truncate_duel)
-from .smc import BowlPrior, SMCPosterior, log_likelihood
+from .smc import IdealPointPrior, SMCPosterior, log_likelihood
 from .space import LearnerSpace
 
 _STREAM_SALT = 0xA11CE
@@ -32,7 +32,7 @@ _STREAM_SALT = 0xA11CE
 SEPARATIONS = (0.5, 1.0, 2.0)
 
 #: Where duels are drawn and the trust region is judged. "reference" is the eps = 0 space
-#:; "own" is the learner's own-prior ball, kept as one sensitivity row.
+#:; "own" is the learner's own-prior's search region, kept as one sensitivity row.
 DUEL_SPACES = ("reference", "own")
 
 DUEL_MODES = ("random", "eig")
@@ -50,7 +50,7 @@ _EIG_DEFAULTS = dict(_PHASE4_DEFAULTS, acquisition="eig", widths="ladder",
 
 
 class PsychometricLearner:
-    """The bowl model's SMC posterior, fed either by random duels inside the trust ball
+    """The ideal-point model model's SMC posterior, fed either by random duels inside the trust search region
     (``duels="random"``) or by duels chosen to maximise expected information gain about
     z*, interleaved with an intensity probe ladder.
 
@@ -63,7 +63,7 @@ class PsychometricLearner:
                  d: int | None = None, duels: str = "random", duel_space: str = "reference",
                  p_probe: float = 0.15, max_mult: float = 4.0, r_step: float | None = None,
                  duel_directions: str = "free", stop_sd: float | None = None,
-                 n_particles: int = 4000, prior: BowlPrior = BowlPrior(),
+                 n_particles: int = 4000, prior: IdealPointPrior = IdealPointPrior(),
                  space: LearnerSpace | None = None, acquisition: str = "eig",
                  widths: str = "ladder", direction_set: str = "posterior") -> None:
         if duels not in DUEL_MODES:
@@ -101,7 +101,7 @@ class PsychometricLearner:
         self.duel_directions, self.stop_sd = duel_directions, stop_sd
         if space is not None:
             # Phase 5: the arm's space is the learner's own and its duel
-            # space; its whitening and radius come from the fold's data prior, never from eps.
+            # space; its normalization and radius come from the fold's data prior, never from eps.
             if design is not space.design:
                 raise ValueError("space= must be a space of the given design")
             if eps != 0.0 or d is not None or duel_space != "reference":
@@ -119,7 +119,7 @@ class PsychometricLearner:
                 if self.space.d < design.n_params:
                     raise ValueError(
                         f"duel_space='reference' at eps={eps} needs full-rank whitening "
-                        f"(d = n_params, Ruling R15); got d={self.space.d} of "
+                        f"(d = n_params, Decision R15); got d={self.space.d} of "
                         f"{design.n_params}"
                     )
                 self.duel_space = LearnerSpace.build(design, eps=0.0, d=d)
@@ -151,29 +151,29 @@ class PsychometricLearner:
         self._n_capped_trace: list[int] = []
 
     def _propose_random(self) -> tuple[np.ndarray, np.ndarray]:
-        """A prior centre clipped to the ball, a random direction, a prescribed separation.
+        """A prior centre clipped to the search region, a random direction, a prescribed separation.
 
         All three are drawn in the duel space, so under the same seed shows the
         same curves at every eps. ``update`` maps what was shown into the posterior's space.
         """
         self._duel_kind.append("random")
         space, rng = self.duel_space, self._duel_rng
-        centre = space.clip_to_ball(rng.normal(size=space.d))
+        centre = space.clip_to_search_region(rng.normal(size=space.d))
         direction = rng.normal(size=space.d)
         direction /= np.linalg.norm(direction)
         multiple = float(rng.choice(SEPARATIONS))
         self._pending_multiple = multiple
         separation = multiple * np.exp(self.prior.log_ell0)
-        z_a = space.clip_to_ball(centre + 0.5 * separation * direction)
-        z_b = space.clip_to_ball(centre - 0.5 * separation * direction)
+        z_a = space.clip_to_search_region(centre + 0.5 * separation * direction)
+        z_b = space.clip_to_search_region(centre - 0.5 * separation * direction)
         return space.to_theta(z_a), space.to_theta(z_b)
 
     def propose(self) -> tuple[np.ndarray, np.ndarray]:
         return self._propose_random() if self.duels == "random" else self._propose_eig()
 
     def _z_worn(self) -> np.ndarray:
-        """The curve currently delivered: z-hat, clipped into the trust ball, duel coordinates."""
-        return self.duel_space.clip_to_ball(
+        """The curve currently delivered: z-hat, clipped into the trust search region, duel coordinates."""
+        return self.duel_space.clip_to_search_region(
             self.space.transfer(self.posterior.zstar_mean(), self.duel_space))
 
     def _propose_eig(self) -> tuple[np.ndarray, np.ndarray]:
@@ -293,7 +293,7 @@ class PsychometricLearner:
 
     def best(self) -> np.ndarray:
         """Random duels: the posterior mean of z*. EIG duels: that mean clipped into the
-        trust ball, so the worn curve the step region is centred on is the one delivered."""
+        trust search region, so the worn curve the step region is centred on is the one delivered."""
         if self.duels == "random":
             return self.space.to_theta(self.posterior.zstar_mean())
         return self.space.to_theta(self.duel_space.transfer(self._z_worn(), self.space))

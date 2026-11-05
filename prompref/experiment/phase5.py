@@ -36,9 +36,9 @@ from ..learning.lens import LensLearner, SurfaceFitter
 from ..learning.linecospar import LENGTHSCALE, STEP
 from ..learning.psychometric import DUEL_MODES, PsychometricLearner
 from ..learning.space import LearnerSpace, SpacePriorDesign
-from ..learning.whitened import WhitenedLearner
+from ..learning.normalized import WhitenedLearner
 from ..population.export import load_fold_users
-from ..prior import Whitening
+from ..prior import Normalization
 from ..priors.basis_prior import (BASIS_SCRIPT, BasisDataPrior, basis_floors_path,
                                   basis_prior_stem)
 from ..priors.data_prior import FAMILIES, DataPrior
@@ -48,16 +48,16 @@ from ..priors.timing_prior import TimingPrior
 from ..user.ddm import RT_MODES, DDMObserver, load_rt_params, pyddm_version
 from ..user.drift import DriftingObserver, path_for_scale, path_for_shift
 from ..user.jnd import JND_SCALES, gate_value, true_jnd
-from ..user.oracle import (LANDMARK_MAG_FRACTION, METRICS, PHASE_WEIGHTED, RANDOM_SMOOTH,
+from ..user.simulated_user import (LANDMARK_MAG_FRACTION, METRICS, PHASE_WEIGHTED, RANDOM_SMOOTH,
                            Observer, rms_distance)
 from ..user.phase_weight import PHASE_WEIGHTINGS, PREF_CELLS, load_bio_weight, pref_weight
 from ..user.schedule import ScheduledObserver, linear_path
 from .calibration import CalibrationMonitor
 from .hyper import posterior_sample
-from .landmarks import two_bout_plausible
+from .landmarks import two_part_plausible
 from .metrics import prior_mean_curve, prior_mean_distance
 from .phase_weighted import load_phase_weight_sidecar, sidecar_entry
-from .review import G_STARTS, NoLapseLearner, generic_start_fields, generic_start_g
+from .review import G_STARTS, NoLapseLearner, prior_mean_start_fields, prior_mean_start_g
 from .robust import (OOD_USER_SET, USER_SETS, load_ood_users, load_random_utility,
                      user_utility)
 from .rt import RTLearner
@@ -74,7 +74,7 @@ LEARNERS = ("a", "d_z", "c2", "g", "c1", "a_lens", "cmaes")
 #: response's preference GPs, built from BoTorch
 #: (:mod:`prompref.learning.gp_eubo`): one model, asked by analytic EUBO or by BoTorch's pairwise
 #: BALD. They need and run only on promp_s0 with its data prior, whose
-#: whitened coordinates their bowl mean is defined in.
+#: normalized coordinates their ideal-point model mean is defined in.
 OPT_IN_LEARNERS = ("gp_eubo", "gp_bald")
 #: Each GP learner's acquisition (:data:`prompref.learning.gp_eubo.ACQUISITIONS`).
 GP_ACQUISITION = {"gp_eubo": "eubo", "gp_bald": "bald"}
@@ -91,7 +91,7 @@ PRIORS = ("data", "flat")
 FLAT_DESIGNS = {"promp_s0": PrompS0, "schaefer": SchaeferDesign}
 
 #: Families a Phase 5 session can run. "schaefer" arrived with plan 5b-ii (R35) and keeps
-#: its floors in a sidecar, because the exported users and the population code
+#: its best-profile distances in a sidecar, because the exported users and the population code
 #: they come from are hash-guarded against the 5a run.
 FAMILIES_5B2 = tuple(FAMILIES) + ("schaefer",)
 
@@ -101,8 +101,8 @@ LENS_FAMILIES = ("franks", "dual_gauss")
 #: ICORR reframe, test P (our design notes
 #: or run): further surfaces PsyPref's proposals are projected onto -- Schaefer et al.'s family with
 #: free peaks, family (ii), and Ramella et al.'s semi-trapezoid. Only a_lens runs them, with the
-#: data prior. Their priors (``prompref.priors.surface_prior``) and the Schaefer (ii) floors come
-#: from :data:`PROJ_SCRIPT`; the semi-trapezoid is scored against C1's floors over the same box.
+#: data prior. Their priors (``prompref.priors.surface_prior``) and the Schaefer (ii) best-profile distances come
+#: from :data:`PROJ_SCRIPT`; the semi-trapezoid is scored against C1's best-profile distances over the same box.
 #: ``pchip`` (added after the design's correction of 2026-10-22, 4509e78 on, before any
 #: PCHIP code or run): Park et al. 2025's PCHIP profile adapted to level walking
 #: (``prompref.designs.pchip_park``).
@@ -111,7 +111,7 @@ PROJ_SCRIPT = "scripts/icorr_proj_prep.py"
 #: The second review round's established-practice baseline (our design notes, R2, BASE,
 #:): GP-BALD and CMA-ES search Schaefer (ii)'s six
 #: interpretable parameters directly, in the family's own prior space (test P's surface
-#: prior, ``scripts/icorr_proj_prep.py``), scored against its own floors.
+#: prior, ``scripts/icorr_proj_prep.py``), scored against its own best-profile distances.
 BASE_FAMILY = "schaefer_peaks"
 BASE_LEARNERS = ("cmaes", "gp_bald")
 
@@ -126,7 +126,7 @@ def _flat_sidecar_path(run_dir: str, fold: str, family: str) -> Path:
 
 @lru_cache(maxsize=16)
 def schaefer_floors(run_dir: str, fold: str) -> dict:
-    """Per-user floors for the Schaefer family, written by scripts/phase5_schaefer_floors.py."""
+    """Per-user best-profile distances for the Schaefer family, written by scripts/phase5_schaefer_floors.py."""
     path = _schaefer_sidecar_path(run_dir, fold)
     if not path.exists():
         raise FileNotFoundError(
@@ -136,19 +136,19 @@ def schaefer_floors(run_dir: str, fold: str) -> dict:
 
 @lru_cache(maxsize=16)
 def flat_floors(run_dir: str, fold: str, family: str) -> dict:
-    """Per-user floors for a flat cell's own box, written by scripts/phase5_schaefer_floors.py.
+    """Per-user best-profile distances for a flat cell's own box, written by scripts/phase5_schaefer_floors.py.
 
     This is the canonical explanation of why this sidecar exists; other places in this
     task cross-reference it rather than repeating it. A flat cell's learner searches
     ``FLAT_DESIGNS[family]``'s box, not the fold's data-prior design -- for ``promp_s0``
     that box is narrower (``bound_nm=14``, against the data prior's
     ``PROMP_DATA_BOUND_NM=30``), so scoring a flat cell against ``family["floor_nm"]``
-    (5a's floor over the *wider* box) can be unreachable for it: a minimum over the wider
+    (5a's best-profile distance over the *wider* box) can be unreachable for it: a minimum over the wider
     box is at most the minimum over the narrower one. Measured on one fold's 44 users, the
-    gap reached 0.213 Nm for one user, whose n90 threshold sat only ~0.19 Nm above the floor
+    gap reached 0.213 Nm for one user, whose n90 threshold sat only ~0.19 Nm above the best-profile distance
     -- a flat cell there could never reach it at all. This sidecar is the flat box's own
-    floor, so a flat cell's ``delivered_over_floor`` is never inflated by an unreachable
-    target (the flat-floors addition to plan 5b-ii).
+    best-profile distance, so a flat cell's ``delivered_over_floor`` is never inflated by an unreachable
+    target (the flat-best-profile distances addition to plan 5b-ii).
     """
     path = _flat_sidecar_path(run_dir, fold, family)
     if not path.exists():
@@ -160,7 +160,7 @@ def flat_floors(run_dir: str, fold: str, family: str) -> dict:
 
 def _sidecar_entry(sidecar: dict, user_id: str, path: Path, run_dir: str,
                    script: str = "scripts/phase5_schaefer_floors.py") -> dict:
-    """One user's entry from a floors sidecar: a stale or partial
+    """One user's entry from a best-profile distances sidecar: a stale or partial
     sidecar -- one exported after a population change added or renamed a user -- used to
     fail with a bare ``KeyError: 'pop042'`` two functions removed from the missing-file
     message above, naming neither the sidecar nor the fix. This names both.
@@ -188,7 +188,7 @@ def _drift_sidecar_path(run_dir: str, fold: str, label: str) -> Path:
 @lru_cache(maxsize=32)
 def drift_floors(run_dir: str, fold: str, label: str, script: str = DRIFT_SCRIPT) -> dict:
     """Per-user drift entries -- the shift reaching the displacement, whether it was capped,
-    and the family's floor for the *final* ideal -- written by scripts/phase5c_floors.py.
+    and the family's best-profile distance for the *final* ideal -- written by scripts/phase5c_floors.py.
     A magnitude sidecar holds the growth ``scale`` instead of shift and capped."""
     path = _drift_sidecar_path(run_dir, fold, label)
     if not path.exists():
@@ -219,7 +219,7 @@ def _drift_entry(point: Phase5Point) -> dict:
 #: Phase 4's tuned D_z multipliers; used when a point leaves them unset.
 DZ_TUNED = dict(lengthscale_mult=2.0, step_mult=0.5)
 
-#: Success tolerances above the user's floor, Nm RMS.
+#: Success tolerances above the user's best-profile distance, Nm RMS.
 TAUS = (0.25, 0.5, 0.75)
 
 OBSERVER_SALT = 0x5E55105
@@ -239,7 +239,7 @@ DRIFT_AXES = ("time", "magnitude")
 STRESS_FLAGS = ("a_metric", "no_pref_hard")
 STRESS_VALUES = ("lapse_start", "lapse_end", "s_start", "s_end", "link", "link_scale",
                  "no_pref_jnd")
-#: S5's links (``Phase5Point.link``); the probit is the plain wearer, ``link=None``.
+#: S5's links (``Phase5Point.link``); the probit is the plain simulated user, ``link=None``.
 STRESS_LINKS = ("logistic", "student_t")
 #: The second review round's heavy-tailed answers (section 9a, R2, HT (c)): the Cauchy link, matched
 #: as S5 (``scripts/icorr_r2_prep.py --step links``). A single stressor, checked as S5's links are.
@@ -248,7 +248,7 @@ R2_LINKS = ("cauchy",)
 #: The second review round's pessimistic combined user (section 9a, R2, PESS
 #: before any code or run): s = 2.0, fatigue (lapse 0.05 -> 0.30), order bias 0.3 s, the hard
 #: "no difference" rule at 0.5 JND, phase weights with SD of log w 1.0 (S1's "pref-sd1") and ideals
-#: from Schaefer's family by the per-bout rule of O (user set "ood-pb"). Exactly these values, all
+#: from Schaefer's family by the per part rule of O (user set "ood-pb"). Exactly these values, all
 #: together: this combination is the only multi-stressor point the checks accept, and it needs no
 #: field of its own (:func:`is_pess`).
 PESS_FIELDS = dict(s=2.0, lapse_start=0.05, lapse_end=0.30, order_bias=0.3, no_pref_jnd=0.5,
@@ -307,7 +307,7 @@ class Phase5Point:
     n_comparisons: int = 150
     #: R35's prior factor: the fold's data prior, or the family's own box.
     prior: str = "data"
-    #: R34's JND factor for G: a multiple of the wearer's true JND, or ``None`` for gate
+    #: R34's JND factor for G: a multiple of the simulated user's true JND, or ``None`` for gate
     #: off. A G point must state it -- see :class:`_Unstated`; every other learner leaves
     #: it alone and gets ``None``, exactly as before.
     jnd_scale: float | None = UNSTATED
@@ -327,8 +327,8 @@ class Phase5Point:
     #: S17): a time shift growing linearly from the first comparison to the last. Zero
     #: holds the preference still, as every earlier session did.
     drift_nm: float = 0.0
-    #: our design notes S16a: the wearer is indifferent among every curve within
-    #: ``floor + k * true_jnd(s)`` of the ideal, with k this field. S16's ``plateau_nm`` put
+    #: our design notes S16a: the simulated user is indifferent among every curve within
+    #: ``best-profile distance + k * true_jnd(s)`` of the ideal, with k this field. S16's ``plateau_nm`` put
     #: the region around the ideal, which the family cannot reach, so it changed nothing.
     plateau_over_floor_jnd: float = 0.0
     #: Learner A's posterior stopping rule: stop once the
@@ -337,23 +337,23 @@ class Phase5Point:
     #: Phase 5e: heterogeneous sensitivity. Each user's sensitivity is
     #: ``s_user = s * exp(s_user_logsd * z)``, z a standard normal drawn from the answer seed
     #: with :data:`S_USER_SALT` (:func:`per_user_s`). Zero is ``s`` itself, with no draw.
-    #: Everything that models this wearer reads s_user: the observer; G's JND gate (a
-    #: decision: R34's jnd_scale is a multiple of each wearer's own true JND, which
-    #: is oracle information and favours G); the anchored plateau of
+    #: Everything that models this simulated user reads s_user: the observer; G's JND gate (a
+    #: decision: R34's jnd_scale is a multiple of each simulated user's own true JND, which
+    #: is simulated user information and favours G); the anchored plateau of
     #: ``plateau_over_floor_jnd``; and ``tracking_error_jnd``. ``s`` stays the cell's identity.
     s_user_logsd: float = 0.0
     #: Phase 5e: the observer's comparison, one of
-    #: :data:`~prompref.user.oracle.METRICS`. "rms" is A's own model.
+    #: :data:`~prompref.user.simulated_user.METRICS`. "rms" is A's own model.
     observer_metric: str = "rms"
     #: O3's over-assistance weight. 1.0 is the plain observer.
     asymmetry: float = 1.0
     #: O6's familiarity weight w, with a zero-torque habitual
     #: profile. The optimizers then see a preference biased toward tau* / (1 + w), which is
-    #: 0.8 tau* at w = 0.25, while the floor and the score stay against the true tau*. The
+    #: 0.8 tau* at w = 0.25, while the best-profile distance and the score stay against the true tau*. The
     #: biased target sits w / (1 + w) RMS(tau*) from tau*, 0.2 RMS(tau*) at w = 0.25; each
     #: row records it as ``familiarity_target_gap_nm``. 0.0 is the plain observer.
     familiarity_weight: float = 0.0
-    #: Phase 5e: RMS in Nm of the smooth noise on each curve the wearer feels.
+    #: Phase 5e: RMS in Nm of the smooth noise on each curve the simulated user feels.
     device_noise_nm: float = 0.0
     #: Which way ``drift_nm`` moves the ideal: S17's time shift, or E6's magnitude scaling.
     drift_axis: str = "time"
@@ -365,32 +365,32 @@ class Phase5Point:
     g_kappa0: float | None = None
     #: Landmark observer only: its magnitude JND as a fraction of the
     #: ideal's peak. A landmark point resolves ``None`` to the static
-    #: :data:`~prompref.user.oracle.LANDMARK_MAG_FRACTION` in ``__post_init__``, so an
+    #: :data:`~prompref.user.simulated_user.LANDMARK_MAG_FRACTION` in ``__post_init__``, so an
     #: explicit 0.10 is the same identity; 0.25 is the walking-calibrated cell. Every other
     #: point keeps ``None``, and then the field appears in neither its key nor its row: the
     #: keys and rows of every cell without it stay byte-identical to those already stored.
     landmark_mag_fraction: float | None = None
     #: ICORR reframe, W3: the number K of von Mises bases of the
-    #: ProMP family. ``None`` is the run's own 8-basis prior and floors. An explicit 8 resolves
+    #: ProMP family. ``None`` is the run's own 8-basis prior and best-profile distances. An explicit 8 resolves
     #: to ``None`` in ``__post_init__``, so K = 8 has one identity, the stored one; a ``None``
     #: stays out of the key and the row, so every earlier point keeps both byte for byte. Any
-    #: other K reads the fold's K prior and K floors (``prompref.priors.basis_prior``, written
+    #: other K reads the fold's K prior and K best-profile distances (``prompref.priors.basis_prior``, written
     #: by ``scripts/icorr_k_priors.py``); only promp_s0 with its data prior has them.
     n_basis: int | None = None
     #: ICORR reframe, W3: learner A's duels. "eig" is Phase 4's expected information gain, the
-    #: method; "random" is Phase 3's random duels in the trust ball with the same posterior and
+    #: method; "random" is Phase 3's random duels in the trust search region with the same posterior and
     #: prior, the acquisition ablation. "eig" stays out of the key and the row, as above.
     duel_mode: str = "eig"
     #: ICORR reframe, home-advantage test at matched decisiveness:
-    #: the landmark wearer's utility is divided by this, its cell's decisiveness ratio measured
-    #: as the Phase 5e REPORT section 9 measures it, so the wearer answers as decisively as the
-    #: plain s = 1.0 RMS wearer. ``None`` is e-observer's wearer; an explicit 1.0 resolves to
+    #: the landmark simulated user's utility is divided by this, its cell's decisiveness ratio measured
+    #: as the Phase 5e REPORT section 9 measures it, so the simulated user answers as decisively as the
+    #: plain s = 1.0 RMS simulated user. ``None`` is e-observer's simulated user; an explicit 1.0 resolves to
     #: ``None`` (one identity), and ``None`` stays out of the key and the row.
     decisiveness_ratio: float | None = None
     #: ICORR reframe, out-of-generator ideals (section 9a, O): which users ``user_id`` names.
     #: ``None`` is the run's exported users; "ood" the Schaefer-profile users with one common
     #: peak (``RUN/ood/users``) and "ood-pb" those with
-    #: per-bout peaks (``RUN/ood-pb/users``; :mod:`prompref.experiment.robust`). ``None`` stays
+    #: per part peaks (``RUN/ood-pb/users``; :mod:`prompref.experiment.robust`). ``None`` stays
     #: out of key and row.
     user_set: str | None = None
     #: ICORR reframe, calibration of A's confidence: log A's
@@ -399,11 +399,11 @@ class Phase5Point:
     #: logging draws no random numbers, so the session is otherwise the one without it. False
     #: stays out of the key and the row.
     calibration_log: bool = False
-    #: ICORR reframe, phase-weighted wearers (our design notes, planned before any
+    #: ICORR reframe, phase-weighted simulated users (our design notes, planned before any
     #: code or run): "bio" (W-bio, the weight from the mean hip angular velocity, read from
     #: ``out/icorr/wph_bio_weight.json``) or "pref" (W-pref, a random periodic weight per user).
-    #: The wearer then judges by the phase-weighted RMS on its per-user matched scale
-    #: (:mod:`prompref.experiment.phase_weighted`). ``None``, the plain wearer, stays out of the
+    #: The simulated user then judges by the phase-weighted RMS on its per-user matched scale
+    #: (:mod:`prompref.experiment.phase_weighted`). ``None``, the plain simulated user, stays out of the
     #: key and the row.
     phase_weighting: str | None = None
     #: ICORR reframe, review response (our design notes before any
@@ -412,7 +412,7 @@ class Phase5Point:
     #: (:mod:`prompref.experiment.review`). ``None`` stays out of the key and the row.
     g_start: str | None = None
     #: ICORR review response, the lapse ablation of A: lambda fixed at 0 in A's likelihood and no
-    #: intensity probes, against a wearer who still lapses at ``lapse``
+    #: intensity probes, against a simulated user who still lapses at ``lapse``
     #: (:class:`~prompref.experiment.review.NoLapseLearner`). False stays out of the key and the row.
     a_no_lapse: bool = False
     #: ICORR review response, the probe ablation of A (PA4 before the cell
@@ -425,24 +425,24 @@ class Phase5Point:
     #: S2, PsyPref-M: learner A with a learned phase-weighted metric
     #: (:class:`~prompref.experiment.stress.MetricLearner`).
     a_metric: bool = False
-    #: S3, fatigue: the wearer's lapse runs linearly from ``lapse_start`` at the first comparison to
+    #: S3, fatigue: the simulated user's lapse runs linearly from ``lapse_start`` at the first comparison to
     #: ``lapse_end`` at the last (:class:`~prompref.user.schedule.ScheduledObserver`). ``lapse``
     #: stays the cell's identity (0.1, the main condition's) and is read by nothing else.
     lapse_start: float | None = None
     lapse_end: float | None = None
-    #: S4, changing sensitivity: the wearer's s runs linearly from ``s_start`` to ``s_end``. ``s``
+    #: S4, changing sensitivity: the simulated user's s runs linearly from ``s_start`` to ``s_end``. ``s``
     #: stays 1.0, the main condition's, so every comparator keeps its main configuration (G's JND
-    #: gate included); only the wearer changes.
+    #: gate included); only the simulated user changes.
     s_start: float | None = None
     s_end: float | None = None
     #: S5, link misspecification: "logistic" or "student_t" (nu = 3) instead of the probit, at the
-    #: scale ``s * link_scale``, with ``link_scale`` matched to the main wearer's median |dp| on
+    #: scale ``s * link_scale``, with ``link_scale`` matched to the main simulated user's median |dp| on
     #: prior-scale pairs (``scripts/icorr_stress_prep.py``).
     link: str | None = None
     link_scale: float | None = None
-    #: S7, "no preference" answers below ``no_pref_jnd`` true JNDs of the wearer: our design notes's soft
+    #: S7, "no preference" answers below ``no_pref_jnd`` true JNDs of the simulated user: our design notes's soft
     #: band (``allow_no_preference``), or with ``no_pref_hard`` the hard rule on the true utility
-    #: difference (:class:`~prompref.user.oracle.Observer`).
+    #: difference (:class:`~prompref.user.simulated_user.Observer`).
     no_pref_jnd: float | None = None
     no_pref_hard: bool = False
     #: ICORR reframe, smarter comparisons (our design notes, "A"
@@ -453,9 +453,9 @@ class Phase5Point:
     #: :mod:`prompref.learning.acq_variants`. ``None``, A itself, stays out of the key and the row.
     acq_variant: str | None = None
     #: ICORR response-time test (our design notes, "RT" before any
-    #: code or run; :mod:`prompref.user.ddm`): the main condition's wearer answers by a drift-diffusion
+    #: code or run; :mod:`prompref.user.ddm`): the main condition's simulated user answers by a drift-diffusion
     #: model, its response time informative ("inf", cell RT-inf) or drawn from the marginal
-    #: independently of the pair ("null", cell RT-null). ``None``, the probit wearer, stays out of the
+    #: independently of the pair ("null", cell RT-null). ``None``, the probit simulated user, stays out of the
     #: key and the row.
     rt_user: str | None = None
     #: PsyPref-RT: learner A with the joint likelihood of choice and response time
@@ -513,7 +513,7 @@ class Phase5Point:
         ratio = self.decisiveness_ratio
         if ratio is not None and not isinstance(ratio, (bool, str)) \
                 and isinstance(ratio, (int, float, np.integer, np.floating)) and ratio == 1.0:
-            # A divisor of 1 is e-observer's own wearer: one identity, the stored one.
+            # A divisor of 1 is e-observer's own simulated user: one identity, the stored one.
             object.__setattr__(self, "decisiveness_ratio", None)
         if isinstance(self.calibration_log, np.bool_):
             # json.dumps refuses numpy's bool; True and np.True_ are one identity.
@@ -607,7 +607,7 @@ def check_point(point: Phase5Point) -> None:
             and not _is_base(point):
         # Any basis count with its own K prior (section 9a, "More parameters": GP-BALD at
         # K = 16); _check_icorr validates n_basis itself. R2's BASE: GP-BALD on Schaefer (ii)'s
-        # own prior space, whose whitened coordinates the bowl mean is then defined in.
+        # own prior space, whose normalized coordinates the ideal-point model mean is then defined in.
         raise ValueError(f"{point.learner} runs on promp_s0 with its data prior: its prior mean "
                          "is that prior's bowl in its whitened coordinates (section 9a); got "
                          f"family {point.family!r}, prior {point.prior!r}")
@@ -701,7 +701,7 @@ BASE_CMA_POPSIZE = 4
 
 
 def _check_base(point: Phase5Point) -> None:
-    """R2's BASE (section 9a): the main condition's plain wearer of the run's exported users, s = 1.0
+    """R2's BASE (section 9a): the main condition's plain simulated user of the run's exported users, s = 1.0
     and lapse 0.1, 40 comparisons' worth of the main condition; CMA-ES at popsize 4. The arm and
     CMA-ES's sigma multiplier are the tuned settings; nothing else is changed."""
     if not _is_base(point):
@@ -713,7 +713,7 @@ def _check_base(point: Phase5Point) -> None:
                          f"{point.s}, lapse {point.lapse}")
     if point.learner == "cmaes":
         if point.cma_popsize is None or int(point.cma_popsize) != BASE_CMA_POPSIZE:
-            raise ValueError(f"BASE's CMA-ES has the registered population {BASE_CMA_POPSIZE}; got "
+            raise ValueError(f"BASE's CMA-ES has the planned population {BASE_CMA_POPSIZE}; got "
                              f"{point.cma_popsize!r}")
     if (point.user_set is not None or point.phase_weighting is not None
             or point.observer_metric != "rms" or point.order_bias != 0.0
@@ -728,7 +728,7 @@ def _check_base(point: Phase5Point) -> None:
 
 def _main_condition_deviations(point: Phase5Point) -> list[str]:
     """How a point departs from the main condition's plain A session (promp_s0, data prior, tight
-    arm, 8 bases, s = 1.0, the plain RMS wearer of the exported users, A with EIG duels and no
+    arm, 8 bases, s = 1.0, the plain RMS simulated user of the exported users, A with EIG duels and no
     variant). The lapse is not checked here."""
     out = []
     if (point.family, point.prior, point.arm) != ("promp_s0", "data", "tight") \
@@ -759,7 +759,7 @@ def _main_condition_deviations(point: Phase5Point) -> list[str]:
 
 def _check_rt_hyper(point: Phase5Point) -> None:
     """The response-time test and the population hyperprior. Each runs on the main condition's plain A session and changes one thing: the
-    wearer's answer model (RT), PsyPref-RT's likelihood (RT), the first pass's logging (H2) or
+    simulated user's answer model (RT), PsyPref-RT's likelihood (RT), the first pass's logging (H2) or
     PsyPref-hyper's priors on log ell and lambda (H2)."""
     for name in RTH_FLAGS:
         if not isinstance(getattr(point, name), bool):
@@ -792,20 +792,20 @@ def _check_rt_hyper(point: Phase5Point) -> None:
     if off:
         raise ValueError(f"{used[0]} runs on the main condition's plain A session; got {off[0]}")
     if point.rt_user is not None and float(point.lapse) != 0.1:
-        raise ValueError(f"the DDM wearer has the registered lapse 0.1, got {point.lapse}")
+        raise ValueError(f"the DDM wearer has the planned lapse 0.1, got {point.lapse}")
 
 
 def _check_proj(point: Phase5Point) -> None:
     """Test P's projection cells (section 9a, 2026-10-22): PsyPref (A with EIG duels) on
     the fold's 8-basis ProMP, each proposal projected onto a surface of :data:`PROJ_FAMILIES`, for
-    the main condition's plain wearer and the run's exported users, run to its budget."""
+    the main condition's plain simulated user and the run's exported users, run to its budget."""
     if point.family not in PROJ_FAMILIES:
         return
     if point.stop_sd is not None:
         raise ValueError(f"the {point.family} projection runs to its budget: no stop_sd")
     if (point.observer_metric != "rms" or point.user_set is not None
             or point.phase_weighting is not None or point.calibration_log):
-        raise ValueError(f"the {point.family} projection was registered for the plain RMS wearer "
+        raise ValueError(f"the {point.family} projection was planned for the plain RMS wearer "
                          "of the run's exported users, without calibration logging")
 
 
@@ -817,7 +817,7 @@ def _finite(value) -> bool:
 
 def _check_stress(point: Phase5Point) -> None:
     """The stress tests. Each stressor runs alone on the
-    main condition's plain wearer (S3-S7), and PsyPref-M on the plain or a phase-weighted wearer
+    main condition's plain simulated user (S3-S7), and PsyPref-M on the plain or a phase-weighted simulated user
     (S2): nothing else was planned."""
     for name in STRESS_FLAGS:
         if not isinstance(getattr(point, name), bool):
@@ -869,7 +869,7 @@ def _check_stress(point: Phase5Point) -> None:
                              f"bases; got family {point.family!r}, prior {point.prior!r}, arm "
                              f"{point.arm!r}, n_basis {point.n_basis!r}")
         if stressors:
-            raise ValueError("PsyPref-M was registered under the main condition and the phase-"
+            raise ValueError("PsyPref-M was planned under the main condition and the phase-"
                              f"weighted wearers only, not under {stressors[0]}")
     if not stressors:
         return
@@ -917,7 +917,7 @@ def _check_pess(point: Phase5Point) -> None:
             or point.plateau_over_floor_jnd > 0.0 or point.asymmetry != 1.0
             or point.familiarity_weight > 0.0 or point.device_noise_nm > 0.0
             or point.s_user_logsd > 0.0 or point.overdispersion > 0.0):
-        raise ValueError("PESS combines exactly its registered violations: no sensitivity "
+        raise ValueError("PESS combines exactly its planned violations: no sensitivity "
                          "schedule, other link, other wearer, drift, preferred region, asymmetry, "
                          "familiarity, device noise, heterogeneous s or overdispersion")
     if (point.a_metric or point.a_no_lapse or point.a_no_probes or point.stop_sd is not None
@@ -995,9 +995,9 @@ def _check_review(point: Phase5Point) -> None:
 
 
 def _check_phase_weighting(point: Phase5Point) -> None:
-    """The phase-weighted wearers (section 9a, W-bio and W-pref): the plain s = 1.0 wearer of
+    """The phase-weighted simulated users (section 9a, W-bio and W-pref): the plain s = 1.0 simulated user of
     e-main with only the weighting changed, on promp_s0 with its data prior and 8 bases, where the
-    per-user scales and floors were computed."""
+    per-user scales and best-profile distances were computed."""
     pw = point.phase_weighting
     if pw is None:
         return
@@ -1055,7 +1055,7 @@ def _check_robust(point: Phase5Point) -> None:
         if point.user_set not in USER_SETS:
             raise ValueError(f"user_set must be one of {USER_SETS} or None, got {point.user_set!r}")
         if (point.family, point.prior) != ("promp_s0", "data") or point.n_basis is not None:
-            # The OOD users carry floors for the fold's 8-basis ProMP data prior only.
+            # The OOD users carry best-profile distances for the fold's 8-basis ProMP data prior only.
             raise ValueError("the out-of-generator users run on promp_s0 with its data prior "
                              f"and 8 bases; got family {point.family!r}, prior {point.prior!r}, "
                              f"n_basis {point.n_basis!r}")
@@ -1098,7 +1098,7 @@ def _check_icorr(point: Phase5Point) -> None:
     if int(k) < 2:
         raise ValueError(f"n_basis must be at least 2 (VonMisesBasis), got {k}")
     if (point.family, point.prior) != ("promp_s0", "data"):
-        # The K priors and floors exist for the ProMP data prior only; a flat box, the other
+        # The K priors and best-profile distances exist for the ProMP data prior only; a flat box, the other
         # families, C1's trapezoid and the lens's surface families have no basis count.
         raise ValueError(f"n_basis applies to family 'promp_s0' with prior 'data' (W3); got "
                          f"family {point.family!r}, prior {point.prior!r}, learner "
@@ -1109,7 +1109,7 @@ def _check_icorr(point: Phase5Point) -> None:
 
 
 def _check_phase5e(point: Phase5Point) -> None:
-    """Phase 5e's fields: the wearer, the device and the comparator knobs."""
+    """Phase 5e's fields: the simulated user, the device and the comparator knobs."""
     if point.observer_metric not in METRICS:
         raise ValueError(f"observer_metric must be one of {METRICS}, got {point.observer_metric!r}")
     if point.drift_axis not in DRIFT_AXES:
@@ -1133,7 +1133,7 @@ def _check_phase5e(point: Phase5Point) -> None:
     if point.landmark_mag_fraction is not None:
         if point.observer_metric != "landmark":
             raise ValueError("only the landmark observer reads landmark_mag_fraction (spec "
-                             f"amendment E4b); got observer_metric {point.observer_metric!r}")
+                             f"change E4b); got observer_metric {point.observer_metric!r}")
         if point.landmark_mag_fraction <= 0.0:
             raise ValueError(f"landmark_mag_fraction must be positive, got "
                              f"{point.landmark_mag_fraction}")
@@ -1161,7 +1161,7 @@ def _check_phase5e(point: Phase5Point) -> None:
 
 
 def per_user_s(s: float, logsd: float, answer_seed: int) -> float:
-    """The wearer's own sensitivity: ``s * exp(logsd * z)``, z a standard normal
+    """The simulated user's own sensitivity: ``s * exp(logsd * z)``, z a standard normal
     from ``default_rng([answer_seed, S_USER_SALT])``. The same user gets the same ``s_user``
     in every arm and for every learner, as the answers are paired.
 
@@ -1176,38 +1176,38 @@ def per_user_s(s: float, logsd: float, answer_seed: int) -> float:
 def arm_space(prior: DataPrior | TimingPrior, arm: str) -> LearnerSpace:
     """The arm's space behind the device.
 
-    It combines the prior's own whitening (``DataPrior.space``, 5a review; or,
+    It combines the prior's own normalization (``DataPrior.space``, 5a review; or,
     for a data-prior Schaefer cell, ``TimingPrior.space`` -- both offer the same
-    ``design``/``whitening``/``space(radius)`` shape, so this function does not care
+    ``design``/``normalization``/``space(radius)`` shape, so this function does not care
     which one it was handed), the arm's 99 % radius, and a design whose curves
     are device-clipped (R29).
 
     The order matters: build the space from the prior first and
     wrap its design afterwards. ``DeviceDesign`` is not a ``PrompS0`` instance, so it defeats
     ``learner_prior``'s PrompS0 fast path, and ``LearnerSpace.build(DeviceDesign(...))`` would
-    silently whiten differently from ``DataPrior.space``, with radii that no longer match the
+    silently normalize differently from ``DataPrior.space``, with radii that no longer match the
     5a diagnostics. This note lives here rather than in ``data_prior.py`` on purpose: that file
     is population code whose hash the users export checks against the 5a run, so even a
     docstring edit there makes the export refuse.
     """
     space = prior.space(ARMS[arm].radius(prior.mu.size))
-    return LearnerSpace(DeviceDesign(space.design), space.whitening, space.radius)
+    return LearnerSpace(DeviceDesign(space.design), space.normalization, space.radius)
 
 
-def flat_whitening(design) -> Whitening:
+def flat_normalization(design) -> Normalization:
     """The moment-matched Gaussian of a design's box: mean at the centre,
     variance (high - low)^2 / 12 per parameter. It is the closest Gaussian analogue of "no
     prior knowledge", not an uninformed prior, and §4.3 says so.
 
-    Shared by ``flat_space`` and ``scripts/phase5_schaefer_floors.py``'s flat-box floors
-    (the flat-floors addition to plan 5b-ii), so a flat cell's search and its floor agree
+    Shared by ``flat_space`` and ``scripts/phase5_schaefer_floors.py``'s flat-box best-profile distances
+    (the flat-best-profile distances addition to plan 5b-ii), so a flat cell's search and its best-profile distance agree
     on exactly what "no prior knowledge" means for that box.
     """
     low = np.asarray(design.low, dtype=float)
     high = np.asarray(design.high, dtype=float)
     mu = 0.5 * (low + high)
     sigma = np.diag((high - low) ** 2 / 12.0)
-    return Whitening(mu, sigma, mu.size)
+    return Normalization(mu, sigma, mu.size)
 
 
 def flat_space(family: str, arm: str) -> LearnerSpace:
@@ -1221,8 +1221,8 @@ def flat_space(family: str, arm: str) -> LearnerSpace:
     if family not in FLAT_DESIGNS:
         raise ValueError(f"family must be one of {tuple(FLAT_DESIGNS)}, got {family!r}")
     design = FLAT_DESIGNS[family]()
-    whitening = flat_whitening(design)
-    return LearnerSpace(DeviceDesign(design), whitening, ARMS[arm].radius(whitening.mu.size))
+    normalization = flat_normalization(design)
+    return LearnerSpace(DeviceDesign(design), normalization, ARMS[arm].radius(normalization.mu.size))
 
 
 def learner_seed(answer_seed: int) -> int:
@@ -1231,12 +1231,12 @@ def learner_seed(answer_seed: int) -> int:
 
 def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, design=None, *,
                   s_user: float | None = None):
-    """``s_user`` is the wearer's own sensitivity (:func:`per_user_s`); ``None`` means
-    ``point.s``. Only G reads it: R34's ``jnd_scale`` is a multiple of the wearer's true JND."""
+    """``s_user`` is the simulated user's own sensitivity (:func:`per_user_s`); ``None`` means
+    ``point.s``. Only G reads it: R34's ``jnd_scale`` is a multiple of the simulated user's true JND."""
     if point.learner == "c1":
         # Phase 4's C1: a batch of 40 on the box, with linear reward in its six parameters.
         return BatchMILearner(design, seed=seed)
-    prior = ARMS[point.arm].bowl_prior()
+    prior = ARMS[point.arm].ideal_point_prior()
     if point.learner == "a" and point.hyper_log_ell0 is not None:
         # H2, PsyPref-hyper: A with the fitted priors on log ell and lambda, nothing else changed.
         prior = replace(prior, log_ell0=float(point.hyper_log_ell0),
@@ -1263,7 +1263,7 @@ def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, des
     if point.learner == "a":
         # W3's ablation: duel_mode "random" keeps the posterior, the prior and the space and
         # changes only how duels are chosen (and, as Phase 3 defined it, that the delivered
-        # curve is the posterior mean unclipped to the trust ball; rows record
+        # curve is the posterior mean unclipped to the trust search region; rows record
         # best_outside_trust_region).
         return PsychometricLearner(space.design, seed=seed, duels=point.duel_mode, space=space,
                                    prior=prior, stop_sd=point.stop_sd)
@@ -1271,12 +1271,12 @@ def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, des
         inner_space = arm_space(_prior(point.run_dir, point.fold, "promp_s0"), point.arm)
         inner = PsychometricLearner(inner_space.design, seed=seed, duels="eig", space=inner_space,
                                     prior=prior, stop_sd=point.stop_sd)
-        fitter = SurfaceFitter(space.design, start_mean=space.whitening.mu)
+        fitter = SurfaceFitter(space.design, start_mean=space.normalization.mu)
         return LensLearner(inner, inner_space, space.design, fitter)
     if point.learner in GP_ACQUISITION:
         from ..learning.gp_eubo import GPEUBOLearner  # with botorch installed
 
-        # The arm's ball and whitening, as A and G search them; the arm's prior is the measure
+        # The arm's search region and normalization, as A and G search them; the arm's prior is the measure
         # its raw pool is drawn from (as G's candidates). WhitenedLearner maps z to the arm's
         # device-clipped design, so its identified assistance is delivered like the others'.
         return WhitenedLearner(space, GPEUBOLearner(
@@ -1285,7 +1285,7 @@ def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, des
         from ..learning.sortcma import KUTULAKOS_SIGMA_FRACTION, SortCMALearner  # venv only
 
         # L10: the prior's own scale. L12's uninformed start: Kutulakos & Slade's 0.3 x the
-        # box range per coordinate, which in the flat box's moment-matched whitening is
+        # box range per coordinate, which in the flat box's moment-matched normalization is
         # 0.3 x 2 sqrt(3).
         sigma0 = KUTULAKOS_SIGMA_FRACTION * 2.0 * math.sqrt(3.0) if point.prior == "flat" else 1.0
         if point.cma_sigma_mult is not None:
@@ -1299,14 +1299,14 @@ def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, des
                                           lengthscale=LENGTHSCALE * ls, step=STEP * st)
     if point.learner == "g":
         # `prior` here for the same reason A and C2 get it: without
-        # it G's candidates are `WhitenedDesign.sample_prior`'s standard normal in every
+        # it G's candidates are `NormalizedDesign.sample_prior`'s standard normal in every
         # arm, so in four of five arms G searched a strictly narrower region than the
         # learners it is compared against.
         tuned = {} if point.g_kappa0 is None else {"kappa0": float(point.g_kappa0)}  # E8
         s = point.s if s_user is None else s_user
         if point.g_start == "generic":
             # The review response: G opens from generic assistance (prompref.experiment.review).
-            return generic_start_g(space, seed, prior=prior, jnd=gate_value(s, point.jnd_scale),
+            return prior_mean_start_g(space, seed, prior=prior, jnd=gate_value(s, point.jnd_scale),
                                    n_candidates=int(point.n_candidates), **tuned)
         return WhitenedLearner.gp_ucb(space.design, seed=seed, space=space, prior=prior,
                                       jnd=gate_value(s, point.jnd_scale),
@@ -1315,7 +1315,7 @@ def build_learner(point: Phase5Point, space: LearnerSpace | None, seed: int, des
 
 
 def reach_outcomes(distances, floor_nm: float, taus=TAUS) -> dict:
-    """Comparisons until the delivered curve is within ``floor + tau``.
+    """Comparisons until the delivered curve is within ``best-profile distance + tau``.
 
     ``first_*`` counts until the curve first gets there; ``sustained_*`` counts until it gets
     there and stays for the rest of the session. Both are 1-based, like ``n90``; ``None``
@@ -1342,7 +1342,7 @@ def region_outcomes(distances, floor_nm, plateau_nm: float, taus=TAUS) -> dict:
 
     The region is every curve within ``plateau_nm`` RMS of the ideal, so a curve's
     distance to it is ``max(0, d - plateau)``, and the family's best is
-    ``max(0, floor - plateau)``. Where the floor lies outside the region this is R25
+    ``max(0, best-profile distance - plateau)``. Where the best-profile distance lies outside the region this is R25
     exactly; where it lies inside, it is more lenient, which is why R25 is reported beside it.
     """
     p = float(plateau_nm)
@@ -1374,7 +1374,7 @@ def _ood_users(run_dir: str, fold: str, user_set: str = OOD_USER_SET):
 def point_users(point: Phase5Point) -> dict:
     """The users ``point.user_id`` is looked up in: the run's exported users, or an
     out-of-generator user set: "ood", the common-peak users, or
-    "ood-pb", the per-bout-peak users of the 2026-10-19 decision."""
+    "ood-pb", the per part-peak users of the 2026-10-19 decision."""
     if point.user_set in USER_SETS:
         return _ood_users(point.run_dir, point.fold, point.user_set)
     return _users(point.run_dir, point.fold)
@@ -1400,7 +1400,7 @@ def bio_weight(run_dir: str) -> tuple[np.ndarray, str]:
 
 
 def phase_weight_knobs(point: Phase5Point, user) -> dict:
-    """The observer fields of a phase-weighted wearer: the metric, the user's weight curve and
+    """The observer fields of a phase-weighted simulated user: the metric, the user's weight curve and
     matched scale. W-pref's weight is rebuilt from the answer seed and must equal the one the
     sidecar's scale was computed with; W-bio's comes from ``out/icorr/wph_bio_weight.json``, and
     its sha256 must be the one the sidecar records."""
@@ -1459,8 +1459,8 @@ def _surface_prior(run_dir: str, fold: str, family: str) -> SurfacePrior:
 
 @lru_cache(maxsize=16)
 def proj_floors(run_dir: str, fold: str, family: str) -> dict:
-    """Per-user floors of a projection surface: Schaefer (ii)'s own sidecar, written by
-    :data:`PROJ_SCRIPT`; the semi-trapezoid's are C1's floors over the same box and curve."""
+    """Per-user best-profile distances of a projection surface: Schaefer (ii)'s own sidecar, written by
+    :data:`PROJ_SCRIPT`; the semi-trapezoid's are C1's best-profile distances over the same box and curve."""
     if family == "trapezoid_surface":
         return flat_floors(run_dir, fold, C1_FAMILY)
     path = Path(run_dir) / "users" / f"{fold}-{family}.json"
@@ -1490,7 +1490,7 @@ def _basis_prior(run_dir: str, fold: str, n_basis: int) -> BasisDataPrior:
 
 @lru_cache(maxsize=32)
 def basis_floors(run_dir: str, fold: str, n_basis: int) -> dict:
-    """Per-user ProMP floors at ``n_basis`` bases (W3), written by scripts/icorr_k_priors.py."""
+    """Per-user ProMP best-profile distances at ``n_basis`` bases (W3), written by scripts/icorr_k_priors.py."""
     path = basis_floors_path(run_dir, fold, n_basis)
     if not path.exists():
         raise FileNotFoundError(f"{path} is missing: run {BASIS_SCRIPT} --run {run_dir} "
@@ -1507,11 +1507,11 @@ def franks_floors(run_dir: str, fold: str) -> dict:
 
 
 def _family_floor(point: Phase5Point, user) -> dict:
-    """The one place a session's floor entry comes from (the flat-floors addition).
+    """The one place a session's best-profile distance entry comes from (the flat-best-profile distances addition).
 
     Three branches, in order: a flat cell always reads its own family's flat-box sidecar,
-    regardless of family. A data-prior Schaefer cell reads the Schaefer sidecar instead. Anything else reads the fold's own exported floor. Schaefer's flat and
-    data-prior floors happen to agree in value -- its box (``TIMING_LOW``/``TIMING_HIGH``)
+    regardless of family. A data-prior Schaefer cell reads the Schaefer sidecar instead. Anything else reads the fold's own exported best-profile distance. Schaefer's flat and
+    data-prior best-profile distances happen to agree in value -- its box (``TIMING_LOW``/``TIMING_HIGH``)
     never widens for a data prior the way ``promp_s0``'s does -- but a flat Schaefer cell
     still reads the flat sidecar rather than the Schaefer one: one predicate, not a
     per-family exception.
@@ -1529,12 +1529,12 @@ def _family_floor(point: Phase5Point, user) -> dict:
         return _sidecar_entry(franks_floors(point.run_dir, point.fold), point.user_id, path,
                               point.run_dir, script=FRANKS_SCRIPT)
     if point.family in PROJ_FAMILIES:
-        # Test P: the surface's own floor, the target the projection can at best deliver.
+        # Test P: the surface's own best-profile distance, the target the projection can at best deliver.
         return _sidecar_entry(proj_floors(point.run_dir, point.fold, point.family), point.user_id,
                               _proj_floor_path(point.run_dir, point.fold, point.family),
                               point.run_dir, script=PROJ_SCRIPT)
     if point.n_basis is not None:
-        # W3: a K cell is scored against the K family's own floor, never the 8-basis one.
+        # W3: a K cell is scored against the K family's own best-profile distance, never the 8-basis one.
         k = int(point.n_basis)
         return _sidecar_entry(basis_floors(point.run_dir, point.fold, k), point.user_id,
                               basis_floors_path(point.run_dir, point.fold, k), point.run_dir,
@@ -1543,7 +1543,7 @@ def _family_floor(point: Phase5Point, user) -> dict:
 
 
 def build_observer(point: Phase5Point, user, *, s_user: float, plateau: float):
-    """The session's simulated wearer, and a drift cell's sidecar entry (``None`` otherwise).
+    """The session's simulated simulated user, and a drift cell's sidecar entry (``None`` otherwise).
 
     The observer runs at ``s_user`` (:func:`per_user_s`) with the preferred region
     ``plateau`` already resolved. Phase 5e's knobs reach it only when they
@@ -1582,7 +1582,7 @@ def build_observer(point: Phase5Point, user, *, s_user: float, plateau: float):
                      no_pref_threshold=float(point.no_pref_jnd) * true_jnd(1.0),
                      no_pref_hard=bool(point.no_pref_hard))
     if point.rt_user is not None:
-        # The response-time test (section 9a, RT): the same wearer answering by a DDM.
+        # The response-time test (section 9a, RT): the same simulated user answering by a DDM.
         return DDMObserver(ideal_nm=user.curve_nm, **knobs, rt_mode=point.rt_user,
                            ddm=load_rt_params(point.run_dir)), None
     if point.lapse_start is not None or point.s_start is not None:
@@ -1605,16 +1605,16 @@ def build_observer(point: Phase5Point, user, *, s_user: float, plateau: float):
 
 
 def is_observer_variant(point: Phase5Point) -> bool:
-    """Whether the wearer answers by a distance other than A's own RMS model: the
+    """Whether the simulated user answers by a distance other than A's own RMS model: the
     landmark or Weber metric, asymmetry, or familiarity. Noise, lapse and sensitivity change
-    how the wearer answers, not what they prefer."""
+    how the simulated user answers, not what they prefer."""
     return (point.observer_metric != "rms" or point.asymmetry != 1.0
             or point.familiarity_weight > 0.0 or point.phase_weighting is not None)
 
 
 def own_scores(point: Phase5Point, observer: Observer) -> dict:
-    """The wearer's own outcome per comparison, as ``run_session``
-    scores: nothing for a plain wearer, whose own distance is the RMS ``distances``.
+    """The simulated user's own outcome per comparison, as ``run_session``
+    scores: nothing for a plain simulated user, whose own distance is the RMS ``distances``.
 
     For an observer variant, ``own_distances`` is the observer's own distance of the
     delivered curve, ``-utility``, noise-free like ``distances``: in Nm-equivalent for the
@@ -1668,7 +1668,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
         if space is not None:
             design = space.design
         family = _family_floor(point, user)
-        # The wearer's own sensitivity. Everything that models their perception
+        # The simulated user's own sensitivity. Everything that models their perception
         # reads it -- the observer, its anchored region, G's JND gate, the drift tracking
         # error in JND -- while point.s stays the cell's identity. Without a log-SD it is
         # point.s itself.
@@ -1680,7 +1680,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
         learner = build_learner(point, space, learner_seed(user.answer_seed), design=design,
                                 s_user=s_user)
         if point.a_rt:
-            # PsyPref-RT reads each answer's response time from the wearer that gave it.
+            # PsyPref-RT reads each answer's response time from the simulated user that gave it.
             learner.bind_response_times(observer)
         scores = own_scores(point, observer)
         if point.calibration_log:
@@ -1689,7 +1689,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
             monitor = CalibrationMonitor(learner, space, snapshot=snapshot)
             scores = dict(scores, **monitor.scores())
         # A flat cell's N90 denominator must come from the flat prior the learner actually
-        # searches (the whitened design, truncated to the arm's ball), not the family's own
+        # searches (the normalized design, truncated to the arm's search region), not the family's own
         # fitted prior -- else the baseline quietly carries back the population knowledge
         # the flat cell exists to withhold.
         d_prior = prior_mean_distance(
@@ -1711,7 +1711,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
         elapsed = time.perf_counter() - started
         floor = family["floor_nm"]
         if drift is not None:
-            # The floor at comparison k, interpolated from the start ideal's to the final
+            # The best-profile distance at comparison k, interpolated from the start ideal's to the final
             # ideal's: exact at both ends, an approximation between.
             steps = np.arange(len(record["distances"])) / max(point.n_comparisons - 1, 1)
             floor = family["floor_nm"] + steps * (float(drift["floor_nm"]) - family["floor_nm"])
@@ -1727,7 +1727,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
             # n90/censored/delivered_over_floor came from summarise_run's d_prior/d_floor
             # of the START ideal, while distances/delivered track the moving one -- a
             # complete, plausible, wrong number against a target that never held still.
-            # tracking_error_* and the (interpolated-floor) first_*/sustained_* below are
+            # tracking_error_* and the (interpolated-best-profile distance) first_*/sustained_* below are
             # the drift outcomes instead.
             record.update(n90=None, censored=None, delivered_over_floor=None)
         record.update(reach_outcomes(record["distances"], floor))
@@ -1745,9 +1745,9 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
         if point.learner == "g":
             record["g_candidate_floor"] = candidate_floor(learner, observer.ideal_nm)
         if point.g_start is not None:
-            record.update(generic_start_fields(learner, design, observer.ideal_nm))
+            record.update(prior_mean_start_fields(learner, design, observer.ideal_nm))
         if point.decisiveness_ratio is not None or point.observer_metric == RANDOM_SMOOTH:
-            # ICORR robustness: the wearer's own distance (-utility) of generic assistance, the
+            # ICORR robustness: the simulated user's own distance (-utility) of generic assistance, the
             # mean curve d_prior is the distance of, so the own-utility win rate reads the row.
             record["own_generic_distance"] = observer.own_distance(prior_mean_curve(design))
         if point.observer_metric == RANDOM_SMOOTH:
@@ -1757,8 +1757,8 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
             # fold's sidecar, where later searches may raise it.
             record["utility_scale"] = float(entry["scale"])
         if point.phase_weighting is not None:
-            # ICORR phase-weighted wearers: the own distance of generic assistance, on the matched
-            # scale, and the scale itself. The floor lives in the sidecar, as R's u_max does.
+            # ICORR phase-weighted simulated users: the own distance of generic assistance, on the matched
+            # scale, and the scale itself. The best-profile distance lives in the sidecar, as R's u_max does.
             record["own_generic_distance"] = observer.own_distance(prior_mean_curve(design))
             record["utility_scale"] = float(observer.utility_scale)
         if point.rt_user is not None:
@@ -1776,7 +1776,7 @@ def run_phase5_point(point: Phase5Point, *, snapshot=None) -> dict:
         record.update(session_s=elapsed, s_user=float(s_user), user_kind=user.kind,
                       user_reach_050=family["reach_050"], user_radius=family["radius"],
                       arm_radius=None if space is None else space.radius, draw=user.draw,
-                      delivered_two_bout=two_bout_plausible(
+                      delivered_two_bout=two_part_plausible(
                           design.curve(np.asarray(record["best"], dtype=float))))
         return dict(point.row_fields(), **record, error=None)
     except Exception as exc:  # pragma: no cover - defensive

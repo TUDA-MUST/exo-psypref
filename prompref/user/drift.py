@@ -1,4 +1,4 @@
-"""A wearer whose preferred curve moves during the session.
+"""A simulated user whose preferred curve moves during the session.
 
 The study's other cells assume a preference that holds still for 150 comparisons. Human
 studies will not grant that, so this module lets the ideal move: a smooth time shift,
@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .oracle import Observer, rms_distance
+from .simulated_user import Observer, rms_distance
 
 #: The largest shift, in % of the gait cycle, that a drift may use.
 MAX_SHIFT_PCT = 25.0

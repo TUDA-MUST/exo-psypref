@@ -38,7 +38,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.special import betaln, digamma, expit, log_expit, logit, logsumexp
 
-from ..learning.smc import BowlPrior, SMCPosterior
+from ..learning.smc import IdealPointPrior, SMCPosterior
 
 #: Final-posterior draws logged per first-pass session.
 HYPER_PARTICLES = 2000
@@ -80,7 +80,7 @@ def log_beta_of_logit(t, a: float, b: float):
     return (a - 1.0) * log_expit(t) + (b - 1.0) * log_expit(-t) - betaln(a, b)
 
 
-def log_prior_ratio(log_ell, logit_lam, eta: dict, base: BowlPrior = BowlPrior()):
+def log_prior_ratio(log_ell, logit_lam, eta: dict, base: IdealPointPrior = IdealPointPrior()):
     """``log pi_eta - log pi_0`` at each draw."""
     return (log_normal(log_ell, eta["mu"], eta["sd"])
             + log_beta_of_logit(logit_lam, eta["lam_a"], eta["lam_b"])
@@ -89,13 +89,13 @@ def log_prior_ratio(log_ell, logit_lam, eta: dict, base: BowlPrior = BowlPrior()
 
 
 def user_log_ratios(log_ell: np.ndarray, logit_lam: np.ndarray, eta: dict,
-                    base: BowlPrior = BowlPrior()) -> np.ndarray:
+                    base: IdealPointPrior = IdealPointPrior()) -> np.ndarray:
     """``(U,)``: log p(y_u | eta) - log p(y_u | pi_0), each the log of a particle mean."""
     r = log_prior_ratio(log_ell, logit_lam, eta, base)
     return logsumexp(r, axis=1) - np.log(r.shape[1])
 
 
-def importance_ess(log_ell, logit_lam, eta: dict, base: BowlPrior = BowlPrior()) -> np.ndarray:
+def importance_ess(log_ell, logit_lam, eta: dict, base: IdealPointPrior = IdealPointPrior()) -> np.ndarray:
     """``(U,)``: each user's effective sample size of the weights pi_eta / pi_0, as a share of
     the draws."""
     r = log_prior_ratio(log_ell, logit_lam, eta, base)
@@ -146,7 +146,7 @@ class HyperFit:
                     starts=[list(s) for s in self.starts])
 
 
-def _starts(log_ell: np.ndarray, logit_lam: np.ndarray, base: BowlPrior) -> list[dict]:
+def _starts(log_ell: np.ndarray, logit_lam: np.ndarray, base: IdealPointPrior) -> list[dict]:
     """The prior A used, the pooled posterior's moments, and two spreads of the latter."""
     lam = expit(logit_lam)
     m = float(np.clip(lam.mean(), 0.01, 0.9))
@@ -163,7 +163,7 @@ def _starts(log_ell: np.ndarray, logit_lam: np.ndarray, base: BowlPrior) -> list
 
 
 def negative_log_marginal(theta, log_ell: np.ndarray, logit_lam: np.ndarray,
-                          base: BowlPrior = BowlPrior()) -> tuple[float, np.ndarray]:
+                          base: IdealPointPrior = IdealPointPrior()) -> tuple[float, np.ndarray]:
     """The fit's objective, minus the sum over users of :func:`user_log_ratios`, and its exact
     gradient in theta = (mu, log sigma, logit m, log kappa): each user's gradient is the
     posterior-weighted mean (weights pi_eta / pi_0, normalised per user) of the prior's score."""
@@ -187,7 +187,7 @@ def negative_log_marginal(theta, log_ell: np.ndarray, logit_lam: np.ndarray,
     return -value, -grad
 
 
-def fit_hyperprior(log_ell, logit_lam, base: BowlPrior = BowlPrior()) -> HyperFit:
+def fit_hyperprior(log_ell, logit_lam, base: IdealPointPrior = IdealPointPrior()) -> HyperFit:
     """The empirical-Bayes Normal on log ell and Beta on lambda from ``(U, M)`` draws of the users'
     posteriors under ``base`` (module docstring)."""
     log_ell = np.asarray(log_ell, dtype=float)

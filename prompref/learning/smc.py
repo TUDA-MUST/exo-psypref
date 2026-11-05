@@ -1,6 +1,6 @@
-"""Sequential Monte Carlo posterior for learner A's bowl model -- design-free.
+"""Sequential Monte Carlo posterior for learner A's ideal-point model model -- design-free.
 
-Knows nothing about torque curves: only whitened points ``z`` and answers to "was A
+Knows nothing about torque curves: only normalized points ``z`` and answers to "was A
 preferred". That is deliberate. The Phase 3 gate checks this module against an
 independently coded reference sampler on synthetic data, which is only possible if
 nothing here depends on a design.
@@ -44,7 +44,7 @@ HEAVY_TAIL_MOVES = 10
 
 
 @dataclass(frozen=True)
-class BowlPrior:
+class IdealPointPrior:
     """``z* ~ N(0, scale I)``, or ``z* ~ t_nu(0, I)`` with ``nu``;
     ``log ell ~ N(log_ell0, ell_sd^2)``; ``lam ~ Beta(lam_a, lam_b)``.
 
@@ -93,7 +93,7 @@ class BowlPrior:
         return float(np.sqrt(a * b / ((a + b) ** 2 * (a + b + 1.0))))
 
 
-def log_prior(x: np.ndarray, d: int, prior: BowlPrior = BowlPrior()) -> np.ndarray:
+def log_prior(x: np.ndarray, d: int, prior: IdealPointPrior = IdealPointPrior()) -> np.ndarray:
     """Unnormalised log prior of each particle, including the logit Jacobian.
 
     ``Beta(a, b)`` on ``lam = sigmoid(t)`` times ``d lam / d t = lam (1 - lam)`` is
@@ -142,7 +142,7 @@ def log_likelihood(x: np.ndarray, z_a: np.ndarray, z_b: np.ndarray,
 
 
 class SMCPosterior:
-    """Particle approximation to the bowl model's posterior, updated one answer at a time.
+    """Particle approximation to the ideal-point model model's posterior, updated one answer at a time.
 
     Each answer reweights. When the effective sample size falls below
     ``ess_fraction * n_particles`` the particles are systematically resampled and moved
@@ -152,7 +152,7 @@ class SMCPosterior:
     """
 
     def __init__(self, d: int, rng: np.random.Generator, n_particles: int = 4000,
-                 prior: BowlPrior = BowlPrior(), n_moves: int | None = None,
+                 prior: IdealPointPrior = IdealPointPrior(), n_moves: int | None = None,
                  ess_fraction: float = 0.5) -> None:
         self.d = int(d)
         self.rng = rng

@@ -4,7 +4,7 @@ Usage:  python scripts/phase5c_report.py [--dir out/phase5c] [--out out/phase5c/
             [--boot 10000]
 
 Outcome everywhere: comparisons until the delivered curve is within 0.5 Nm of the user's
-floor and stays there (R25), censored at 150. Population users unless a table says stress.
+best-profile distance and stays there (R25), censored at 150. Population users unless a table says stress.
 """
 
 from __future__ import annotations
@@ -425,7 +425,7 @@ def _landmarks(main) -> list[str]:
     shares = _pop(_reference(main)).groupby("learner")["delivered_two_bout"].mean()
     return out + ["| learner | share |", "|---|---|"] + [
         f"| {learner} | {share:.3f} |" for learner, share in shares.items()] + [
-        "", "The torque-rate limit of R29 is not applied (ruling P4).", ""]
+        "", "The torque-rate limit of R29 is not applied (decision P4).", ""]
 
 
 def _other(title, df, by) -> list[str]:

@@ -1,4 +1,4 @@
-"""ProMP data priors and floors at other basis counts K.
+"""ProMP data priors and best-profile distances at other basis counts K.
 
 Usage:
     python scripts/icorr_k_priors.py --run <main>/out/phase5-schaefer [--k 4,12]
@@ -17,13 +17,13 @@ the loader's, ``PREFTUNE_DATA`` if set, else the S: share):
    when it loads saved priors.
 2. **Check K = 8.** Refit the ProMP prior with ``VonMisesBasis(8)`` through the unchanged
    ``fit_promp_prior`` and require it to equal ``RUN/priors/<fold>-promp_s0`` bit for bit
-   (mu, sigma, fit statistics, design curves). Recompute the stored K = 8 floors with 5a's own
-   floor stream and require them to equal the exported ones bit for bit. A fold that fails
+   (mu, sigma, fit statistics, design curves). Recompute the stored K = 8 best-profile distances with 5a's own
+   best-profile distance stream and require them to equal the exported ones bit for bit. A fold that fails
    either check gets no K files.
 3. For each K, fit the K prior the same way and save it as
    ``RUN/priors/<fold>-promp_s0-k<K>`` (an existing file must hold the same prior, or the
-   script stops), then each user's floor and reach radii in ``RUN/users/<fold>-promp_s0-k<K>.json``,
-   cached in ``RUN/floors/<fold>-promp_s0-k<K>.json`` (``floors5c.basis_sidecar``, seeded as
+   script stops), then each user's best-profile distance and reach radii in ``RUN/users/<fold>-promp_s0-k<K>.json``,
+   cached in ``RUN/best-profile distances/<fold>-promp_s0-k<K>.json`` (``floors5c.basis_sidecar``, seeded as
    ``phase5c_floors.py`` seeds its ProMP sidecars).
 
 No existing file is written. The check results go to ``--report``.
@@ -91,7 +91,7 @@ def _floor_check(entries, users) -> dict:
 
 def _prior_summary(prior: DataPrior) -> dict:
     eig = np.linalg.eigvalsh(prior.sigma)
-    return dict(d_eff=float(prior.whitening().d_eff), n_fit_failures=int(prior.n_fit_failures),
+    return dict(d_eff=float(prior.normalization().d_eff), n_fit_failures=int(prior.n_fit_failures),
                 fit_rms_median_nm=float(prior.fit_rms_median_nm),
                 eig_min=float(eig.min()), eig_max=float(eig.max()),
                 share_at_bound_max=float(max(prior.share_at_bound.values())))
@@ -113,18 +113,18 @@ def run_fold(run: Path, fold, ks, *, workers: int) -> dict:
                   hashes_current=stored.source_hashes == population_source_hashes(),
                   n_rejected_matches=stored.n_rejected_draws == training.n_rejected)
 
-    # Check K = 8: the recipe, then the floors.
+    # Check K = 8: the recipe, then the best-profile distances.
     refit = fit_basis_prior(training.curves, 8, common_fields(stored))
     result["k8_prior"] = _same_prior(refit, stored)
     users = list(load_fold_users(run, fold.name).values())
-    floors_5a = user_floors(stored.design(), stored.whitening(), users, n_starts=starts,
+    floors_5a = user_floors(stored.design(), stored.normalization(), users, n_starts=starts,
                             seed_sequence=child_sequence(streams["floors"],
                                                          FAMILIES.index("promp_s0")),
                             workers=workers)
     result["k8_floors_5a_stream"] = _floor_check(floors_5a, users)
-    # The K-floor recipe (phase5c_floors-style seed) at K = 8, against the exported floors:
-    # the same floors up to which multi-start wins, which is what a K floor differs by.
-    floors_k = user_floors(stored.design(), stored.whitening(), users, n_starts=starts,
+    # The K-best-profile distance recipe (phase5c_floors-style seed) at K = 8, against the exported best-profile distances:
+    # the same best-profile distances up to which multi-start wins, which is what a K best-profile distance differs by.
+    floors_k = user_floors(stored.design(), stored.normalization(), users, n_starts=starts,
                            seed_sequence=fold_seed(fold.name, basis_label(8)), workers=workers)
     result["k8_floors_k_recipe"] = _floor_check(floors_k, users)
     result["k8_summary"] = _prior_summary(stored)
@@ -161,7 +161,7 @@ def run_fold(run: Path, fold, ks, *, workers: int) -> dict:
 
 
 def pooled_floor_medians(run: Path, folds, ks) -> dict:
-    """Median population floor over the leave-one-subject-out folds, per K (8 = exported)."""
+    """Median population best-profile distance over the leave-one-subject-out folds, per K (8 = exported)."""
     out = {}
     for k in (8, *ks):
         values = []

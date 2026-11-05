@@ -22,7 +22,7 @@ from scipy.optimize import least_squares
 
 from ..designs.franks import FIT_HIGH, FIT_LOW, PARAM_NAMES, FranksDesign
 from ..population.curves import TORQUE_LIMIT_NM, physics_clip
-from ..prior import Whitening
+from ..prior import Normalization
 
 
 @dataclass
@@ -42,13 +42,13 @@ class FranksPrior:
     def design(self) -> FranksDesign:
         return FranksDesign(self.low, self.high, prior=(self.mu, self.sigma))
 
-    def whitening(self) -> Whitening:
-        return Whitening(self.mu, self.sigma, self.mu.size)
+    def normalization(self) -> Normalization:
+        return Normalization(self.mu, self.sigma, self.mu.size)
 
     def space(self, radius: float):
         from ..learning.space import LearnerSpace
 
-        return LearnerSpace(self.design(), self.whitening(), float(radius))
+        return LearnerSpace(self.design(), self.normalization(), float(radius))
 
     def save(self, stem) -> None:
         payload = dict(mu=self.mu.tolist(), sigma=self.sigma.tolist(), low=self.low.tolist(),

@@ -18,10 +18,10 @@ drift is tied to A's own probit argument Delta / ell^2: one ell scales both the 
 - **The choice part is A's exactly.** Since the integral of h(tau | 0) T(v, tau) over tau is 1 for
   every v, and so is that of h(tau | 0) g(tau), integrating r out gives p_A(c | x): the response
   time adds information, never a different choice model. A's choice model is misspecified for a DDM
-  wearer (probit against logistic, matched on decisiveness) in exactly the way it is for S5a's
-  logistic wearer, in both learners.
+  simulated user (probit against logistic, matched on decisiveness) in exactly the way it is for S5a's
+  logistic simulated user, in both learners.
 - **What PsyPref-RT is given:** the DDM's constants (a, t0, the choice scale) and the marginal, as
-  the simulated wearer has them. Only z*, ell and lambda are inferred, as in A. A real study would
+  the simulated simulated user has them. Only z*, ell and lambda are inferred, as in A. A real study would
   estimate a and t0; giving them is the upper bound of what response time can add.
 - **Everything else is A's:** the prior, the particles and their generator, the moves, the EIG
   duels and probes (scored on the choice, whose predictive is A's), the trust region and the
@@ -38,7 +38,7 @@ import numpy as np
 from scipy.special import log_expit, log_ndtr
 
 from ..learning.psychometric import _STREAM_SALT, PsychometricLearner
-from ..learning.smc import BowlPrior, SMCPosterior, log_likelihood, log_prior, per_duel_log_likelihood
+from ..learning.smc import IdealPointPrior, SMCPosterior, log_likelihood, log_prior, per_duel_log_likelihood
 from ..user.ddm import DDMParams, log_tilt, log_zero_drift_density
 
 
@@ -94,7 +94,7 @@ class RTPosterior(SMCPosterior):
     ``update`` takes the answer's decision time ``tau`` (nan: no response time, A's term)."""
 
     def __init__(self, d: int, rng: np.random.Generator, params: DDMParams,
-                 n_particles: int = 4000, prior: BowlPrior = BowlPrior(),
+                 n_particles: int = 4000, prior: IdealPointPrior = IdealPointPrior(),
                  n_moves: int | None = None, ess_fraction: float = 0.5) -> None:
         super().__init__(d, rng, n_particles=n_particles, prior=prior, n_moves=n_moves,
                          ess_fraction=ess_fraction)
@@ -139,12 +139,12 @@ class RTPosterior(SMCPosterior):
 
 
 class RTLearner(PsychometricLearner):
-    """PsyPref-RT: learner A (EIG duels) with :class:`RTPosterior`. The session binds the wearer
-    (:meth:`bind_response_times`); each update then reads the wearer's ``last_response_time``, the
+    """PsyPref-RT: learner A (EIG duels) with :class:`RTPosterior`. The session binds the simulated user
+    (:meth:`bind_response_times`); each update then reads the simulated user's ``last_response_time``, the
     response time of the answer it is given. Unbound, every answer carries no response time."""
 
     def __init__(self, design, seed: int = 0, *, params: DDMParams, n_particles: int = 4000,
-                 prior: BowlPrior = BowlPrior(), **kwargs) -> None:
+                 prior: IdealPointPrior = IdealPointPrior(), **kwargs) -> None:
         if "duels" in kwargs:
             raise ValueError("PsyPref-RT is A with EIG duels")
         super().__init__(design, seed, duels="eig", n_particles=n_particles, prior=prior, **kwargs)

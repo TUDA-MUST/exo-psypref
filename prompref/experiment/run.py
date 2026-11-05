@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..user.oracle import Observer, rms_distance
+from ..user.simulated_user import Observer, rms_distance
 from .metrics import summarise_run
 
 
@@ -51,7 +51,7 @@ def run_session(design, learner, observer: Observer, rng: np.random.Generator,
             traces[name].append(float(score(delivered)))
 
         # our design notes / a learner may end the session once its posterior is
-        # tighter than the wearer can feel. `n_comparisons_run` records where it stopped.
+        # tighter than the simulated user can feel. `n_comparisons_run` records where it stopped.
         should_stop = getattr(learner, "should_stop", None)
         if should_stop is not None and should_stop():
             break

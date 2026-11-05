@@ -155,7 +155,7 @@ def headline(out: Path, tmp: Path, dest: Path) -> list[str]:
         _check(_close(line.get_ydata(), B[k]["est"]), f"headline curve {k}")
     write_csv(dest / "headline_curves.csv", header, rows)
 
-    # limits and the two reference lines (axhline: generic 50 %, then the ceiling)
+    # limits and the two reference lines (axhline: generic 50 %, then the best-profile level)
     ref = [ln for ln in ax.get_lines() if list(ln.get_xdata()) == [0, 1]]
     generic, ceiling = float(ref[0].get_ydata()[0]), float(ref[1].get_ydata()[0])
     _check(_close(ceiling, hd["ceiling"]["est"]) and generic == 0.5, "headline reference lines")
@@ -244,8 +244,8 @@ def families(out: Path, tmp: Path, dest: Path) -> list[str]:
     order = [k for k in F.TICK if k in fams]
     room = "simulated"
 
-    # the drawn artists, in drawing order: per family the range bar, the ceiling's errorbar,
-    # PsyPref's errorbar (where it ran) and the floor label
+    # the drawn artists, in drawing order: per family the range bar, the best-profile level's errorbar,
+    # PsyPref's errorbar (where it ran) and the best-profile distance label
     from matplotlib.container import BarContainer, ErrorbarContainer
     bars = [c for c in ax.containers if isinstance(c, BarContainer)]
     errs = [c for c in ax.containers if isinstance(c, ErrorbarContainer)]
@@ -333,7 +333,7 @@ def axes(out: Path, tmp: Path, dest: Path) -> list[str]:
             rows.append([key, x, p["xlab"], x - dx, p["a"]["est"], p["a"]["lo"], p["a"]["hi"],
                          p["best"], x + dx, p["comp"]["est"], p["comp"]["lo"], p["comp"]["hi"],
                          x - half, x + half, *cv])
-        # cross-check: markers, intervals and ceilings drawn are these
+        # cross-check: markers, intervals and best-profile levels drawn are these
         drawn = {(round(float(ln.get_xdata()[0]), 6), round(float(ln.get_ydata()[0]), 9))
                  for ln in ax.get_lines() if ln.get_marker() not in ("None", None, "")}
         for r in rows:
@@ -353,7 +353,7 @@ def axes(out: Path, tmp: Path, dest: Path) -> list[str]:
                    "comparator", "x_comparator", "comp", "comp_lo", "comp_hi", "x_ceiling0",
                    "x_ceiling1", "ceiling", "ceiling_lo", "ceiling_hi"],
                   [r[1:] for r in rows if r[0] == key])
-        seg = []           # the ceilings as segments, each its own dash pattern
+        seg = []           # the best-profile levels as segments, each its own dash pattern
         for r in rows:
             if r[0] == key and r[14] == r[14]:
                 seg += [[r[12], r[14]], [r[13], r[14]], [float("nan")] * 2]

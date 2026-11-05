@@ -42,7 +42,7 @@ from prompref.experiment.phase_weighted import load_phase_weight_sidecar  # noqa
 from prompref.experiment.robust import load_ood_users  # noqa: E402
 from prompref.experiment.sweep import _row_key  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import link_cdf  # noqa: E402
+from prompref.user.simulated_user import link_cdf  # noqa: E402
 from prompref.user.schedule import linear_path  # noqa: E402
 
 K_MAIN = 24
@@ -57,7 +57,7 @@ NAME = {"a": "PsyPref", "g": "Arens' GP", "d_z": "LineCoSpar", "cmaes": "CMA-ES"
         "gp_bald": "GP-BALD"}
 PXD2_LEVEL = 0.70
 PR23_MARGIN = -0.10
-#: The main condition's preference at k = 24 as stress_report.md and ceiling.md give it.
+#: The main condition's preference at k = 24 as stress_report.md and best-profile level.md give it.
 EXPECT_MAIN = {("simulated", "a"): 0.815, ("simulated", "g"): 0.618, ("simulated", "d_z"): 0.578,
                ("simulated", "cmaes"): 0.629, ("median", "a"): 0.721, ("median", "g"): 0.521,
                ("median", "d_z"): 0.480, ("median", "cmaes"): 0.552}
@@ -87,7 +87,7 @@ BASE = {"cmaes": "e-base-cma", "gp_bald": "e-base-gp"}
 
 RULINGS = (
     ("R0. Timing",
-     "These rulings were written and committed with this script before any R2 session row existed "
+     "These decision were written and committed with this script before any R2 session row existed "
      "(blocks e-xd, e-ht, e-pess, e-pess-gp, e-base-cma, e-base-gp). Seen before them: the build's "
      "prep summaries (out/icorr/r2_prep_*.json: the R2 users' floors, ideal sizes and rooms, the "
      "Cauchy link's matched scale), and short smoke sessions run on the real run directory and not "
@@ -95,9 +95,9 @@ RULINGS = (
      "end to end on stand-ins built from stored e-main rows only (each relabelled with an R2 cell's "
      "fields and users), whose numbers are e-main's. No outcome of any R2 cell."),
     ("R1. Users and completeness",
-     "A cell is judged only if every learner holds exactly its registered users once, with 40 "
+     "A cell is judged only if every learner holds exactly its planned users once, with 40 "
      "comparisons, no unresolved error row (an error row is allowed only beside a successful row of "
-     "the same key, the sweep's retry), and every point field as registered (the cell's fields, the "
+     "the same key, the sweep's retry), and every point field as planned (the cell's fields, the "
      "main condition otherwise: s = 1.0 (PESS 2.0), lambda 0.1, data prior, tight arm (BASE GP-BALD: "
      "the tuned arm), 8 bases, G's true-JND gate and 2,048 candidates, CMA-ES at pycma's default "
      "population (BASE: 4)). Users: XD-Fy, XD-Fo, XD-R, HT-a, HT-b and PESS their user set's 200 "
@@ -149,22 +149,22 @@ RULINGS = (
     ("R6. Verdicts",
      "A part is held only if its interval lies wholly and strictly on the predicted side of its "
      "threshold, failed if wholly and strictly on the other side, uncertain otherwise; a prediction "
-     "takes its lowest part. Rooms: the registration's preamble ('unless stated otherwise ... as "
+     "takes its lowest part. Rooms: the test plan's preamble ('unless stated otherwise ... as "
      "simulated and at the median room') decides. PXD-1 and PXD-2 are judged as simulated (XD's "
-     "registration: the median room is context) and PR2-4 as simulated (stated). PR2-2, PR2-3 and "
+     "test plan: the median room is context) and PR2-4 as simulated (stated). PR2-2, PR2-3 and "
      "PR2-5 state no room, so each part is judged as simulated and at the median room, both "
      "required; PR2-6 states both."),
     ("R7. The predictions",
      "PXD-1: per XD cell, PsyPref minus the best fast comparator at k = 24 (> 0). PXD-2: per XD "
      "cell, PsyPref's mean preference at k = 24 (lower end > 0.70). PXD-3: not run (the author's "
-     "ruling of 2026-10-22, before any XD session). PR2-2: per HT cell (a), (b), (c), PsyPref minus "
+     "decision of 2026-10-22, before any XD session). PR2-2: per HT cell (a), (b), (c), PsyPref minus "
      "the best fast comparator (> 0; (c) the lower of Y1 and Y2). PR2-3: HT-a's PsyPref minus "
      "e-main's PsyPref, difference of means (lower end > -0.10). PR2-4: PESS PsyPref's mean "
      "preference (lower end > 0.5). PR2-5: PESS PsyPref minus the best fast comparator (> 0). PR2-6: "
      "PsyPref on the ProMP (e-main A) minus BASE's CMA-ES and minus BASE's GP-BALD (each > 0), as "
      "simulated and at the median room: four parts. A part whose cell is not run reads 'not run'; a "
      "prediction with such a part is judged on the parts that ran, labelled partial: a failed part "
-     "fails it, otherwise it cannot be held as registered and the parts' verdict is given."),
+     "fails it, otherwise it cannot be held as planned and the parts' verdict is given."),
     ("R8. Floors and ceilings (context)",
      "Per cell, the floor (d_floor, the device-clipped ProMP K = 8 curve closest to the ideal; BASE: "
      "Schaefer (ii)'s; PESS: the own-metric floor of the sidecar, on its matched scale) as the median "
@@ -182,7 +182,7 @@ RULINGS = (
      "Per cell and learner: the mean preference at k = 12, 24 and 40 (Y1), Y2 at 24 where it exists, "
      "and the median error at k = 24 (Nm; own metric for PESS), as simulated and at the median room; "
      "GP-BALD in PESS if it ran; BASE's time per comparison. XD is reported as 'users from two "
-     "independent datasets', not as a population claim (the author's ruling of 2026-10-22)."),
+     "independent datasets', not as a population claim (the author's decision of 2026-10-22)."),
     ("R11. A failed prediction is reported as found", "Section 9a."),
 )
 
@@ -302,7 +302,7 @@ def collect(block: dict, points: list[Phase5Point], cell_fields: dict, learner: 
     if len(by_user) != len(mine):
         return None, "the grid names a user twice"
     if sorted(by_user) != sorted(keys):
-        return None, f"the grid holds {len(by_user)} users, the registration {len(keys)}"
+        return None, f"the grid holds {len(by_user)} users, the test plan {len(keys)}"
     rows, missing = [], 0
     for k in keys:
         row = block["rows"].get(by_user[k].key())
@@ -668,7 +668,7 @@ def verdicts(res: dict, boot, rs: RoomSet | None) -> dict:
         ci = boot([cell_pref(res, cid, "a", K_MAIN)], mean)
         v["PXD-2"]["parts"][cid] = dict(ci=ci, state=state(ci, PXD2_LEVEL))
     v["PXD-3"] = dict(parts={}, state="not run",
-                      note="GP-BALD in XD-Fo is not run (the author's ruling of 2026-10-22)")
+                      note="GP-BALD in XD-Fo is not run (the author's decision of 2026-10-22)")
     # PR2-2: per HT cell, both yardsticks, both rooms
     v["PR2-2"] = {"parts": {}}
     for cid in ("HT-a", "HT-b", "HT-c"):
@@ -756,7 +756,7 @@ def overall(states: list[str]) -> str:
 
 
 def context(res: dict, boot, rs: RoomSet | None) -> dict:
-    """R8, R10: per cell and learner, preference and error, floors and ceilings, both rooms."""
+    """R8, R10: per cell and learner, preference and error, best-profile distances and best-profile levels, both rooms."""
     ctx = {}
     cids = [c for c in list(CELLS) + ["PESS-GP", "BASE-cmaes", "BASE-gp_bald"]
             if res["state"].get(c) == "ok"]
@@ -779,7 +779,7 @@ def context(res: dict, boot, rs: RoomSet | None) -> dict:
                 r["room"][(learner, "pref")] = strip(rs.stat(room_name(cid), room,
                                                              pref(yard, c, K_MAIN, "Y1", generic)))
                 r["room"][(learner, "err")] = strip(rs.stat_q(room_name(cid), room, e))
-        # floors and ceilings (R8), on the cell's yardstick
+        # best-profile distances and best-profile levels (R8), on the cell's yardstick
         first = next(iter(cell.values()))
         if yard == "pess":
             g, f = arr(first, "own_generic_distance"), res["pess_floor"]
@@ -882,18 +882,18 @@ def write_report(path: Path, res: dict, v: dict, ctx: dict, meta: dict) -> None:
     p("")
     p("# ICORR second review round (R2): XD, HT, PESS and BASE")
     p("")
-    p(f"Generated by `scripts/icorr_r2_report.py`, run started {meta['started']}, at worktree commit "
+    p(f"Generated by `scripts/icorr_r2_report.py`, run started {meta['started']}, at repository commit "
       f"{meta['head']}, script sha256 {meta['script_sha']}. Spec: "
-      "`docs/superpowers/specs/2026-10-17-icorr-user-tuning-reframe-design.md` §9a, R2 (registered "
-      "2026-10-22 before any code or run; XD's registration after conversion, before any session; "
-      "the XD ruling of 2026-10-22). PR2-1 (G-s2) is reported elsewhere. No session was run here.")
+      "`our design notes` §9a, R2 (planned "
+      "2026-10-22 before any code or run; XD's test plan after conversion, before any session; "
+      "the XD decision of 2026-10-22). PR2-1 (G-s2) is reported elsewhere. No session was run here.")
     p("")
-    p("## 0. Rulings (committed before any R2 session row existed)")
+    p("## 0. Decision (committed before any R2 session row existed)")
     p("")
     for head, text in RULINGS:
         p(f"- **{head}.** {text}")
     p("")
-    p("## 1. Registered verdicts")
+    p("## 1. Planned verdicts")
     p("")
     p("| # | Prediction | Verdict | Parts |")
     p("|---|---|---|---|")
@@ -999,7 +999,7 @@ def write_report(path: Path, res: dict, v: dict, ctx: dict, meta: dict) -> None:
     p("- **The preference is a model probability** for the wearer that answered (Y1: the main "
       "wearer's validation duel; Y2: the stressed wearer's). It is not a measured preference.")
     p("- **XD** uses users from two independent datasets with the Molinaro prior; it decouples the "
-      "prior from the users and is not a population claim (the author's ruling). Fukuchi trials "
+      "prior from the users and is not a population claim (the author's decision). Fukuchi trials "
       "repeat one ensemble-mean cycle, so those users have no stride-to-stride variability. "
       "Molinaro's moments are biological moments during assisted walking, the external ones "
       "unassisted (external_data_report.md).")
@@ -1085,7 +1085,7 @@ def main(argv=None) -> int:
     if rs is not None:
         meta["room_note"] += " Effective sample size per user set: " + ", ".join(
             f"{name} {r.ess['median'][0]:.1f}" for name, r in rs.cache.items()) + "."
-    # Reproduction gate: the main condition as the stress report and ceiling.md give it.
+    # Reproduction gate: the main condition as the stress report and best-profile level.md give it.
     repro = []
     for (room, learner), want in EXPECT_MAIN.items():
         if room == "simulated":

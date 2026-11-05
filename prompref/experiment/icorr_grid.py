@@ -1,6 +1,6 @@
 """The ICORR reframe's grid: blocks ``e-k``, ``e-home``, ``e-ood`` and ``e-rand``.
 
-Every session is e-main's wearer and users: the five leave-one-subject-out folds with all
+Every session is e-main's simulated user and users: the five leave-one-subject-out folds with all
 exported users (40 population and 4 stress each), s = 1.0, lapse 0.1, the data prior, the tight
 arm and 40 comparisons, read at k = 12, 24 and 40 by truncation. The cells are what e-main
 does not already hold:
@@ -17,9 +17,9 @@ The robustness blocks of section 9a:
   (static 10 % and walking 25 % magnitude JND) with the utility divided by the cell's measured
   decisiveness ratio (:data:`DECISIVENESS`), on e-observer's six optimizer cells and users.
 - ``e-ood``, out-of-generator ideals: Schaefer four-half-cosine users (``user_set="ood"``,
-  5 folds x 40), the plain RMS wearer at s = 1.0, on :data:`ROBUST_CELLS`. One common peak for
-  both bouts; after the 2026-10-19 decision the labelled sensitivity run.
-- ``e-ood-pb``, the ruled primary O analysis: the same users, timings and seeds with each bout's
+  5 folds x 40), the plain RMS simulated user at s = 1.0, on :data:`ROBUST_CELLS`. One common peak for
+  both parts; after the 2026-10-19 decision the labelled sensitivity run.
+- ``e-ood-pb``, the ruled primary O analysis: the same users, timings and seeds with each part's
   own population-median peak (``user_set="ood-pb"``), on the same cells.
 - ``e-rand``, random smooth utilities: e-main's 200 population users with the random smooth
   utility (``observer_metric="random_smooth"``), on :data:`ROBUST_CELLS`.
@@ -30,43 +30,43 @@ The calibration test of section 9a:
   ``calibration_log=True``. The logging draws no random numbers, so every session must reproduce
   its stored e-main row in every stored field.
 
-The phase-weighted wearers of section 9a ("Phase-weighted wearers", PW-1 and PW-2; decision of 2026-10-19: W-pref runs now, W-bio when its data can be read):
+The phase-weighted simulated users of section 9a ("Phase-weighted simulated users", PW-1 and PW-2; decision of 2026-10-19: W-pref runs now, W-bio when its data can be read):
 
 - ``e-wph-pref``: e-main's 200 population users, each judging by the phase-weighted RMS with its
   own random periodic weight (``phase_weighting="pref"``), on :data:`ROBUST_CELLS`;
 - ``e-wph-bio``: the same with the common weight from the mean hip angular velocity
   (``phase_weighting="bio"``). It refuses to build without ``out/icorr/wph_bio_weight.json``.
 
-Both need ``scripts/icorr_wph_prep.py --cell <cell>`` first (the per-user scales and floors).
+Both need ``scripts/icorr_wph_prep.py --cell <cell>`` first (the per-user scales and best-profile distances).
 
 The review response of section 9a ("Review response: comparator fairness, ablations and a sanity
 check", PF1, PF2, PA1, PA2 and PS), on e-main's 200
 population users, ProMP, 40 comparisons:
 
-- ``e-rev-fair``, first: the sanity check PS, Ramella's learner C2 under an easy wearer (s = 0.5,
-  lapse 0); SortCMA with pycma popsize 4 and 6; G with a generic start, with the true-JND gate
+- ``e-rev-fair``, first: the sanity check PS, Ramella's learner C2 under an easy simulated user (s = 0.5,
+  lapse 0); SortCMA with pycma popsize 4 and 6; G with a start at the prior's mean, with the true-JND gate
   (jnd_scale 1.0) and without a gate (jnd_scale None). Everything else as in e-main.
 - ``e-rev-abl``, second: A in the existing wide arm (z* ~ N(0, 9 I)), and A without lapse
-  (lambda fixed at 0 in A's likelihood, probes off) against the lapse-0.1 wearer.
+  (lambda fixed at 0 in A's likelihood, probes off) against the lapse-0.1 simulated user.
 
 - ``e-rev-abl2``: A without lapse
-  against the lapse-0.3 wearer, and A without probes (lambda still inferred, p_probe 0) against the
-  lapse-0.1 and lapse-0.3 wearers. A itself at lapse 0.3 is e-lapse's stored cell.
+  against the lapse-0.3 simulated user, and A without probes (lambda still inferred, p_probe 0) against the
+  lapse-0.1 and lapse-0.3 simulated users. A itself at lapse 0.3 is e-lapse's stored cell.
 
 The same review response's preference GPs: two preference GPs built from BoTorch, one PairwiseGP asked by analytic EUBO (GP-EUBO, learner
 ``gp_eubo``, PF3) or by BoTorch's pairwise BALD (GP-BALD, learner ``gp_bald``, PF3b);
 :mod:`prompref.learning.gp_eubo`, with botorch installed:
 
 - ``e-gpeubo`` and ``e-gpbald``: e-main's 200 population users in the main condition, the plain
-  RMS wearer;
+  RMS simulated user;
 - ``<block>-rand``, ``-ood-pb``, ``-wph-pref`` and ``-wph-bio``: the same cell under the R, O
-  (per-bout peaks, the ruled primary set) and W wearers, on the users and sidecars those blocks
+  (per part peaks, the ruled primary set) and W simulated users, on the users and sidecars those blocks
   already use ("if time remains").
 
 The higher-parameter test of section 9a:
 
 - ``e-k-hi``: e-main's 200 population users in the main condition at K = 16 and K = 24, each K
-  with its own data prior, floors and arm radius (``scripts/icorr_k_priors.py --k 16,24``): A
+  with its own data prior, best-profile distances and arm radius (``scripts/icorr_k_priors.py --k 16,24``): A
   (EIG duels), A with random duels, G, LineCoSpar and SortCMA at pycma's default population.
   GP-BALD at K = 16 and 24 is block ``e-gpbald-k16`` and ``e-gpbald-k24`` (:data:`GP_K_BLOCKS`).
 
@@ -83,7 +83,7 @@ purpose and alone:
 The acquisition variants of section 9a:
 
 - ``e-acq``: e-main's 200 population users in the main condition at K = 8, 16 and 24, each K with
-  its own data prior, floors and arm radius: A-curve, A-width and A-sub
+  its own data prior, best-profile distances and arm radius: A-curve, A-width and A-sub
   (``acq_variant`` "curve", "width", "sub"). A itself is e-main's stored cell at K = 8 and
   e-k-hi's at K = 16 and 24, so it is not repeated. The S1 cell (W-pref with log-w SD 1.0) waits
   for the stress lane's sidecars.
@@ -91,7 +91,7 @@ The acquisition variants of section 9a:
 The response-time test and the population hyperprior of section 9a, on e-main's 200 population users in the main
 condition with 40 comparisons:
 
-- ``e-rt``: the wearer answers by a drift-diffusion model (:mod:`prompref.user.ddm`) with informative
+- ``e-rt``: the simulated user answers by a drift-diffusion model (:mod:`prompref.user.ddm`) with informative
   response times (RT-inf) or with response times drawn from the marginal (RT-null), each with
   PsyPref-RT (``a_rt``) and PsyPref (A). Needs ``scripts/icorr_rt_prep.py`` first.
 - ``e-hyper-1``: H2's first pass, A's own sessions at lambda 0.1 (e-main) and 0.3 (e-lapse) with
@@ -106,7 +106,7 @@ condition:
 - ``e-proj``: PsyPref on the ProMP (K = 8) with each proposal projected onto Schaefer's family with
   free peaks (``schaefer_peaks``) and onto Ramella's semi-trapezoid (``trapezoid_surface``)
   (:data:`PROJ_CELLS`). The Franks projection is e-main's stored cell. Needs
-  ``scripts/icorr_proj_prep.py`` first (the surface priors and the Schaefer (ii) floors).
+  ``scripts/icorr_proj_prep.py`` first (the surface priors and the Schaefer (ii) best-profile distances).
 - ``e-proj-pchip``:
   the same with each proposal projected onto Park et al. 2025's PCHIP profile adapted to level
   walking (``pchip``); needs ``scripts/icorr_proj_prep.py --pchip`` first.
@@ -135,18 +135,18 @@ from .phase5 import C1_ARM, C1_FAMILY, Phase5Point
 from .phase5c_grid import G_JND_SCALE, LOSO, _user_ids
 from .phase5e_grid import CORE, WALKING_LANDMARK_FRACTION
 from .phase_weighted import PREP_SCRIPT, phase_weight_path
-from .robust import OOD_PER_BOUT_USER_SET, OOD_USER_SET, load_ood_users, random_utility_path
+from .robust import OOD_PER_PART_USER_SET, OOD_USER_SET, load_ood_users, random_utility_path
 
 #: The BoTorch GP blocks (section 9a, review response; PF3 GP-EUBO, PF3b GP-BALD): block ->
-#: (learner, the existing block whose wearer, users and sidecars it shares; ``None`` is the main
-#: condition's plain RMS wearer on e-main's 200 population users).
+#: (learner, the existing block whose simulated user, users and sidecars it shares; ``None`` is the main
+#: condition's plain RMS simulated user on e-main's 200 population users).
 GP_LEARNER_BLOCK = {"gp_eubo": "e-gpeubo", "gp_bald": "e-gpbald"}
 GP_SHARED = {"": None, "-rand": "e-rand", "-ood-pb": "e-ood-pb", "-wph-pref": "e-wph-pref",
              "-wph-bio": "e-wph-bio"}
 GP_BLOCKS = {stem + suffix: (learner, shared) for suffix, shared in GP_SHARED.items()
              for learner, stem in GP_LEARNER_BLOCK.items()}
 #: Section 9a, "More parameters: K = 16 and 24": GP-BALD at K = 16,
-#: with the K = 16 prior, floors and arm radius chi_16,0.99 (``scripts/icorr_k_priors.py``, run on
+#: with the K = 16 prior, best-profile distances and arm radius chi_16,0.99 (``scripts/icorr_k_priors.py``, run on
 #:; its A cell is's block e-k-hi. block -> (learner, n_basis).
 #: PA-c2: GP-BALD at
 #: K = 24, the same way, against A-curve at K = 24.
@@ -194,7 +194,7 @@ ROBUST_CELLS = [("promp_s0", "a", {}), ("promp_s0", "a", dict(duel_mode="random"
                 ("promp_s0", "g", {}), ("promp_s0", "d_z", {}), ("promp_s0", "cmaes", {})]
 
 #: The review response: (family, learner, extra point fields)
-#: per cell, in the order each fold runs them. PS's easy wearer comes first in ``e-rev-fair``.
+#: per cell, in the order each fold runs them. PS's easy simulated user comes first in ``e-rev-fair``.
 #: A G cell that states ``jnd_scale`` keeps it (None is the gate off); every other G cell gets
 #: e-main's true-JND gate.
 REVIEW_BLOCKS = {
@@ -225,7 +225,7 @@ K_HI_CELLS = [("promp_s0", learner, dict(extra, n_basis=k))
 
 #: Section 9a, stress test S5: each link's scale, matched so that the median
 #: |p - 1/2| over REPORT section 9's prior-scale pairs of the 200 population users equals the plain
-#: s = 1.0 probit wearer's, at full precision (``scripts/icorr_stress_prep.py`` ->
+#: s = 1.0 probit simulated user's, at full precision (``scripts/icorr_stress_prep.py`` ->
 #: ``out/icorr/stress_prep_links.json``; achieved ratio 1 on those pairs, 1.0002 and 1.0004 on fresh
 #: pairs).
 LINK_SCALES = {"logistic": 0.5916008501683337, "student_t": 0.8100468122288004}
@@ -279,7 +279,7 @@ PESS_CELL = dict(s=2.0, lapse_start=0.05, lapse_end=0.30, order_bias=0.3, no_pre
 #: BASE: each method gets 3 settings on one fold (as section E8's comparators got
 #: 3-9), the setting with the lowest median error at k = 24 on that fold's 40 population users is
 #: then run on the other folds. CMA-ES keeps its planned population of 4 and tunes E8's sigma
-#: multipliers; GP-BALD tunes its search region, the arm (the ball radius and the prior its pool is
+#: multipliers; GP-BALD tunes its search region, the arm (the search region radius and the prior its pool is
 #: drawn from). The choice is written to ``out/icorr/base_tuned.json`` by
 #: ``scripts/icorr_r2_prep.py --step base-select``.
 BASE_TUNE_FOLD = "loso-AB30"
@@ -306,7 +306,7 @@ def load_base_tuned(run_dir) -> dict:
     for learner, entry in tuned.items():
         if learner not in BASE_SETTINGS or entry["setting"] not in BASE_SETTINGS[learner]:
             raise ValueError(f"{path}: {learner}'s setting {entry.get('setting')} is not one of "
-                             f"its registered settings")
+                             f"its planned settings")
     return tuned
 
 
@@ -371,7 +371,7 @@ ACQ_CELLS = [("promp_s0", "a", dict(acq_variant=v) if k is None else dict(acq_va
              for k in ACQ_K_VALUES for v in ACQ_VARIANT_NAMES]
 
 
-#: Section 9a, "RT": cell id -> the DDM wearer, and each cell's learners in
+#: Section 9a, "RT": cell id -> the DDM simulated user, and each cell's learners in
 #: the order a fold runs them: PsyPref-RT (the slower) first, then PsyPref (A).
 RT_CELLS = {"RT-inf": dict(rt_user="inf"), "RT-null": dict(rt_user="null")}
 RT_LEARNERS = {"a_rt": dict(a_rt=True), "a": {}}
@@ -379,7 +379,7 @@ RT_LEARNERS = {"a_rt": dict(a_rt=True), "a": {}}
 
 def rt_cells() -> list[tuple[str, str, dict]]:
     """(cell id, learner key, extra point fields) of block e-rt."""
-    return [(cid, key, dict(wearer, **extra)) for cid, wearer in RT_CELLS.items()
+    return [(cid, key, dict(simulated_user, **extra)) for cid, simulated_user in RT_CELLS.items()
             for key, extra in RT_LEARNERS.items()]
 
 
@@ -392,7 +392,7 @@ def _population_ids(run_dir: str, fold: str) -> list[str]:
 def _specs(block: str, run_dir: str, fold: str) -> list[tuple[str, str, dict, list[str]]]:
     """(family, learner, extra fields, user ids) per cell of one fold."""
     if block in GP_S_BLOCKS:
-        # The main condition on e-main's 200 population users, at the block's wearer sensitivity s.
+        # The main condition on e-main's 200 population users, at the block's simulated user sensitivity s.
         learner, s_cell = GP_S_BLOCKS[block]
         return [("promp_s0", learner, dict(s=s_cell), _population_ids(run_dir, fold))]
     if block in GP_K_BLOCKS:
@@ -400,9 +400,9 @@ def _specs(block: str, run_dir: str, fold: str) -> list[tuple[str, str, dict, li
         learner, k = GP_K_BLOCKS[block]
         return [("promp_s0", learner, dict(n_basis=k), _population_ids(run_dir, fold))]
     if block in GP_BLOCKS:
-        # A GP cell in the main condition, or with the wearer, users and sidecars of the
+        # A GP cell in the main condition, or with the simulated user, users and sidecars of the
         # robustness block it shares: that block's first cell (A, EIG duels, which carries the
-        # wearer's fields alone) with its learner replaced.
+        # simulated user's fields alone) with its learner replaced.
         learner, shared = GP_BLOCKS[block]
         if shared is None:
             return [("promp_s0", learner, {}, _population_ids(run_dir, fold))]
@@ -416,13 +416,13 @@ def _specs(block: str, run_dir: str, fold: str) -> list[tuple[str, str, dict, li
         uids = _user_ids(run_dir, fold)
         specs = []
         for fraction, ratio in DECISIVENESS.items():
-            wearer = dict(observer_metric="landmark", decisiveness_ratio=ratio)
+            simulated_user = dict(observer_metric="landmark", decisiveness_ratio=ratio)
             if fraction is not None:
-                wearer["landmark_mag_fraction"] = fraction
-            specs += [(family, learner, dict(wearer), uids) for family, learner in CORE]
+                simulated_user["landmark_mag_fraction"] = fraction
+            specs += [(family, learner, dict(simulated_user), uids) for family, learner in CORE]
         return specs
     if block in ("e-ood", "e-ood-pb"):
-        user_set = OOD_USER_SET if block == "e-ood" else OOD_PER_BOUT_USER_SET
+        user_set = OOD_USER_SET if block == "e-ood" else OOD_PER_PART_USER_SET
         uids = list(load_ood_users(run_dir, fold, user_set))
         return [(family, learner, dict(extra, user_set=user_set), uids)
                 for family, learner, extra in ROBUST_CELLS]
@@ -469,7 +469,7 @@ def _specs(block: str, run_dir: str, fold: str) -> list[tuple[str, str, dict, li
         uids = _population_ids(run_dir, fold)
         return [(family, learner, dict(extra), uids) for family, learner, extra in ACQ_CELLS]
     if block == "e-rt":
-        # The DDM wearer's marginal and constants must exist before any point is built.
+        # The DDM simulated user's marginal and constants must exist before any point is built.
         load_rt_params(str(run_dir))
         uids = _population_ids(run_dir, fold)
         return [("promp_s0", "a", dict(extra), uids) for _, _, extra in rt_cells()]

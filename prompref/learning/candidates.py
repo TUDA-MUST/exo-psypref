@@ -1,20 +1,20 @@
 """The our design notes candidate set, built under.
 
 Candidates are built in the posterior's own space, where the posterior covariance and
-the Thompson draws live. Feasibility is judged in the duel space, where the trust ball
-(and, optionally, the step ball around the worn curve) is defined. A candidate's centre
+the Thompson draws live. Feasibility is judged in the duel space, where the trust search region
+(and, optionally, the step search region around the worn curve) is defined. A candidate's centre
 is transferred to the duel space, clipped there, and transferred back, exactly as
 before. Each end is then truncated along the duel's own line: :func:`truncate_duel`
 walks out from that centre toward each end and stops as soon as going further would
-leave the trust ball, or, under a step region, the step ball -- so a duel keeps its
+leave the trust search region, or, under a step region, the step search region -- so a duel keeps its
 centre line and its direction, and never turns into a multi-parameter move. A candidate
 whose truncated ends coincide (width below ``1e-9``) carries no information and is
 dropped. ``width`` is the actual separation, and truncation only ever shortens a duel
 toward its own centre, so ``width`` never exceeds the requested multiple of ell-hat.
 
 Three earlier geometries are recorded here because each failed for reasons worth
-remembering. our design notes clipped centres into the balls and then capped each
-candidate's width at the widest symmetric segment that still fit; every out-of-ball
+remembering. our design notes clipped centres into the search regions and then capped each
+candidate's width at the widest symmetric segment that still fit; every out-of-search region
 centre then sat exactly on a boundary, where the only symmetric duel that fits has
 width 0 (measured: 48-66 % of candidates at eps=1, some sessions with none at all).
 Item 11's first cut moved the whole centre inward until the full-width duel fit
@@ -39,18 +39,18 @@ from .space import LearnerSpace
 MAGNITUDES = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
 DIRECTIONS = ("free", "coordinate")
 
-Ball = tuple[np.ndarray, float]
+SearchRegion = tuple[np.ndarray, float]
 
 
-def shrink_toward(origin: np.ndarray, point: np.ndarray, balls: Sequence[Ball]) -> np.ndarray:
-    """The farthest point from ``origin`` along the segment to ``point`` inside every ball."""
+def shrink_toward(origin: np.ndarray, point: np.ndarray, search_regions: Sequence[SearchRegion]) -> np.ndarray:
+    """The farthest point from ``origin`` along the segment to ``point`` inside every search region."""
     origin, point = np.asarray(origin, dtype=float), np.asarray(point, dtype=float)
     step = point - origin
     length_sq = float(step @ step)
     if length_sq == 0.0:
         return point
     t = 1.0
-    for centre, radius in balls:
+    for centre, radius in search_regions:
         a = origin - np.asarray(centre, dtype=float)
         ab = float(a @ step)
         disc = ab * ab - length_sq * (float(a @ a) - radius * radius)
@@ -61,16 +61,16 @@ def shrink_toward(origin: np.ndarray, point: np.ndarray, balls: Sequence[Ball]) 
 def clip_into_region(z_duel: np.ndarray, duel: LearnerSpace, *,
                      z_worn: np.ndarray | None = None,
                      r_step: float | None = None) -> np.ndarray:
-    """One duel-space point: radially into the trust ball, or, with a step region, shrunk
-    toward ``z_worn`` into the trust ball and the step ball (``z_worn`` must lie in both).
+    """One duel-space point: radially into the trust search region, or, with a step region, shrunk
+    toward ``z_worn`` into the trust search region and the step search region (``z_worn`` must lie in both).
     """
     if r_step is not None and z_worn is None:
         raise ValueError("a step region needs z_worn, the duel-space point it is centred on")
     if r_step is None:
-        return duel.clip_to_ball(z_duel)
+        return duel.clip_to_search_region(z_duel)
     z_worn = np.asarray(z_worn, dtype=float)
-    balls: list[Ball] = [(np.zeros(duel.d), duel.radius), (z_worn, float(r_step))]
-    return shrink_toward(z_worn, z_duel, balls)
+    search_regions: list[SearchRegion] = [(np.zeros(duel.d), duel.radius), (z_worn, float(r_step))]
+    return shrink_toward(z_worn, z_duel, search_regions)
 
 
 def step_region(z_worn: np.ndarray | None, r_step: float | None) -> dict:
@@ -83,13 +83,13 @@ def step_region(z_worn: np.ndarray | None, r_step: float | None) -> dict:
 def coordinate_directions(own: LearnerSpace) -> list[np.ndarray]:
     """One unit move per design parameter, mapped into ``own``'s z and normalised."""
     n = own.design.n_params
-    moves = own.whitening.to_z(np.eye(n)) - own.whitening.to_z(np.zeros(n))
+    moves = own.normalization.to_z(np.eye(n)) - own.normalization.to_z(np.zeros(n))
     return [m / np.linalg.norm(m) for m in moves]
 
 
-def _exit(c: np.ndarray, v: np.ndarray, ball: Ball) -> float:
-    """How far ``c`` can move along ``v`` before leaving ``ball``, at least 0."""
-    centre, radius = ball
+def _exit(c: np.ndarray, v: np.ndarray, search_region: SearchRegion) -> float:
+    """How far ``c`` can move along ``v`` before leaving ``search region``, at least 0."""
+    centre, radius = search_region
     a = c - np.asarray(centre, dtype=float)
     av = float(a @ v)
     vv = float(v @ v)
@@ -101,7 +101,7 @@ def truncate_duel(c_own: np.ndarray, u: np.ndarray, half: float, own: LearnerSpa
                   duel: LearnerSpace, *, z_worn: np.ndarray | None = None,
                   r_step: float | None = None) -> tuple[np.ndarray, np.ndarray]:
     """The duel's ends ``c_own +/- t * u``, each ``t <= half`` and as large as keeps that
-    end inside every ball: the trust ball, plus the step ball around ``z_worn`` when
+    end inside every search region: the trust search region, plus the step search region around ``z_worn`` when
     ``r_step`` is given. The duel keeps its line and its direction and is never wider
     than ``2 * half``.
 
@@ -113,11 +113,11 @@ def truncate_duel(c_own: np.ndarray, u: np.ndarray, half: float, own: LearnerSpa
         raise ValueError("a step region needs z_worn, the duel-space point it is centred on")
     c_duel = own.transfer(c_own, duel)
     v = own.transfer(u, duel) - own.transfer(np.zeros(own.d), duel)
-    balls: list[Ball] = [(np.zeros(duel.d), duel.radius)]
+    search_regions: list[SearchRegion] = [(np.zeros(duel.d), duel.radius)]
     if r_step is not None:
-        balls.append((np.asarray(z_worn, dtype=float), float(r_step)))
-    t_plus = min([half] + [_exit(c_duel, v, ball) for ball in balls])
-    t_minus = min([half] + [_exit(c_duel, -v, ball) for ball in balls])
+        search_regions.append((np.asarray(z_worn, dtype=float), float(r_step)))
+    t_plus = min([half] + [_exit(c_duel, v, search_region) for search_region in search_regions])
+    t_minus = min([half] + [_exit(c_duel, -v, search_region) for search_region in search_regions])
     return c_own + t_plus * u, c_own - t_minus * u
 
 

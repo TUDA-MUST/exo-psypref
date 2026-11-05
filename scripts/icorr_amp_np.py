@@ -38,7 +38,7 @@ sys.path.insert(0, str(ROOT))
 import icorr_amp_range as R  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.experiment.run import run_session  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 SETTINGS = {"wide": "am", "fixed 12": "am_fixed"}
 
@@ -85,7 +85,7 @@ def run_one(job: dict, out: str) -> dict:
         u = job["index"]
         theta_dot = np.load(Path(out) / "icorr" / "amp_free" / "hip_velocity.npz")[str(d["user_subject"][u])]
         ideal = AF.compose(job["amps"][0], job["amps"][1], d["user_minus"][u], d["user_plus"][u])
-        g_minus, g_plus = AF.unit_bouts(d["generic"])
+        g_minus, g_plus = AF.unit_parts(d["generic"])
         seed = int(job["answer_seed"]) % 2**32
         if job["setting"] == "wide":
             lo, hi = R.RANGES["wide"]
@@ -149,8 +149,8 @@ def report(out: Path) -> None:
     ok = {_key(r): r for r in rows if r.get("error") is None}
     errors = [r for r in rows if r.get("error") and _key(r) not in ok]
     rng = np.random.default_rng(AF.SEED)
-    L = ["# Registration NP: users who also dislike negative exoskeleton power", "",
-         f"Spec section 14 (6599a14). {len(ok)} sessions, {len(errors)} errors. k = {AF.K}, "
+    L = ["# Test plan NP: users who also dislike negative exoskeleton power", "",
+         f"Design note 14 (6599a14). {len(ok)} sessions, {len(errors)} errors. k = {AF.K}, "
          f"s = {AF.S} Nm, λ = {AF.LAPSE}; κ = 0 for about half the users, else log-uniform "
          "[0.5, 2]. Preference over generic assistance in the user's own utility. 95 % intervals: "
          f"{R.N_BOOT} draws, users resampled within folds.", "",

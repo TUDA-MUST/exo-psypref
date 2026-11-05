@@ -7,7 +7,7 @@ and at most 2.6 in tall. Illustrative; it prints no result numbers.
           informative pair -> user: profile 1 or 2? -> the answer updates the belief.
   Right   After k comparisons: the identified profile -> validation against generic assistance.
   Bottom  This paper: simulated users, built from walking data, answer like a psychometric
-          function with a lapse floor and ceiling; their spread of preferences is matched to
+          function with a lapse best-profile distance and best-profile level; their spread of preferences is matched to
           real participants.
 
 Two variants: fig1_method.pdf (a photo placeholder for the user, to be replaced by the author)
@@ -17,7 +17,7 @@ PNG preview next to it.
 Data: every curve is real, from one stored session and no new run: the particle snapshots of
 the median-room user loso-AB31/pop016 (e-main, PsyPref with informative pairs) in
 out/icorr/video, mapped to curves through the fold's ProMP prior by fig1_concepts.real_session,
-which checks the loaded whitening, basis and ideal against the arrays stored with the snapshots.
+which checks the loaded normalization, basis and ideal against the arrays stored with the snapshots.
 The k = 0 particles are draws from the population prior (z* ~ N(0, I)), so the left fan and the
 first belief inset show the same prior. The pair is the one asked after six answers (an
 informative pair; the user chose the closer profile 1). The identified profile is the posterior
@@ -25,7 +25,7 @@ mean after 16 comparisons. Generic assistance is the stored prior mean curve; th
 that its distance to the ideal is the stored d_prior. If the session cannot be loaded, the
 script stops: this figure has no schematic fallback.
 
-The sigmoid is the main condition's answer model (s = 1.0 Nm, lapse 0.1, Eq. wearer) through
+The sigmoid is the main condition's answer model (s = 1.0 Nm, lapse 0.1, Eq. simulated user) through
 paper_icorr_figures.psychometric. Style, colours and rcParams are paper_icorr_figures';
 preferred profile solid black, generic assistance dashed grey as in fig_session.
 
@@ -184,7 +184,7 @@ def legend_row(c, y, items, gap=0.16):
 
 
 def sigmoid(c, x, y, w, h):
-    """P(choose 1) against d(2) - d(1) for the main condition, lapse floor and ceiling marked."""
+    """P(choose 1) against d(2) - d(1) for the main condition, lapse best-profile distance and best-profile level marked."""
     ax = c.axes(x, y, w, h)
     xmax = 2.8
     delta = np.linspace(-xmax, xmax, 281)

@@ -1,4 +1,4 @@
-"""The device between a family and the wearer: its peak-torque limit.
+"""The device between a family and the simulated user: its peak-torque limit.
 
 Every candidate and delivered curve in Phase 5 passes through the device, so
 learners, the harness and the observer all see the clipped curve. Parameters, the feasible

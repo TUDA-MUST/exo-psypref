@@ -1,14 +1,14 @@
-"""Floors Phase 5c needs beyond 5a's and 5b-ii's.
+"""Best-profile distances Phase 5c needs beyond 5a's and 5b-ii's.
 
-Both use 5a's floor machinery unchanged -- same multi-start, tie-break and cache -- and write
+Both use 5a's best-profile distance machinery unchanged -- same multi-start, tie-break and cache -- and write
 sidecars beside the exported users, which stay untouched:
 
 - **C1's box.** Ramella's semi-trapezoid, scored against every user, with the box's
-  moment-matched whitening, as a flat cell's floors are.
+  moment-matched normalization, as a flat cell's best-profile distances are.
 - **Drifted final ideals.** For each user and displacement, the time shift that reaches it
-  and the ProMP data prior's floor for the shifted curve. A drift session interpolates its
-  floor between the user's own and this one.
-- **Basis counts**. Each user's ProMP floor at K bases, against the
+  and the ProMP data prior's best-profile distance for the shifted curve. A drift session interpolates its
+  best-profile distance between the user's own and this one.
+- **Basis counts**. Each user's ProMP best-profile distance at K bases, against the
   fold's K prior (``prompref.priors.basis_prior``); written by ``scripts/icorr_k_priors.py``.
 """
 
@@ -26,11 +26,11 @@ from ..population.users import FloorCache, prior_digest, user_floors
 from ..priors.basis_prior import BasisDataPrior, basis_label
 from ..priors.data_prior import DataPrior
 from ..user.drift import scale_for_displacement, shift_for_displacement, time_shift
-from .phase5 import C1_FAMILY, drift_label, flat_whitening, magnitude_label
+from .phase5 import C1_FAMILY, drift_label, flat_normalization, magnitude_label
 
 
 def fold_seed(*parts: str) -> np.random.SeedSequence:
-    """A deterministic seed for one fold's floor computation. Not ``hash(fold)``: Python
+    """A deterministic seed for one fold's best-profile distance computation. Not ``hash(fold)``: Python
     salts a str's hash per interpreter process, so that would reseed differently on every
     run. ``scripts/phase5_schaefer_floors.py`` uses this same one."""
     digest = hashlib.sha1("::".join(parts).encode("utf-8")).digest()
@@ -43,14 +43,14 @@ def _write(path: Path, sidecar: dict) -> None:
 
 def trapezoid_sidecar(run: Path, fold: str, users: list, *, n_starts: int,
                       workers: int) -> dict:
-    """C1's floor for every user, over the semi-trapezoid box."""
+    """C1's best-profile distance for every user, over the semi-trapezoid box."""
     design = TrapezoidDesign()
-    whitening = flat_whitening(design)
+    normalization = flat_normalization(design)
     family = f"flat-{C1_FAMILY}"
-    entries = user_floors(design, whitening, users, n_starts=n_starts,
+    entries = user_floors(design, normalization, users, n_starts=n_starts,
                           seed_sequence=fold_seed(fold, "flat", C1_FAMILY), workers=workers,
                           cache=FloorCache(run / "floors" / f"{fold}-{family}.json"),
-                          family=family, prior_hash=prior_digest(whitening.mu, whitening.sigma))
+                          family=family, prior_hash=prior_digest(normalization.mu, normalization.sigma))
     sidecar = {user.user_id: {"floor_nm": float(entry["floor_nm"]),
                               "reach_050": float(entry["reach_050"]),
                               "radius": float(entry["radius_floor"])}
@@ -61,12 +61,12 @@ def trapezoid_sidecar(run: Path, fold: str, users: list, *, n_starts: int,
 
 def basis_sidecar(run: Path, fold: str, users: list, prior: BasisDataPrior, *, n_starts: int,
                   workers: int) -> dict:
-    """Every user's floor in the ProMP family at ``prior.n_basis`` bases, with that prior's
-    whitening for the tie-break and the reach radii. The same machinery and seeding as the other sidecars here; the entries carry the
+    """Every user's best-profile distance in the ProMP family at ``prior.n_basis`` bases, with that prior's
+    normalization for the tie-break and the reach radii. The same machinery and seeding as the other sidecars here; the entries carry the
     exported users' four per-family values, so a K cell reads one exactly as a K = 8 cell
     reads ``user.families["promp_s0"]``."""
     label = basis_label(prior.n_basis)
-    entries = user_floors(prior.design(), prior.whitening(), users, n_starts=n_starts,
+    entries = user_floors(prior.design(), prior.normalization(), users, n_starts=n_starts,
                           seed_sequence=fold_seed(fold, label), workers=workers,
                           cache=FloorCache(run / "floors" / f"{fold}-{label}.json"),
                           family=label, prior_hash=prior_digest(prior.mu, prior.sigma))
@@ -82,7 +82,7 @@ def basis_sidecar(run: Path, fold: str, users: list, prior: BasisDataPrior, *, n
 
 def drift_sidecar(run: Path, fold: str, users: list, target_nm: float, *, n_starts: int,
                   workers: int) -> dict:
-    """Every user's drift to ``target_nm`` and the ProMP data prior's floor at its end."""
+    """Every user's drift to ``target_nm`` and the ProMP data prior's best-profile distance at its end."""
     prior = DataPrior.load(run / "priors" / f"{fold}-promp_s0")
     label = drift_label(target_nm)
     shifts = {user.user_id: shift_for_displacement(user.curve_nm, target_nm) for user in users}
@@ -90,7 +90,7 @@ def drift_sidecar(run: Path, fold: str, users: list, target_nm: float, *, n_star
                                                            shifts[user.user_id][0]))
              for user in users]
     family = f"promp_s0-{label}"
-    entries = user_floors(prior.design(), prior.whitening(), moved, n_starts=n_starts,
+    entries = user_floors(prior.design(), prior.normalization(), moved, n_starts=n_starts,
                           seed_sequence=fold_seed(fold, label), workers=workers,
                           cache=FloorCache(run / "floors" / f"{fold}-{label}.json"),
                           family=family, prior_hash=prior_digest(prior.mu, prior.sigma))
@@ -105,7 +105,7 @@ def drift_sidecar(run: Path, fold: str, users: list, target_nm: float, *, n_star
 
 def magnitude_sidecar(run: Path, fold: str, users: list, target_nm: float, *, n_starts: int,
                       workers: int) -> dict:
-    """Every user's magnitude drift to ``target_nm`` and the ProMP data prior's floor for the
+    """Every user's magnitude drift to ``target_nm`` and the ProMP data prior's best-profile distance for the
     final ideal ``curve * (1 + scale)``."""
     prior = DataPrior.load(run / "priors" / f"{fold}-promp_s0")
     label = magnitude_label(target_nm)
@@ -113,7 +113,7 @@ def magnitude_sidecar(run: Path, fold: str, users: list, target_nm: float, *, n_
     grown = [dataclasses.replace(user, curve_nm=user.curve_nm * (1.0 + scales[user.user_id]))
              for user in users]
     family = f"promp_s0-{label}"
-    entries = user_floors(prior.design(), prior.whitening(), grown, n_starts=n_starts,
+    entries = user_floors(prior.design(), prior.normalization(), grown, n_starts=n_starts,
                           seed_sequence=fold_seed(fold, label), workers=workers,
                           cache=FloorCache(run / "floors" / f"{fold}-{label}.json"),
                           family=family, prior_hash=prior_digest(prior.mu, prior.sigma))

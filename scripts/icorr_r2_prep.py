@@ -9,18 +9,18 @@ Steps:
 
 - ``xd-fy``, ``xd-fo``, ``xd-r`` (XD): the users of other datasets
   (:func:`prompref.experiment.r2.make_xd_users`; Fukuchi 2018 and Reznick 2021 from
-  ``prompref.data_external``, raw data outside the repository), their promp_s0 floors and reach
+  ``prompref.data_external``, raw data outside the repository), their promp_s0 best-profile distances and reach
   radii by 5a's ``user_floors`` with the serving fold's prior and 20 starts, into ``RUN/<set>/``.
 - ``ht-gen`` (HT (a)): the generator with every Student-t factor at nu = 1.5, from each fold's
-  held-out Molinaro trials (needs the S: share or ``PREFTUNE_DATA``), floors as above.
+  held-out Molinaro trials (needs the S: share or ``PREFTUNE_DATA``), best-profile distances as above.
 - ``ht-mix`` (HT (b)): per fold pop000-pop031 as exported and four Schaefer (ii) and four Franks
-  ideals sampled within their published ranges as in X; floors of the family ideals as above.
+  ideals sampled within their published ranges as in X; best-profile distances of the family ideals as above.
 - ``links`` (HT (c)): the Cauchy link's scale, matched as S5's (``scripts/icorr_stress_prep.py``):
   the median |p - 1/2| over REPORT section 9's 40,000 prior-scale pairs of the 200 population users
-  equals the plain s = 1.0 probit wearer's; checked through ``build_observer`` on those pairs and
+  equals the plain s = 1.0 probit simulated user's; checked through ``build_observer`` on those pairs and
   on fresh ones.
 - ``pess`` (PESS): S1's phase weights (SD of log w 1.0, seeded from each user's answer seed) for the
-  "ood-pb" users: the matched scale, the own generic distance and the own floor
+  "ood-pb" users: the matched scale, the own generic distance and the own best-profile distance
   (``icorr_wph_prep.user_entry``), into ``RUN/ood-pb/phase_weight/pref-sd1/``.
 - ``base-select --learner {cmaes,gp_bald}`` (BASE): after the tuning fold's sessions of
   ``e-base-cma`` or ``e-base-gp``, the setting with the lowest median error of the identified
@@ -75,7 +75,7 @@ def _fold_config(run: str, fold: str) -> dict:
 
 
 def run_population(run: str):
-    """The run's (shift, switches, timing) and floor starts, the same in every LOSO fold (checked)."""
+    """The run's (shift, switches, timing) and best-profile distance starts, the same in every LOSO fold (checked)."""
     configs = [_fold_config(run, fold) for fold in LOSO]
     keys = ("timing", "shift", "switches", "floor_starts")
     for c in configs[1:]:
@@ -87,14 +87,14 @@ def run_population(run: str):
 
 def floors_for(run: str, fold: str, name: str, users, workers: int, starts: int) -> list[dict]:
     prior = DataPrior.load(Path(run) / "priors" / f"{fold}-promp_s0")
-    return user_floors(prior.design(), prior.whitening(), users, n_starts=starts,
+    return user_floors(prior.design(), prior.normalization(), users, n_starts=starts,
                        seed_sequence=fold_seed(fold, name, "promp_s0"), workers=workers,
                        cache=FloorCache(ood_floors_cache_path(run, fold, name)),
                        family=f"promp_s0-{name}", prior_hash=prior_digest(prior.mu, prior.sigma))
 
 
 def _set_summary(run: str, name: str, extra: dict) -> dict:
-    """Checks every set step writes: per fold the user count and floor and size quantiles, all
+    """Checks every set step writes: per fold the user count and best-profile distance and size quantiles, all
     loaded back through ``load_ood_users``, against the run's population users."""
     rms = lambda c: float(np.sqrt(np.mean(np.asarray(c, dtype=float) ** 2)))  # noqa: E731
     per_fold, floors, sizes, d_gen = {}, [], [], []
@@ -270,16 +270,16 @@ def step_links(run: str, out: Path) -> int:
 
 # -------------------------------------------------------------------------------------- PESS
 def pess_entry(run: str, fold: str, user, weight, generic, design, theta_stored) -> dict:
-    """``icorr_wph_prep.user_entry`` with one more start for both floors: the weights of the user's
-    stored promp_s0 floor (the user set's floor cache). The 'ood-pb' ideals are Schaefer profiles
-    whose clipped floor has local minima the 20 prior-draw starts can miss (one user's w = 1 floor
+    """``icorr_wph_prep.user_entry`` with one more start for both best-profile distances: the weights of the user's
+    stored promp_s0 best-profile distance (the user set's best-profile distance cache). The 'ood-pb' ideals are Schaefer profiles
+    whose clipped best-profile distance has local minima the 20 prior-draw starts can miss (one user's w = 1 best-profile distance
     missed the stored one by 8e-5 Nm in the first prep run)."""
     import icorr_wph_prep as wp
     import phase5e_perturbation as pert
     import zlib
 
     from prompref.experiment.phase_weighted import weighted_floor
-    from prompref.user.oracle import PHASE_WEIGHTED, Observer, weighted_rms_distance
+    from prompref.user.simulated_user import PHASE_WEIGHTED, Observer, weighted_rms_distance
 
     duels = pert.duel_pairs(run, fold, user.user_id, pert.N_PAIRS)
     plain = Observer(ideal_nm=user.curve_nm, s=1.0, lapse=0.0)
@@ -288,7 +288,7 @@ def pess_entry(run: str, fold: str, user, weight, generic, design, theta_stored)
                         - weighted_rms_distance(b, user.curve_nm, weight)) for a, b in duels])
     raw_ratio = pert.decisiveness_ratio(d_w, d_rms)
     scale = 1.0 / raw_ratio
-    wearer = Observer(ideal_nm=user.curve_nm, s=1.0, lapse=0.1, metric=PHASE_WEIGHTED,
+    simulated_user = Observer(ideal_nm=user.curve_nm, s=1.0, lapse=0.1, metric=PHASE_WEIGHTED,
                       phase_weight=weight, utility_scale=scale)
     seed = [wp.FLOOR_SEED, zlib.crc32(user.user_id.encode("utf-8"))]
     rms_check = weighted_floor(design, user.curve_nm, np.ones_like(weight),
@@ -297,7 +297,7 @@ def pess_entry(run: str, fold: str, user, weight, generic, design, theta_stored)
                            extra_starts=[rms_check["theta"], theta_stored])
     return dict(answer_seed=int(user.answer_seed), raw_ratio=float(raw_ratio), scale=float(scale),
                 generic_w_nm=float(weighted_rms_distance(generic, user.curve_nm, weight)),
-                own_generic=float(wearer.own_distance(generic)),
+                own_generic=float(simulated_user.own_distance(generic)),
                 floor_w_nm=floor["floor_nm"], own_floor=float(scale * floor["floor_nm"]),
                 floor_theta=floor["theta"], proj_nm=floor["proj_nm"],
                 proj_clipped_nm=floor["proj_clipped_nm"], proj_in_box=floor["proj_in_box"],
@@ -310,7 +310,7 @@ def pess_entry(run: str, fold: str, user, weight, generic, design, theta_stored)
 def step_pess(run: str, out: Path) -> int:
     import icorr_wph_prep as wp
     import phase5e_perturbation as pert
-    from prompref.user.oracle import Observer
+    from prompref.user.simulated_user import Observer
     from prompref.user.phase_weight import pref_weight
 
     cell, user_set = icorr_grid.PESS_CELL["phase_weighting"], icorr_grid.PESS_CELL["user_set"]
@@ -347,8 +347,8 @@ def step_pess(run: str, out: Path) -> int:
         path = phase_weight_path(run, cell, fold, user_set)
         _write(path, sidecar)
         p5.phase_weight_sidecar.cache_clear()
-        # The achieved decisiveness through build_observer, as a session builds the wearer
-        # (attentive, s = 1.0, the plain RMS wearer as reference): 1 by construction.
+        # The achieved decisiveness through build_observer, as a session builds the simulated user
+        # (attentive, s = 1.0, the plain RMS simulated user as reference): 1 by construction.
         for uid, user in users.items():
             point = p5.Phase5Point(run, fold, "promp_s0", "tight", "a", uid, s=1.0, lapse=0.0,
                                    n_comparisons=40, phase_weighting=cell, user_set=user_set)

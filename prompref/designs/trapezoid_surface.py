@@ -27,7 +27,7 @@ class TrapezoidSurface(TrapezoidDesign):
         self.prior = prior
 
     def initial_guess(self, target: np.ndarray) -> np.ndarray:
-        """Each bout's peak torque and plateau centre read off the target's minimum (extension)
+        """Each part's peak torque and plateau centre read off the target's minimum (extension)
         and maximum (flexion), its rise time at the middle of the range, clipped into the box
         (peak times through their nearest representative mod 100)."""
         c = np.asarray(target, dtype=float)[:-1]

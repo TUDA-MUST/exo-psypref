@@ -3,7 +3,7 @@
 Geometry follows Manzoori et al. (2024), *Front. Bioeng. Biotechnol.* 12:1324587,
 section 2.1 -- the controller Ramella et al. (2025) tune against:
 
-    each bout has "a semi-trapezoidal profile defined by four parameters: peak
+    each part has "a semi-trapezoidal profile defined by four parameters: peak
     amplitude, peak time (timing of the middle of the peak), total duration and
     rise time. The fall time ... was held constant at 5 %GC."
 
@@ -14,12 +14,12 @@ so, writing the plateau width as ``T_p = T_tot - T_r - T_f``:
     fall     [t_peak + T_p/2,        t_peak + T_p/2 + T_f]  amplitude -> 0
 
 ``t_peak`` is the *centre* of the plateau, not its start. The axis is circular:
-under Ramella's feature ranges the extension bout always begins in the previous
+under Ramella's feature ranges the extension part always begins in the previous
 gait cycle, which is why their subjects could prefer assistance starting before
 heel strike.
 
 Sign convention matches the dataset contract: hip flexion positive, so the
-extension bout enters negative.
+extension part enters negative.
 """
 
 from __future__ import annotations
@@ -75,17 +75,17 @@ def _transition(x: np.ndarray, kind: str = "smoothstep") -> np.ndarray:
     raise ValueError(f"unknown transition {kind!r}")
 
 
-def _bout(phase: np.ndarray, amplitude: float, peak_time: float, rise_time: float,
+def _part(phase: np.ndarray, amplitude: float, peak_time: float, rise_time: float,
           total_duration: float = TOTAL_DURATION, fall_time: float = FALL_TIME,
           transition: str = TRANSITION) -> np.ndarray:
-    """One semi-trapezoidal bout, non-negative, on a circular %GC axis."""
+    """One semi-trapezoidal part, non-negative, on a circular %GC axis."""
     plateau = total_duration - rise_time - fall_time
     if plateau < 0.0:
         raise ValueError(
             f"rise_time={rise_time} + fall_time={fall_time} exceeds "
             f"total_duration={total_duration}; plateau would be negative"
         )
-    # Position within the bout, measured from the start of the rise, wrapped to [0, 100).
+    # Position within the part, measured from the start of the rise, wrapped to [0, 100).
     start = peak_time - plateau / 2.0 - rise_time
     u = np.mod(np.asarray(phase, dtype=float) - start, 100.0)
 
@@ -168,9 +168,9 @@ class TorqueProfile:
 
     def _raw(self, phase: np.ndarray) -> np.ndarray:
         f1, f2, f3, f4, f5, f6 = self.features
-        extension = _bout(phase, f1, f2, f3, self.total_duration, self.fall_time,
+        extension = _part(phase, f1, f2, f3, self.total_duration, self.fall_time,
                           self.transition)
-        flexion = _bout(phase, f4, f5, f6, self.total_duration, self.fall_time,
+        flexion = _part(phase, f4, f5, f6, self.total_duration, self.fall_time,
                         self.transition)
         return flexion - extension
 

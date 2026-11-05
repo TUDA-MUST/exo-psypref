@@ -1,7 +1,7 @@
 """ICORR robustness tests H, O and R: the planned verdicts PH1, PH2, PO1, PO2, PR1 and PR2.
 
 "Home-advantage test at matched decisiveness" (PH1, PH2), "Out-of-generator and random-utility
-wearers" (PO1, PO2, PR1, PR2) and "Decision on the robustness tests" (per-bout OOD peaks as the
+simulated users" (PO1, PO2, PR1, PR2) and "Decision on the robustness tests" (per part OOD peaks as the
 primary O analysis with the common peak as a labelled sensitivity run, the PH2 scale, u_max as an
 upper bound, population users only). Build and row fields: out/icorr/robust_build_report.md
 (section 6 for e-ood-pb and the u_max convergence flag). No session is run.
@@ -13,21 +13,21 @@ Usage:
 Reads, all read-only, each jsonl streamed line by line, population users only
 (``user_kind == "population"`` and a ``/pop`` id, as ruled; for O, ``/ood`` ids, the only users
 the O blocks hold):
-  OUT/icorr/e-home.jsonl       the static (10 %) and walking (25 %) landmark wearers at matched
+  OUT/icorr/e-home.jsonl       the static (10 %) and walking (25 %) landmark simulated users at matched
                                decisiveness: A, G, LineCoSpar, SortCMA on ProMP; A with Franks
                                projection (``a_lens``) and G on Franks;
-  OUT/icorr/e-ood-pb.jsonl     the out-of-generator ideals, per-bout peaks (the primary O set):
+  OUT/icorr/e-ood-pb.jsonl     the out-of-generator ideals, per part peaks (the primary O set):
                                A (EIG duels), A (random duels), G, LineCoSpar, SortCMA on ProMP,
-                               plain RMS wearer at s = 1.0;
+                               plain RMS simulated user at s = 1.0;
   OUT/icorr/e-ood.jsonl        the same cells on the common-peak ideals (sensitivity run);
-  OUT/icorr/e-rand.jsonl       the random smooth-utility wearer: A (EIG duels), A (random duels),
+  OUT/icorr/e-rand.jsonl       the random smooth-utility simulated user: A (EIG duels), A (random duels),
                                G, LineCoSpar, SortCMA on ProMP;
   OUT/phase5e/e-main.jsonl     A, G, LineCoSpar and SortCMA on ProMP, main condition (PH2's and
                                PO2's RMS reference leads);
-  OUT/phase5e/e-observer.jsonl the unmatched landmark cells (context); the wearer's own distance
+  OUT/phase5e/e-observer.jsonl the unmatched landmark cells (context); the simulated user's own distance
                                of generic assistance is rebuilt per row as icorr_jnd_free does;
   OUT/phase5-schaefer/ood-pb/users/<fold>.json and ood/users/<fold>.json   the O users: their
-                               order, answer seeds, ideals and floors (checks);
+                               order, answer seeds, ideals and best-profile distances (checks);
   OUT/phase5-schaefer/random_utility/<fold>.json   u_gen, u_max and ``umax_converged`` per user.
                                Read once at the start (another process may refine u_max); their
                                timestamps and hashes are recorded in the report and re-checked at
@@ -49,7 +49,7 @@ Estimators (phase5e_report's, as icorr_k_report uses them for its verdicts):
 
 Win rate (no JND needed): P_i(k) = lambda/2 + (1 - lambda) Phi((g_i - e_i(k)) / s), s = 1.0,
 lambda = 0.1, with g_i = ``own_generic_distance`` and e_i(k) = ``own_distances[k - 1]`` (minus the
-utility, on the scale the wearer answers by). For the RMS wearers (main condition, O) g_i is
+utility, on the scale the simulated user answers by). For the RMS simulated users (main condition, O) g_i is
 ``d_prior`` and e_i(k) is ``distances[k - 1]``. The win rate of an optimizer is the mean over users.
 """
 
@@ -81,7 +81,7 @@ from prompref.experiment.icorr_grid import DECISIVENESS  # noqa: E402
 from prompref.experiment.metrics import prior_mean_curve  # noqa: E402
 from prompref.experiment.robust import load_ood_users, ood_root  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 K_MAIN = 24
 KS = (12, 24, 40)
@@ -124,7 +124,7 @@ H_CONTRASTS = (("a", "g"), ("a", "d_z"), ("a", "cmaes"), ("a_lens", "g_franks"))
 R_OPTS = {"a": ("a", "eig", "A"), "g": ("g", "eig", "G"), "d_z": ("d_z", "eig", "LineCoSpar"),
           "cmaes": ("cmaes", "eig", "SortCMA"), "a_rand": ("a", "random", "A, random duels")}
 R_COMPARATORS = ("g", "d_z", "cmaes", "a_rand")
-#: O: the same five cells as R, on the out-of-generator users; the two user sets, the per-bout
+#: O: the same five cells as R, on the out-of-generator users; the two user sets, the per part
 #: one primary, the common-peak one a labelled sensitivity run.
 O_OPTS = R_OPTS
 O_SETS = {"ood-pb": "e-ood-pb", "ood": "e-ood"}
@@ -316,8 +316,8 @@ def rms(df, k: int) -> np.ndarray:
 
 
 def win(df, k: int) -> np.ndarray:
-    """Per-user probability that the wearer prefers the identified assistance after k
-    comparisons over generic assistance in one duel, in the wearer's own utility."""
+    """Per-user probability that the simulated user prefers the identified assistance after k
+    comparisons over generic assistance in one duel, in the simulated user's own utility."""
     return jf.win_probability(col(df, "own_generic_distance"), own(df, k), col(df, "s"),
                               col(df, "lapse"))
 
@@ -329,7 +329,7 @@ def win_curve(df) -> np.ndarray:
 
 
 def win_rms(df, k: int) -> np.ndarray:
-    """``win`` for a plain RMS wearer (main condition, O): generic distance ``d_prior``,
+    """``win`` for a plain RMS simulated user (main condition, O): generic distance ``d_prior``,
     identified distance ``distances[k - 1]``."""
     return jf.win_probability(col(df, "d_prior"), rms(df, k), col(df, "s"), col(df, "lapse"))
 
@@ -509,8 +509,8 @@ def checks(c: dict, side_: dict, ous: dict, run: Path) -> list[tuple[str, float,
 
 
 def ood_checks(c: dict, ous: dict, run: Path, folds=G.FOLDS) -> list[tuple[str, float, float]]:
-    """The O cells: the user set of every row, the same generic distance and floor in every
-    cell, the floor of the users file, d_prior rebuilt from the fold's prior mean curve and the
+    """The O cells: the user set of every row, the same generic distance and best-profile distance in every
+    cell, the best-profile distance of the users file, d_prior rebuilt from the fold's prior mean curve and the
     user's ideal, and the two user sets holding the same users (ids and answer seeds)."""
     res = []
     generic = {fold: prior_mean_curve(phase5.arm_space(phase5._prior(str(run), fold, "promp_s0"),
@@ -755,7 +755,7 @@ def excl_text(H: dict) -> str:
 def verdict_lines(v: dict) -> list[str]:
     ph1, ph2, pr1, pr2 = v["PH1"], v["PH2"], v["PR1"], v["PR2"]
     po1, po2, O = v["PO1"], v["PO2"], v["O"]
-    L = ["## 1. Registered verdicts", "",
+    L = ["## 1. Planned verdicts", "",
          "| # | Prediction (spec §9a) | Verdict | Numbers (k = 24; 200 users per test) |",
          "|---|---|---|---|"]
     txt = "; ".join(
@@ -782,7 +782,7 @@ def verdict_lines(v: dict) -> list[str]:
              f"{MAIN_LABEL[po2['best_main']]} = {ci3(am)} Nm; ½ = {po2['fixed_thr']:+.3f}) | "
              f"**{po2['state']}** | {po2_numbers(po2)}. Common peak (sensitivity): "
              f"{po2_numbers(oc['po2'])} → ({oc['po2']['state']}). D = adv − ½·adv_main, held "
-             "when adv < 0 and D ≤ 0 throughout their intervals; rulings in §3.1 |")
+             "when adv < 0 and D ≤ 0 throughout their intervals; decision in §3.1 |")
     txt = "; ".join(f"A − {R_OPTS[o][2]} {ci3(pr1['ci'][o])} → {pr1['states'][o]}"
                     for o in R_COMPARATORS)
     L.append(f"| PR1 | A's own-utility win rate against generic exceeds every comparator's "
@@ -908,7 +908,7 @@ def o_section(v: dict, ous: dict, n_boot: int) -> list[str]:
          "condition. Their ideals are Schäfer's four-half-cosine profiles with timings drawn "
          "from Schäfer's distribution (build report §1.2). Two magnitude rules, on the same "
          "timings, z, answer seeds and ids:",
-         f"- **per-bout peaks (e-ood-pb, primary; ruling \"O, peak magnitude\"):** each bout's "
+         f"- **per-bout peaks (e-ood-pb, primary; decision \"O, peak magnitude\"):** each bout's "
          f"peak is its population median (extension {cpb['median_ext_peak_nm']:.3f} Nm, flexion "
          f"{cpb['median_flex_peak_nm']:.3f} Nm) × (1 + {cv:g} z), one z per user, clipped to "
          "[0, 12] Nm;",
@@ -928,9 +928,9 @@ def o_section(v: dict, ous: dict, n_boot: int) -> list[str]:
         L.append(f"| O, {O_TITLE[s]} | {v['sizes'][s]:.3f} | {r['d_prior']:.3f} | "
                  f"{r['floor']:.3f} | {r['room']:.3f} |")
     t4 = {s: O[s]["po2"]["four"]["counts"] for s in O_SETS}
-    L += ["", "### 3.1 Rulings on PO1 and PO2 (analyst's, written before these numbers were "
+    L += ["", "### 3.1 Decision on PO1 and PO2 (analyst's, written before these numbers were "
           "computed)", "",
-          "The registration leaves five points open. Each is ruled in the direction that makes a "
+          "The test plan leaves five points open. Each is ruled in the direction that makes a "
           "held verdict harder to reach:",
           f"1. **PO1's bar.** \"≥ {PO1_LEVEL:.2f}\" is held only when the whole 95 % interval lies "
           f"above {PO1_LEVEL:.2f}, failed when it lies wholly below, as PR2.",
@@ -958,7 +958,7 @@ def o_section(v: dict, ous: dict, n_boot: int) -> list[str]:
           "and D's wholly at or below 0, with the main advantage itself excluding 0 (PH2's gate); "
           "failed if either interval lies wholly on the other side; uncertain otherwise.",
           "", "The common-peak run gets the same statistics. Its verdicts are in parentheses: a "
-          "labelled sensitivity, not the registered verdict.", "",
+          "labelled sensitivity, not the planned verdict.", "",
           "### 3.2 PO1: win rate against generic assistance at k = 24", "",
           "| users | A | best comparator | verdict |", "|---|---|---|---|"]
     for s in O_SETS:
@@ -975,7 +975,7 @@ def o_section(v: dict, ous: dict, n_boot: int) -> list[str]:
           + f" Nm. adv_main = A − {MAIN_LABEL[po2['best_main']]} = {ci3(po2['adv_main'])} Nm; "
           f"half of it: {po2['fixed_thr']:+.3f} Nm.", "",
           "adv = med(A) − the smallest comparator median within each draw (negative favours A). "
-          "D = adv − ½·adv_main (independent draws, ruling 4). \"Share kept\" = adv ÷ adv_main "
+          "D = adv − ½·adv_main (independent draws, decision 4). \"Share kept\" = adv ÷ adv_main "
           "(1 = all of A's main advantage kept, 0.5 = PO2's bar), same draws as D. \"Best in "
           "draws\" counts the draws in which each comparator has the smallest median.", "",
           "| users | comparators | A, median | best by median | adv | D | share kept | best in "
@@ -995,7 +995,7 @@ def o_section(v: dict, ous: dict, n_boot: int) -> list[str]:
                      f"{ci3(q['adv'])} | {ci3(q['D'])} | {ci3(q['share'], 2, signed=False)} | "
                      f"{counts} | {st} | {fx} |")
     pc = O["ood"]["po2"]
-    L += ["", f"**PO2, registered verdict: {po2['state']}** (the less favourable of the two "
+    L += ["", f"**PO2, planned verdict: {po2['state']}** (the less favourable of the two "
           f"comparator sets under the D rule; fixed-threshold reading {po2['fixed_state']}). "
           f"Common peak, sensitivity: ({pc['state']}); fixed-threshold reading "
           f"({pc['fixed_state']}).", "",
@@ -1033,7 +1033,7 @@ def h_section(v: dict, dec: dict) -> list[str]:
         oos = dec["out_of_sample"].get(f"{key}-matched", {}).get("ratio")
         L.append(f"- {LANDMARK_TITLE[cell]}: achieved ratio {ins:.6f} on the measurement pairs "
                  f"(true by construction), {oos:.3f} on 100 other users with fresh pairs.")
-    L += ["", "**Scale (ruling \"H, PH2 scale\").** `own_distances` and `own_generic_distance` "
+    L += ["", "**Scale (decision \"H, PH2 scale\").** `own_distances` and `own_generic_distance` "
           "are on the matched scale, D × 0.674 / ratio (\"Nm-eq.\"). The win rate uses the same "
           "scale, which is the one the wearer answered by. The unmatched e-observer cells "
           "(context) are given as stored (D × 0.674, the scale that wearer answered by) and "
@@ -1064,7 +1064,7 @@ def h_section(v: dict, dec: dict) -> list[str]:
           "gate); failed when D's interval lies wholly above 0. \"Share kept\" = lead in the "
           "landmark cell ÷ lead in main (1 = all of A's main lead kept). The fixed-threshold "
           "reading compares the landmark lead's own interval with the point value ⅔ × "
-          f"{m['lead']['estimate']:+.3f} (a sensitivity, not the registered rule).", "",
+          f"{m['lead']['estimate']:+.3f} (a sensitivity, not the planned rule).", "",
           "| cell | own distance | A, median | G, median | A − G | D | share kept | verdict "
           "| fixed-threshold reading |", "|---|---|---|---|---|---|---|---|---|"]
     for src, tag in (("home", "matched"), ("obs", "unmatched (context)")):
@@ -1119,7 +1119,7 @@ def r_section(v: dict, side_: dict, side_after) -> list[str]:
     for o in R_COMPARATORS:
         L.append(f"| A − {R_OPTS[o][2]} | " + " | ".join(ci3(R["con"][(o, k)]) for k in KS)
                  + " |")
-    L += ["", f"Not registered: A − the best comparator at k = 24, the best taken within each "
+    L += ["", f"Not planned: A − the best comparator at k = 24, the best taken within each "
           f"draw: {ci3(R['best'])}.", "",
           "### 4.2 Comparisons to reach a win rate of 0.60 and 0.75", "",
           "The first k (1–40) at which the mean win rate meets the level, on the cross-sectional "
@@ -1139,7 +1139,7 @@ def r_section(v: dict, side_: dict, side_after) -> list[str]:
     changed = [n for n, same, _ in side_after if not same]
     L += ["", "### 4.3 Share of the achievable utility gain", "",
           "(u_k − u_gen) / (u_max − u_gen), median over users, read twice:",
-          f"- **over all {u['n']} users, an upper bound** (ruling \"R, u_max\"): u_max is a "
+          f"- **over all {u['n']} users, an upper bound** (decision \"R, u_max\"): u_max is a "
           "best-found lower bound, so where the search fell short the denominator is too small "
           "and the share too large;",
           f"- **over the {u['conv']} users whose u_max converged** (`umax_converged`: the last two "
@@ -1238,13 +1238,13 @@ def main(argv=None) -> int:
     p("# ICORR robustness tests: home advantage at matched decisiveness (H), out-of-generator "
       "ideals (O) and the random smooth-utility wearer (R)")
     p("")
-    p(f"Generated by `scripts/icorr_robust_report.py`, run started {started}, at worktree commit "
-      f"{git_head()}. Spec: `docs/superpowers/specs/2026-10-17-icorr-user-tuning-reframe-"
-      "design.md` §9a (PH1, PH2, PO1, PO2, PR1, PR2 registered before any run; rulings recorded "
-      "after the build and before any outcome; the rulings this report adds on PO1 and PO2 are "
+    p(f"Generated by `scripts/icorr_robust_report.py`, run started {started}, at repository commit "
+      f"{git_head()}. Spec: `our design notes"
+      "` §9a (PH1, PH2, PO1, PO2, PR1, PR2 planned before any run; decision recorded "
+      "after the build and before any outcome; the decision this report adds on PO1 and PO2 are "
       "in §3.1). Build: `out/icorr/robust_build_report.md` (§6 for e-ood-pb and the u_max "
       "convergence). Rows: `out/icorr/e-home.jsonl`, `out/icorr/e-ood-pb.jsonl` (O, per-bout "
-      "peaks, the registered verdicts), `out/icorr/e-ood.jsonl` (O, common peak, the labelled "
+      "peaks, the planned verdicts), `out/icorr/e-ood.jsonl` (O, common peak, the labelled "
       "sensitivity run), `out/icorr/e-rand.jsonl`, `out/phase5e/e-main.jsonl` (A, G, LineCoSpar "
       "and SortCMA, the PH2 and PO2 references) and `out/phase5e/e-observer.jsonl` (the "
       "unmatched landmark cells, context). No session was run.")
@@ -1289,14 +1289,14 @@ def main(argv=None) -> int:
     p("")
     ph2_states = [x["state"] for x in v["PH2"]["cells"].values()]
     moot = (" Here the rule is moot: both cells are " + ph2_states[0] + " on their own, so any "
-            "combination (static only, as QE3's registered cell; both; either) gives the same "
+            "combination (static only, as QE3's planned cell; both; either) gives the same "
             "verdict." if len(set(ph2_states)) == 1 else
             " The two cells differ (" + ", ".join(f"{c} {x['state']}" for c, x in
                                                  v["PH2"]["cells"].items())
             + "), so the combination rule matters.")
-    p("- **PH2 names no cell.** PH1's registration says \"in both matched landmark cells\"; PH2's "
+    p("- **PH2 names no cell.** PH1's test plan says \"in both matched landmark cells\"; PH2's "
       "does not. It is computed in both, and the combined verdict (held only if held in both, "
-      "failed if failed in either) is the analyst's rule, not a registered one. Each cell's "
+      "failed if failed in either) is the analyst's rule, not a planned one. Each cell's "
       "verdict is in §2.2." + moot)
     p("- **u_max moved before this run, not during it.** The u_max values here (median "
       f"{v['R']['umax']['med_umax']:+.2f}) are after the convergence run that ended "
@@ -1315,7 +1315,7 @@ def main(argv=None) -> int:
     if failed:
         p(f"- **{' and '.join(failed)} {'is' if len(failed) == 1 else 'are'} reported as found** "
           "(spec §9a: \"If a prediction fails, it is reported as found\"), on the per-bout set as "
-          "ruled. The common-peak run and the room reading in §1 are context, not a re-ruling.")
+          "ruled. The common-peak run and the room reading in §1 are context, not a re-decision.")
     p("- **PH2 compares two metrics.** The landmark lead is in the matched wearer's own distance "
       "(Nm-eq., ruled), the main lead in RMS Nm. They are on a like-for-like decisiveness scale, "
       "not the same distance.")

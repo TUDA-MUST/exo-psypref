@@ -156,8 +156,8 @@ def report(out: Path) -> None:
     rows = {key[:3]: r for key, r in allrows.items() if key[3] == AF.K and key[4] == AF.S}
     rng = np.random.default_rng(AF.SEED)
     stats = {}
-    lines = ["# Registration AF pilot: amplitude-free prior", "",
-             f"Spec: docs/superpowers/specs/2026-10-27-amplitude-free-prior-design.md (dedbe8c). "
+    lines = ["# Test plan AF pilot: amplitude-free prior", "",
+             f"Spec: our design notes (dedbe8c). "
              f"{len(rows)} sessions, {len(errors)} errors. k = {AF.K}, s = {AF.S} Nm, "
              f"λ = {AF.LAPSE}, device ±{AF.LIMIT_NM:.0f} Nm, generic peaks {AF.GENERIC_PEAK_NM:.2f} Nm. "
              f"95 % intervals: {N_BOOT} draws, users resampled within folds.", "",
@@ -255,7 +255,7 @@ def report(out: Path) -> None:
             (np.array([r["d0"] for r in x]) - np.array([r["distances"][-1] for r in x])) / s))), rng)
         return dict(se=se, sf=sf, pref=pr, n=len(rs))
 
-    lines += ["", "## Diagnostics (addendum, section 10)", "",
+    lines += ["", "## Diagnostics (change, section 10)", "",
               "| diagnostic | scenario | candidate | n | slope ext | slope flex | preference over generic "
               "| mean slope change |", "|---|---|---|---|---|---|---|---|"]
     rises = {}
@@ -295,7 +295,7 @@ def main(argv=None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "out")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--diag", action="store_true", help="run the diagnostics D1 and D2 (addendum, section 10)")
+    ap.add_argument("--diag", action="store_true", help="run the diagnostics D1 and D2 (change, section 10)")
     args = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
     if args.workers > 8:

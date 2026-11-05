@@ -2,17 +2,17 @@
 
 Usage:
   python scripts/icorr_amp_long.py smoke
-  python scripts/icorr_amp_long.py floors [--workers 8]
+  python scripts/icorr_amp_long.py best-profile distances [--workers 8]
   python scripts/icorr_amp_long.py run [--workers 8]
   python scripts/icorr_amp_long.py report
 
-PsyPref as in FULL (PsyPref-M with N1 and the two-bout
+PsyPref as in FULL (PsyPref-M with N1 and the two-part
 guard in the ranges, B_fixed at 12 Nm), built through PsyPref-T's factories (ties="band", section
 26a), to 150 comparisons on FULL's users with index 0-19 per fold and their answer seeds: the main
 condition in medium, wide and fixed 12 (FULL's run_one, cell "main") and ROB's R2, s = 2.0 Nm, in
 wide and fixed 12 (ROB's run_one, cell "R2"); 500 sessions. Each session also records when every
-answer was given and the machine it ran on (host, CPU, numpy, OpenBLAS kernel). ``floors`` fits each
-user's reachable floor: the smallest RMS distance to the preferred curve over PsyPref's search ball
+answer was given and the machine it ran on (host, CPU, numpy, OpenBLAS kernel). ``best-profile distances`` fits each
+user's reachable best-profile distance: the smallest RMS distance to the preferred curve over PsyPref's search search region
 under the setting's device limits (R2 reuses the main cell's: same preferred curves). ``smoke``
 checks the defaults against the stored rows and times a few long sessions. The stored distances
 reproduce bit for bit only on the machine that produced them (section 27), so ``smoke`` logs its
@@ -61,8 +61,8 @@ TIES = "band"            # PsyPref-T's tie handling (26a); no LONG user answers 
 KS = (24, 40, 80, 150)
 CURVE_KS = (1, 6, 12, 24, 40, 60, 80, 100, 120, 150)
 JND = true_jnd(AF.S)     # 0.674 Nm
-GOOD = 0.5               # JND: "within half a JND of the floor"
-#: The floor fit: 20 uniform starts in the ball, SLSQP's settings.
+GOOD = 0.5               # JND: "within half a JND of the best-profile distance"
+#: The best-profile distance fit: 20 uniform starts in the search region, SLSQP's settings.
 N_DRAWS = 20
 FIT_ITER, FIT_TOL = 500, 1e-10
 
@@ -172,7 +172,7 @@ def run(out: Path, workers: int) -> None:
                 print(f"{n}/{len(todo)}", flush=True)
 
 
-# ----------------------------------------------------------------------------- floors
+# ----------------------------------------------------------------------------- best-profile distances
 
 def _space_and_ideal(job: dict):
     """The space PsyPref searches and the preferred curve, exactly as FULL's run_one builds them."""
@@ -189,13 +189,13 @@ def _space_and_ideal(job: dict):
 
 def _fit(f, starts, space=None):
     """The best of SLSQP runs on ``f`` (mean squared error in z) from ``starts``, inside
-    ``space``'s search ball when it is given (None: unconstrained). Each start and each end point
-    counts, end points pulled back onto the ball. Returns (z, f(z), index of the winning start)."""
+    ``space``'s search search region when it is given (None: unconstrained). Each start and each end point
+    counts, end points pulled back onto the search region. Returns (z, f(z), index of the winning start)."""
     from scipy.optimize import minimize
 
     cons, clip = (), (lambda z: z)
     if space is not None:
-        r2, clip = space.radius ** 2, space.clip_to_ball
+        r2, clip = space.radius ** 2, space.clip_to_search_region
         cons = ({"type": "ineq", "fun": lambda z: r2 - z @ z, "jac": lambda z: -2.0 * z},)
     best = (None, np.inf, -1)
     for i, z0 in enumerate(starts):
@@ -210,8 +210,8 @@ def _fit(f, starts, space=None):
 
 
 def floor_one(job: dict, out: str) -> dict:
-    """One user's reachable floor in one setting (section 27's target), the unconstrained refit
-    from the same starts and FAM's ProMP-8 floor (AF.promp_floor) alongside."""
+    """One user's reachable best-profile distance in one setting (section 27's target), the unconstrained refit
+    from the same starts and FAM's ProMP-8 best-profile distance (AF.promp_floor) alongside."""
     base = {k: v for k, v in job.items()
             if not k.startswith("_") and k not in ("candidate", "cell", "n_comp", "ties")}
     try:
@@ -228,14 +228,14 @@ def floor_one(job: dict, out: str) -> dict:
         g = rng.normal(size=(N_DRAWS, space.d))
         u = rng.random(N_DRAWS)
         draws = g / np.linalg.norm(g, axis=1, keepdims=True) * (space.radius * u ** (1.0 / space.d))[:, None]
-        starts = [space.clip_to_ball(z_ls), np.zeros(space.d)] + list(draws)
+        starts = [space.clip_to_search_region(z_ls), np.zeros(space.d)] + list(draws)
 
         def mse(z):
             return float(np.mean((space.design.curve(space.to_theta(z)) - ideal) ** 2))
 
         z_b, v_b, i_b = _fit(mse, starts, space)
-        # Without the ball the least-squares start needs no clipping; it and the in-ball optimum are
-        # added to the same starts, so the free floor is never above the reachable one
+        # Without the search region the least-squares start needs no clipping; it and the in-search region optimum are
+        # added to the same starts, so the free best-profile distance is never above the reachable one
         z_f, v_f, i_f = _fit(mse, [z_ls, z_b] + starts)
         return dict(base, floor=float(np.sqrt(v_b)), z=[float(x) for x in z_b],
                     z_norm=float(np.linalg.norm(z_b)), start=i_b, radius=float(space.radius),
@@ -302,7 +302,7 @@ def _sec_near(r, k: int, w: int = 5) -> float:
 def smoke(out: Path) -> None:
     """(i) FULL's and ROB's run_one with the jobs' defaults must reproduce the stored rows bit for
     bit; (ii) the same jobs at 150 comparisons with PsyPref-T: the first 40 distances, seconds per
-    comparison; (iii) their floors and E_150; the projected wall time of the run. Appends the
+    comparison; (iii) their best-profile distances and E_150; the projected wall time of the run. Appends the
     machine and the results of (i) and (ii) to long_smoke.jsonl, which ``run`` checks."""
     d = F._dir(out)
     stored = _stored(d)
@@ -364,7 +364,7 @@ def smoke(out: Path) -> None:
 # ----------------------------------------------------------------------------- report
 
 def _rows(rs, fl):
-    """Sessions with a floor, each with its excess E (JND) over k."""
+    """Sessions with a best-profile distance, each with its excess E (JND) over k."""
     out = []
     for r in rs:
         f = fl.get((r["user"], r["setting"]))
@@ -390,8 +390,8 @@ def report(out: Path) -> None:
     cell_rows = {(c, s): sorted((r for (cc, u, ss), r in ok.items() if cc == c and ss == s),
                                 key=lambda r: r["user"])
                  for c, settings in CELLS.items() for s in settings}
-    L = ["# Registration LONG: does PsyPref approach the best reachable profile?", "",
-         f"Spec section 27 (294859a). {len(ok)} sessions, {len(errors)} errors. FULL's users with index "
+    L = ["# Test plan LONG: does PsyPref approach the best reachable profile?", "",
+         f"Design note 27 (294859a). {len(ok)} sessions, {len(errors)} errors. FULL's users with index "
          f"0-19 per fold; PsyPref as in FULL with PsyPref-T's tie handling, {N_LONG} comparisons. "
          f"Excess E_k = (d_k − f) / {JND:.3f} Nm (JND), f the user's reachable floor in PsyPref's "
          f"search ball. 95 % intervals from {R.N_BOOT} draws, users resampled within folds.", ""]
@@ -424,7 +424,7 @@ def report(out: Path) -> None:
     L += ["", f"\"No preference\" answers over all sessions: {nopref}. Learners: "
           + ", ".join(sorted({r.get("learner_cls", "?") for r in ok.values()})) + ".", ""]
 
-    # Floors
+    # Best-profile distances
     L += ["## Floors (JND, median over users)", "",
           "| setting | n | reachable f | unconstrained refit | FAM's ProMP-8 floor | the ball's cost "
           "(f − refit) | unconstrained fit outside the ball | the ball costs > 0.05 JND | radius |",

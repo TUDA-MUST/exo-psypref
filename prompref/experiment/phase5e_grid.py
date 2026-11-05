@@ -27,7 +27,7 @@ TUNE_SETTINGS = (
     + [("g", dict(g_kappa0=k)) for k in (0.5, 1.5, 3.0)]
     + [("d_z", dict(lengthscale_mult=ls, step_mult=st))
        for ls, st in ((1.0, 0.5), (2.0, 0.5), (2.0, 1.0))])
-#: a change, the oracle-tuned bound: every e-tune setting plus G at kappa0 4.5 and
+#: a change, the simulated user-tuned bound: every e-tune setting plus G at kappa0 4.5 and
 #: 6.5 (6.5 is G's cap) and SortCMA at sigma multiplier 0.25 for each popsize, run on the
 #: four evaluation folds. The report picks each comparator's best setting in sample there:
 #: an upper bound on what tuning could buy, not a fair comparison against A.
@@ -35,7 +35,7 @@ TUNE_SETTINGS = (
 #: 528 are key-identical to the e-tuned settings, and 352 are the e-main defaults (G kappa0 1.5
 #: and SortCMA popsize 10, sigma multiplier 1.0). LineCoSpar (2, 0.5) is both a default and the
 #: tuned choice. The repeats are identical sessions, so they change neither selection nor bound.
-ORACLE_SETTINGS = (
+SIM_USER_SETTINGS = (
     list(TUNE_SETTINGS)
     + [("g", dict(g_kappa0=k)) for k in (4.5, 6.5)]
     + [("cmaes", dict(cma_popsize=p, cma_sigma_mult=0.25)) for p in (4, 6, 10)])
@@ -51,8 +51,8 @@ CORE = [("promp_s0", "a"), ("promp_s0", "g"), ("promp_s0", "d_z"), ("promp_s0", 
         ("franks", "a_lens"), ("franks", "g")]
 DRIFT = [("promp_s0", "a"), ("promp_s0", "g"), ("promp_s0", "d_z"), ("promp_s0", "cmaes")]
 
-#: Magnitude drift ends k true JNDs of the s = 1.0 wearer away. Computed as
-#: ``true_jnd(1.0) * k`` exactly, because the floor sidecar's target check compares at four
+#: Magnitude drift ends k true JNDs of the s = 1.0 simulated user away. Computed as
+#: ``true_jnd(1.0) * k`` exactly, because the best-profile distance sidecar's target check compares at four
 #: decimals.
 DRIFT_JNDS = (1, 2)
 #: a change: the walking-calibrated landmark cell's magnitude JND, 25 % of the
@@ -70,7 +70,7 @@ def _scenarios(block: str) -> list[tuple[list, dict]]:
     if block == "e-observer":
         # The static landmark cell (10 % magnitude JND) and the walking-calibrated one (25 %,
         # a change) bracket the range of magnitude JNDs, not the range of plausible
-        # wearers: both are more decisive than the s = 1.0 RMS wearer (report section 9).
+        # simulated users: both are more decisive than the s = 1.0 RMS simulated user (report section 9).
         return [(CORE, dict(s=1.0, observer_metric="landmark")),
                 (CORE, dict(s=1.0, observer_metric="landmark",
                             landmark_mag_fraction=WALKING_LANDMARK_FRACTION)),
@@ -109,7 +109,7 @@ def block_points(block: str, run_dir: str, *, folds=LOSO, arm=None,
     """The points of one block.
 
     ``folds`` restricts the real folds; e-tune always runs on :data:`TUNE_FOLD`, e-tuned and
-    e-oracle on :data:`EVAL_FOLDS`, each intersected with ``folds``. ``e-drift`` ignores
+    e-simulated user on :data:`EVAL_FOLDS`, each intersected with ``folds``. ``e-drift`` ignores
     ``n_comparisons`` (it states 24). ``e-tuned`` needs ``tuned_path``, the ``tuned.json`` that
     ``phase5e_tune_select.py`` wrote (the runner passes ``<out-dir>/tuned.json``); without it,
     or if the file is missing, it raises.
@@ -129,7 +129,7 @@ def block_points(block: str, run_dir: str, *, folds=LOSO, arm=None,
             specs += [(None, "promp_s0", learner, dict(s=1.0, **fields))]
         fold_list = tuple(f for f in EVAL_FOLDS if f in folds)
     elif block == "e-oracle":
-        for learner, fields in ORACLE_SETTINGS:
+        for learner, fields in SIM_USER_SETTINGS:
             specs += [(None, "promp_s0", learner, dict(s=1.0, **fields))]
         fold_list = tuple(f for f in EVAL_FOLDS if f in folds)
     else:

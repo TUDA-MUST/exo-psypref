@@ -34,9 +34,9 @@ sys.path.insert(0, str(ROOT))
 
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.population.folds import loso_folds  # noqa: E402
-from prompref.user.oracle import Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import Observer, rms_distance  # noqa: E402
 
-#: Section 12: the ranges (per bout, Nm) and the fixed levels.
+#: Section 12: the ranges (per part, Nm) and the fixed levels.
 RANGES = {"narrow": (5.0, 8.0), "medium": (3.0, 12.0), "wide": (3.0, 35.0)}
 LEVELS = (6.0, 12.0)
 #: AR's candidates and, since test AM (section 13), those with the metric N1.
@@ -57,7 +57,7 @@ def _fold(path: str, fold_index: int) -> dict:
 
 @lru_cache(maxsize=None)
 def _a_moments(path: str, fold_index: int, name: str):
-    """A_range's prior: the unit training shapes at log-uniform range amplitudes per bout."""
+    """A_range's prior: the unit training shapes at log-uniform range amplitudes per part."""
     d = _fold(path, fold_index)
     lo, hi = RANGES[name]
     amps = AF._loguniform(_range_rng(fold_index, 200 + list(RANGES).index(name)), lo, hi,
@@ -133,7 +133,7 @@ def run_one(job: dict) -> dict:
         d = _fold(path, job["fold_index"])
         u = job["index"]
         ideal = AF.compose(job["amps"][0], job["amps"][1], d["user_minus"][u], d["user_plus"][u])
-        g_minus, g_plus = AF.unit_bouts(d["generic"])
+        g_minus, g_plus = AF.unit_parts(d["generic"])
         if job["mode"] == "range":
             lo, hi = RANGES[job["setting"]]
             centre = math.sqrt(lo * hi)
@@ -165,8 +165,8 @@ def run_one(job: dict) -> dict:
             # Test FP (section 14): AM on the linear ProMP through the projection
             design, learner = AF.projected_fixed(d["w_minus"], d["w_plus"], centre, seed)
         elif job["candidate"] == "am12":
-            # Test K12 (section 15): AM at K = 12 behind the two-bout guard
-            learner = AF.TwoBoutGuard(AF.metric_psypref(space, seed), space,
+            # Test K12 (section 15): AM at K = 12 behind the two-part guard
+            learner = AF.TwoPartGuard(AF.metric_psypref(space, seed), space,
                                       0.5 * RANGES[job["setting"]][0], seed=seed)
         elif job["candidate"] in METRIC_CANDIDATES:
             # Test AM (section 13): the candidates with N1 use the fixed curve metric
@@ -176,12 +176,12 @@ def run_one(job: dict) -> dict:
         rec = AF._session(design, learner, observer, rng, AF.K, generic)
         delivered = design.curve(np.asarray(rec["best"], dtype=float))
         ident = AF.peaks(delivered)
-        try:   # a delivered curve without one of the bouts has no unit-peak shape
-            shape_error = rms_distance(AF.compose(1, 1, *AF.unit_bouts(delivered)),
+        try:   # a delivered curve without one of the parts has no unit-peak shape
+            shape_error = rms_distance(AF.compose(1, 1, *AF.unit_parts(delivered)),
                                        AF.compose(1, 1, d["user_minus"][u], d["user_plus"][u]))
         except AF.OrderViolation:
             shape_error = None
-        guard = ({} if not isinstance(learner, AF.TwoBoutGuard)
+        guard = ({} if not isinstance(learner, AF.TwoPartGuard)
                  else dict(guard_fired=int(learner.fired), guard_final=bool(learner.fired_last)))
         return dict(job, identified=[max(ident[0], 0.0), max(ident[1], 0.0)],
                     d0=rms_distance(generic, ideal), distances=list(rec["distances"]),
@@ -294,7 +294,7 @@ def _first_k(rows, setting, cand, rng):
 
 def _am_section(rows, handles, fixed, rng) -> list[str]:
     """Test AM (section 13): paired differences, speed, PAM1-PAM6 and the rule."""
-    L = ["", "## Registration AM (section 13)", "",
+    L = ["", "## Test plan AM (section 13)", "",
          "Paired differences in preference over generic assistance (points) and speed (first k "
          f"reaching B's k = {AF.K} mean preference; {AF.K + 1} = not within {AF.K}):", ""]
     diffs, speed = {}, {}
@@ -367,7 +367,7 @@ def _am_section(rows, handles, fixed, rng) -> list[str]:
 
 def _k12_lines(rows, handles, fixed, rng, verdict) -> list[str]:
     """Test K12 (section 15): PK1-PK5."""
-    L = ["", "Registration K12 (section 15):", ""]
+    L = ["", "Test plan K12 (section 15):", ""]
     pk1, pk2, pk3 = [], [], []
     for n in ("medium", "wide"):
         if (n, "am12") in handles and (n, "am") in handles:
@@ -407,8 +407,8 @@ def report(out: Path) -> None:
     errors = [r for r in rows if r.get("error") and _key(r) not in ok_rows]
     rows = ok_rows
     rng = np.random.default_rng(AF.SEED)
-    L = ["# Registration AR: the study sets the peak-torque range", "",
-         f"Spec section 12 (bfea0f7). {len(rows)} sessions, {len(errors)} errors. k = {AF.K}, "
+    L = ["# Test plan AR: the study sets the peak-torque range", "",
+         f"Design note 12 (bfea0f7). {len(rows)} sessions, {len(errors)} errors. k = {AF.K}, "
          f"s = {AF.S} Nm, λ = {AF.LAPSE}. 40 users per setting (8 per LOSO fold). 95 % intervals: "
          f"{N_BOOT} draws, users resampled within folds.", "",
          "| range | candidate | R² ext | R² flex | slope ext / flex | end bias ext (low, high) | "

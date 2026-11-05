@@ -39,7 +39,7 @@ import icorr_amp_range as R  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.experiment.run import run_session  # noqa: E402
 from prompref.population.folds import child_sequence, loso_folds  # noqa: E402
-from prompref.user.oracle import Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import Observer, rms_distance  # noqa: E402
 
 SETTINGS = ("wide", "fixed 12")
 CHEAP = ("psypref", "cmaes_sch4", "g", "d_z", "cmaes")   # cmaes_sch4: a change
@@ -87,7 +87,7 @@ def prep(out: Path) -> None:
                 draw = replace(sample_draw(rng, switches, timing, shift),
                                ext_scale=AF.SHAPE_SCALE, flex_scale=AF.SHAPE_SCALE)
                 try:
-                    s_minus, s_plus = AF.unit_bouts(user_curve(trial, draw))
+                    s_minus, s_plus = AF.unit_parts(user_curve(trial, draw))
                     break
                 except (OrderViolation, ValueError):
                     continue
@@ -171,7 +171,7 @@ def run_one(job: dict, out: str) -> dict:
             top = F.RANGES["wide"][1] if setting == "wide" else F.LEVEL
             rng_s = np.random.default_rng(np.random.SeedSequence([AF.SEED_FULL, 700, job["fold_index"], job["index"]]))
             ideal = np.clip(phase_randomize(ideal, rng_s), -top, top)
-        g_minus, g_plus = AF.unit_bouts(d["generic"])
+        g_minus, g_plus = AF.unit_parts(d["generic"])
         seed = int(job["answer_seed"]) % 2**32
         # test LONG (section 27): the budget, and PsyPref-T's tie handling by name
         n_comp, ties = int(job.get("n_comp", F.N_COMP)), job.get("ties")
@@ -188,7 +188,7 @@ def run_one(job: dict, out: str) -> dict:
                 mu, sigma = R._a_moments(ppath, job["fold_index"], "wide")
                 space = AF.promp_space(mu, sigma, limit=hi)
             if cand == "psypref":
-                learner = AF.TwoBoutGuard(AF.metric_psypref(space, seed, **tkw), space, 0.5 * lo,
+                learner = AF.TwoPartGuard(AF.metric_psypref(space, seed, **tkw), space, 0.5 * lo,
                                           seed=seed)
             elif cand.startswith("cmaes_sch"):
                 space = AF.schaefer_range_space(run_dir, job["fold"], lo, hi)
@@ -283,8 +283,8 @@ def report(out: Path) -> None:
     for r in full.values():
         r.setdefault("s", AF.S), r.setdefault("lapse", AF.LAPSE)
     rng = np.random.default_rng(AF.SEED_FULL + 17)
-    L = ["# Registration ROB: robustness of the full comparison", "",
-         f"Spec section 17 (8256b0b). {len(rows)} sessions, {len(errors)} errors. 40 comparisons; "
+    L = ["# Test plan ROB: robustness of the full comparison", "",
+         f"Design note 17 (8256b0b). {len(rows)} sessions, {len(errors)} errors. 40 comparisons; "
          f"preference over generic assistance (R4: in the user's own utility), 95 % intervals from "
          f"{R.N_BOOT} draws, users resampled within folds.", ""]
     ahead = {}

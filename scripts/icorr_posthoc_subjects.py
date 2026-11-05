@@ -10,7 +10,7 @@ from the held-out subject ABxx (checked against full-<fold>.npz), so a fold is a
 each setting (medium, wide, fixed 12), subject and k = 24, 40 the script gives the mean paired
 lead in points of preference over generic assistance, lambda/2 + (1 - lambda) Phi((d0 - d_k)/s)
 with s = 1.0 Nm and lambda = 0.1, of
-  - PsyPref (FULL) over the best published optimizer of our design notes: the highest mean
+  - PsyPref (FULL) over the strongest other optimizer optimizer of our design notes: the highest mean
     preference at k = 24 over all 200 users among FULL's Arens' GP, LineCoSpar and CMA-ES on the
     ProMP and the five CMP cells; the same optimizer is kept at k = 40 (the strongest at k = 40
     is added as a sensitivity row where it differs);
@@ -271,7 +271,7 @@ def report(out: Path) -> None:
     # ---------------------------------------------------------------- markdown
     leg_text = ", ".join(f"{x} {legs[x]['l']} l / {legs[x]['r']} r legs" for x in subjects)
     L = ["# Post hoc: PsyPref's leads per walking subject", "",
-         "Post hoc, not registered; no registered verdict is changed. Stored rows of FULL "
+         "Post hoc; no planned verdict is changed. Stored rows of FULL "
          f"({len(full)} sessions), CMP ({len(cmp_rows)}) and FAM's projection ({len(fam)}); nothing is rerun. "
          f"FULL's 200 users per setting are 40 per LOSO fold, all from the fold's held-out subject "
          f"({leg_text}). Lead: mean paired "
@@ -280,7 +280,7 @@ def report(out: Path) -> None:
          f"users. Across subjects (descriptive): mean of the five subject means ± t(0.975, df = 4) × SD / √5; "
          f"with 40 users per subject this mean equals the pooled lead. Pooled: {R.N_BOOT} draws, users "
          "resampled within subjects (the reports' intervals; Monte Carlo differences in the last digit from "
-         "the source reports are expected). Best published (spec section 23): the highest mean preference at "
+         "the source reports are expected). Best published (design note 23): the highest mean preference at "
          "k = 24 over all 200 users among FULL's Arens' GP, LineCoSpar and CMA-ES (ProMP) and the five CMP "
          "cells, kept at k = 40.", "",
          "## Summary (post hoc, descriptive)", ""] + summary + [""]

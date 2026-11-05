@@ -97,8 +97,8 @@ def report(out: Path) -> None:
     rng = np.random.default_rng(AF.SEED_FULL + 20)
     pairs = {s: [dict(fold=wide[k]["fold"], user=k[0], a=wide[k], b=full[k])
                  for k in sorted(wide) if k[1] == s and k in full] for s in F.SETTINGS}
-    lines = ["# Registration ABL: the data prior's share of PsyPref's gain", "",
-             f"Spec section 20 (714937c). {len(wide)} sessions, {len(errors)} errors. PsyPref with "
+    lines = ["# Test plan ABL: the data prior's share of PsyPref's gain", "",
+             f"Design note 20 (714937c). {len(wide)} sessions, {len(errors)} errors. PsyPref with "
              f"the wide arm (z* ~ N(0, 9 I), three times the search radius) against FULL's PsyPref "
              f"on the same users and answer seeds. s = {AF.S} Nm, λ = {AF.LAPSE}. 95 % intervals "
              f"from {R.N_BOOT} draws, users resampled within folds.", "",

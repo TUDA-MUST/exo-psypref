@@ -1,6 +1,6 @@
 """A random smooth utility over curves.
 
-The wearer's utility of a curve tau is
+The simulated user's utility of a curve tau is
 
     u(tau) = kappa * [ g(x(tau)) - ||(x(tau) - c) / rho||^2 / 2 ]
 
@@ -16,13 +16,13 @@ The wearer's utility of a curve tau is
   with its own salt (:func:`draw_features`), so a session rebuilds it exactly.
 - ``c`` is the user's centre, a draw from the population's feature distribution, and
   ``rho`` = :data:`RHO` SD is a weak envelope that keeps the optimum bounded.
-- ``kappa`` is the user's scale: it matches the wearer's decisiveness to the plain s = 1.0 RMS
-  wearer's, as the Phase 5e REPORT section 9 measures decisiveness (the median over
+- ``kappa`` is the user's scale: it matches the simulated user's decisiveness to the plain s = 1.0 RMS
+  simulated user's, as the Phase 5e REPORT section 9 measures decisiveness (the median over
   prior-scale duel pairs of |du| / |du_rms|). ``scripts/icorr_robust_prep.py`` measures it and
   stores it with ``c`` in the fold's sidecar (:mod:`prompref.experiment.robust`).
 
-The wearer answers by a probit on du with its lapse, like every other observer
-(:class:`prompref.user.oracle.Observer`, ``metric="random_smooth"``).
+The simulated user answers by a probit on du with its lapse, like every other observer
+(:class:`prompref.user.simulated_user.Observer`, ``metric="random_smooth"``).
 """
 
 from __future__ import annotations

@@ -40,7 +40,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 import paper_v2_fig1 as F1  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 K_RULE = 24              # the paper's budget: the pair comes from the comparisons it reports
 

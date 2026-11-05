@@ -19,7 +19,7 @@ reweighting), four curves with 95 % bands:
 
 Every curve is measured against the same generic assistance, e-main A's d_prior (R1 of
 icorr_r2_report): the K = 8 ProMP prior mean, one physical profile whatever is searched in. The
-reference lines are 50 % (generic assistance) and the attainable ceiling of the ProMP K = 8 as
+reference lines are 50 % (generic assistance) and the attainable best-profile level of the ProMP K = 8 as
 simulated (e-main A's d_prior and d_floor, as paper_icorr_figures.headline_data computes it).
 The annotations give the first k at which PsyPref, and PsyPref projected onto Schäfer, reach
 CMA-ES's preference after 40 comparisons, and at which PsyPref reaches GP-BALD's after 24:
@@ -337,7 +337,7 @@ def numbers_md(hd: dict, ref: dict, out: Path) -> tuple[list[str], list[str]]:
     problems = list(hd["problems"])
     L = ["# fig_headline: plotted numbers", "",
          f"Written by `scripts/{Path(__file__).name}` at "
-         f"{_dt.datetime.now().astimezone().isoformat(timespec='seconds')} (worktree commit "
+         f"{_dt.datetime.now().astimezone().isoformat(timespec='seconds')} (repository commit "
          f"{_script_id()}), from the stored rows under `{out}`. No session was run.", "",
          "Figure (the author's decision of 2026-10-25): the preference over generic assistance "
          f"against the comparisons k = 1..{KMAX}, **as simulated** ({hd['n']} population users, "

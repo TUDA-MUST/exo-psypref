@@ -26,8 +26,8 @@ from ..designs.trapezoid import TrapezoidDesign
 from ..learning.batch_mi import BatchMILearner
 from ..learning.linecospar import LENGTHSCALE, STEP, LineCoSparLearner
 from ..learning.psychometric import PsychometricLearner
-from ..learning.whitened import WhitenedLearner
-from ..user.oracle import Observer
+from ..learning.normalized import WhitenedLearner
+from ..user.simulated_user import Observer
 from .metrics import design_floor, prior_mean_distance
 from .run import run_session
 
@@ -41,16 +41,16 @@ DESIGNS = {
     "promp_s2": PrompS2,
 }
 
-#: Where the simulated wearer's preferred curve comes from. The two answer different
+#: Where the simulated simulated user's preferred curve comes from. The two answer different
 #: questions and must not be mixed in one table.
 #:
-#: ``in_family`` draws a plausible smooth two-bout curve from the family's own prior, so
+#: ``in_family`` draws a plausible smooth two-part curve from the family's own prior, so
 #: the target is exactly reachable and every shortfall measured is the LEARNER's. This is
-#: the right oracle for "did the search work".
+#: the right simulated user for "did the search work".
 #:
 #: ``biological`` uses the shared Molinaro-transformed hip moment, identical for every
 #: family, so a six-parameter semi-trapezoid and a sixteen-weight ProMP are scored against
-#: one target. This is the only valid oracle for CROSS-FAMILY comparison, and what it
+#: one target. This is the only valid simulated user for CROSS-FAMILY comparison, and what it
 #: measures is family fit as much as learning.
 IDEALS = ("in_family", "biological")
 
@@ -67,7 +67,7 @@ def _linecospar_constants(point) -> dict:
 #: kept distinct so sweep rows stay readable.
 #: D is LineCoSpar on the family's own box.
 #: A_random is learner A in Phase 3: the SMC posterior driven by random duels.
-#: D_z is LineCoSpar inside A's whitened trust ball -- the comparator
+#: D_z is LineCoSpar inside A's normalized trust search region -- the comparator
 #: that holds the search space fixed, so A versus D_z tests duel direction alone.
 #: A is learner A in Phase 4: duels chosen by expected information gain.
 LEARNERS = {
@@ -105,7 +105,7 @@ class Point:
     order_bias: float = 0.0
     #: The learner's prior mixture. Never reaches the design.
     eps: float = 0.0
-    #: Whitened dimension; ``None`` means every parameter.
+    #: Normalized dimension; ``None`` means every parameter.
     d: int | None = None
     #: Where learner A draws duels. The default reproduces every earlier row.
     duel_space: str = "reference"
@@ -154,9 +154,9 @@ _IDEAL_CACHE: dict[tuple, tuple] = {}
 
 
 def ideal_curve(design_name: str, ideal: str) -> np.ndarray:
-    """The simulated wearer's preferred curve. Cheap: no floor is computed.
+    """The simulated simulated user's preferred curve. Cheap: no best-profile distance is computed.
 
-    See :data:`IDEALS` for why the two oracles are not interchangeable. Takes no
+    See :data:`IDEALS` for why the two simulated users are not interchangeable. Takes no
     ``eps``, by design -- the target must be identical at every epsilon.
     """
     design = DESIGNS[design_name]()
@@ -170,9 +170,9 @@ def ideal_curve(design_name: str, ideal: str) -> np.ndarray:
 
 
 def _ideal_for(point: Point) -> tuple[np.ndarray, float, float]:
-    """Ideal curve, family floor and prior-mean distance, for this design and oracle.
+    """Ideal curve, family best-profile distance and prior-mean distance, for this design and oracle.
 
-    Cached per (design, oracle) because the floor costs a multi-start optimisation.
+    Cached per (design, simulated user) because the best-profile distance costs a multi-start optimisation.
     """
     key = (point.design, point.ideal)
     if key not in _IDEAL_CACHE:
@@ -203,12 +203,12 @@ def _check_point(point: Point, design) -> None:
                              f"eps={point.eps}, d={point.d}")
     elif point.d is not None and point.d < design.n_params:
         raise ValueError(f"d={point.d} < n_params={design.n_params} needs a subspace "
-                         f"floor, which is not implemented (spec Ruling R9)")
+                         f"floor, which is not implemented (spec Decision R9)")
     if point.learner not in ("a", "a_random") and point.duel_space != "reference":
         raise ValueError(f"learner {point.learner!r} does not read duel_space; got "
                          f"{point.duel_space!r}")
     if point.learner == "d_z" and point.eps != 0.0:
-        raise ValueError(f"D_z is defined at eps = 0 only (Ruling R15): LineCoSpar's "
+        raise ValueError(f"D_z is defined at eps = 0 only (Decision R15): LineCoSpar's "
                          f"unit-cube constants lose their meaning in an anisotropic ball; "
                          f"got eps={point.eps}")
     if point.learner not in LINECOSPAR_LEARNERS and (

@@ -7,19 +7,19 @@ Not planned. A tabulation of stored rows made after the planned verdicts were ju
 changes and re-judges none of them. FULL's 200 users, s = 1.0 Nm, lambda = 0.1,
 in medium (3-12 Nm), wide (3-35 Nm) and fixed 12 Nm, at k = 0, 12, 24 and 40. Rows:
   - PsyPref and GP-BALD: FULL's rows (full_sessions.jsonl);
-  - the best published optimizer per setting, by test CMP's Consequence (section 23):
+  - the strongest other optimizer optimizer per setting, by test CMP's Consequence (section 23):
     FULL's strongest of Arens' GP, LineCoSpar and CMA-ES on the ProMP by mean preference at
     k = 24, unless CMP cells (cmp_sessions.jsonl) exceed it there; then the highest of those;
   - CMA-ES on Schaefer's family with pycma's default population (cmaes_sch) and tuned, FULL's rows; the stronger at
     k = 24 is marked;
-  - the ceiling: the mean preference at each user's ProMP-8 floor (FAM's definition, section 19).
+  - the best-profile level: the mean preference at each user's ProMP-8 best-profile distance (FAM's definition, section 19).
     Wide and fixed 12: fam_floors.jsonl, family promp8. Medium, which FAM did not fit:
     AF.promp_floor(ideal, 8, peak_range=(3, 12)) for all 200 users, the preferred profile built
     by FAM's own _user (as FULL's run_one builds it).
 k = 0 is the preference of an optimizer's starting curve, computed from its space without a
 session: z = 0 for the optimizers in FULL's ProMP space (PsyPref's prior-mean curve, GP-BALD's
 identified assistance before any answer, CMA-ES's initial mean, LineCoSpar's start, candidate 0 of
-Arens' GP with a generic start), and z = 0 of Schaefer's space for CMA-ES on Schaefer's family
+Arens' GP with a start at the prior's mean), and z = 0 of Schaefer's space for CMA-ES on Schaefer's family
 (its initial mean: the fold's timing-prior mean with both peaks at the range's midpoint, or at
 12 Nm). Arens' GP with Algorithm S1's random start and Ramella et al.'s prior batch have no
 defined start curve (n/a).
@@ -32,11 +32,11 @@ first k at which PsyPref reaches the row's k = 40 level (FULL's rule, searched o
 
 Self-checks, every reported number parsed from its report: FULL's estimates (amp_full_report.md),
 the chosen cells' estimates and margins (amp_cmp_report.md, amp_cmp_firstk.md), FAM's ProMP-8
-ceilings (fam_report.md), and CMP's first interval redrawn with CMP's own generator; each CMA-ES
+best-profile levels (fam_report.md), and CMP's first interval redrawn with CMP's own generator; each CMA-ES
 row's stored distance at k = 1 against its k = 0 start (CMA-ES delivers its initial mean until its
 first generation is sorted); the pairing
 of every row with PsyPref's (users, answer seeds, peaks, d0); d0 recomputed from the preferred
-curves; the ProMP-8 floors refit in wide and fixed 12 against fam_floors.jsonl, and in medium
+curves; the ProMP-8 best-profile distances refit in wide and fixed 12 against fam_floors.jsonl, and in medium
 against LONG's (long_floors.jsonl, users 0-19 per fold).
 Outputs in <out>/icorr/amp_free/: amp_table1.md, amp_table1.json.
 """
@@ -71,7 +71,7 @@ import icorr_amp_pri as P  # noqa: E402
 import icorr_amp_range as R  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 JND = true_jnd(AF.S)   # 0.674 Nm
 KS = (0, 12, 24, 40)
@@ -123,7 +123,7 @@ def _pts(t) -> str:
 
 def _geometry(out: Path) -> tuple[dict, dict]:
     """Per (user, setting): d0 from the rebuilt curves, the start distances, the start curve's gap
-    to generic assistance, and the ProMP-8 floor refit (FAM's _user and _kw). Per (fold, setting):
+    to generic assistance, and the ProMP-8 best-profile distance refit (FAM's _user and _kw). Per (fold, setting):
     the start curves' peaks."""
     run_dir = out / "phase5-schaefer"
     geo, curves, peaks = {}, {}, {}
@@ -199,9 +199,9 @@ def report(out: Path) -> None:
                "n_boot": R.N_BOOT, "ks": list(KS), "settings": {}}
     generic_score = float(_pref(0.0, 0.0))
     L = ["# Table I, post hoc: preference over generic assistance in the main condition", "",
-         "**Post hoc, not registered.** A tabulation of stored rows (full_sessions.jsonl, "
+         "**Post hoc.** A tabulation of stored rows (full_sessions.jsonl, "
          "cmp_sessions.jsonl, fam_floors.jsonl) and, in medium, of ProMP-8 floors fitted here; no "
-         "session was run, and no registered verdict (FULL, CMP, FAM) is changed or re-judged. "
+         "session was run, and no planned verdict (FULL, CMP, FAM) is changed or re-judged. "
          f"FULL's 200 users per setting, s = {AF.S} Nm, λ = {AF.LAPSE}. Preference over generic "
          "assistance λ/2 + (1 − λ)Φ((d₀ − d_k)/s); generic assistance itself scores "
          f"{generic_score:.3f} at every k. JND {JND:.3f} Nm. 95 % intervals from {R.N_BOOT} draws, "
@@ -216,7 +216,7 @@ def report(out: Path) -> None:
         S["n_users"] = len(users)
         mean24 = lambda v: float(np.mean([P._p(r, 24) for r in v.values()]))  # noqa: E731
 
-        # -- best published, section 23's Consequence (mean preference at k = 24)
+        # -- strongest other optimizer, section 23's Consequence (mean preference at k = 24)
         pub_vals = {c: mean24(_cell(full, setting, c)) for c in C.PUBLISHED}
         pub = max(pub_vals, key=pub_vals.get)
         cell_vals = {c: mean24(_cell(cmp_, setting, c)) for c in C.CELLS}
@@ -276,7 +276,7 @@ def report(out: Path) -> None:
         d0_gap = max(abs(geo[u, setting]["d0"] - ps[u]["d0"]) for u in users)
         S["d0_rebuilt_max_abs_diff_nm"] = d0_gap
 
-        # -- floors: refit against stored ones
+        # -- best-profile distances: refit against stored ones
         refit = {}
         if setting in FAM.SETTINGS:
             diffs = [abs(geo[u, setting]["floor"] - fam[u, setting, "promp8"]["floor"]) for u in floors]
@@ -337,7 +337,7 @@ def report(out: Path) -> None:
         label = {"psypref": "PsyPref", "gp_bald": "GP-BALD",
                  "best": f"Best published: {NAMES[best]}" + (" (CMP)" if above else " (FULL)"),
                  "cmaes_sch": "CMA-ES (Schäfer, default population)",
-                 "cmaes_sch4": "CMA-ES (Schäfer, tuned; registered, 16a)",
+                 "cmaes_sch4": "CMA-ES (Schäfer, tuned; planned, 16a)",
                  "ceiling": "Ceiling: preference at the ProMP-8 floor (any k)"}
         label[stronger] += " †"
         S["rows"] = {}
@@ -424,7 +424,7 @@ def report(out: Path) -> None:
     L += ["", "‡ Best published per setting (section 23's Consequence): " + "; ".join(
         f"{s}: {NAMES[paper[s]['best']]} ({'CMP' if paper[s]['above'] else 'FULL'})" for s in F.SETTINGS) + ".",
         "† The stronger CMA-ES on Schäfer's family at k = 24 in that setting (post hoc mark; the "
-        "registered comparator is the tuned one, addendum 16a).",
+        "planned comparator is the tuned one, change 16a).",
         "k = 0: the start curve's preference (see each setting); generic assistance is "
         f"{generic_score:.3f}. The ceiling does not depend on k.", ""]
 
@@ -498,7 +498,7 @@ def report(out: Path) -> None:
     L += [f"| {c['check']} | {c['computed']} | {c['reported']} | {'yes' if c['match'] else 'NO'} |" for c in checks]
     L += ["", "## Definitions chosen here", "",
           "- Best published: section 23's Consequence applied to point estimates of the mean preference at "
-          "k = 24 (CMP's registered k); when several CMP cells exceed FULL's best published, the highest is "
+          "k = 24 (CMP's planned k); when several CMP cells exceed FULL's best published, the highest is "
           "taken.",
           "- k = 0: the curve each optimizer would deliver before any answer, from its documented start; "
           "z = 0 is the same curve for every optimizer in FULL's space, so their k = 0 values coincide.",

@@ -4,8 +4,8 @@
 - **A-curve** (``acquisition="curve"``). EIG ranks duels by the expected reduction of
   ``log det Cov(z*)``, D-optimality in z. A-curve ranks the same candidates by the expected
   reduction of ``trace(M Cov(z*))``, A-optimality in curve space, where ``M`` is the curve
-  metric in whitened z (:func:`curve_metric`): ``(z1 - z2)^T M (z1 - z2)`` is the mean squared
-  difference of the two (undevice-clipped) torque curves. The probability floor, the ridge and
+  metric in normalized z (:func:`curve_metric`): ``(z1 - z2)^T M (z1 - z2)`` is the mean squared
+  difference of the two (undevice-clipped) torque curves. The probability best-profile distance, the ridge and
   the heavy-tail trim are EIG's (:mod:`prompref.learning.acquisition`).
 - **A-width** (``widths="target"``). For each candidate centre and direction the duel's width
   is the one at which the posterior-predicted probability of the more likely answer is 0.80
@@ -17,7 +17,7 @@
   (:func:`curve_subspace_axes`), plus the 3 random directions, in place of all d posterior axes.
 
 The reading of A-width's rule: "the
-probability of the more likely answer" is taken per posterior particle -- the wearer's
+probability of the more likely answer" is taken per posterior particle -- the simulated user's
 decisiveness the particle predicts, ``max(P_i, 1 - P_i)`` -- and averaged over the posterior,
 ``sum_i w_i max(P_i(A), 1 - P_i(A))``. The other reading, the more likely answer of the
 posterior's mixture prediction ``max(pbar, 1 - pbar)``, leaves a duel centred on the posterior
@@ -57,7 +57,7 @@ VARIANTS = {"curve": dict(acquisition="curve"),
 def curve_metric(space: LearnerSpace) -> np.ndarray:
     """``M = Lambda^1/2 U^T (B^T B / 101) U Lambda^1/2``, the curve metric in ``space``'s z.
 
-    ``B`` is the ProMP basis (101 phase points x K), ``U`` and ``Lambda`` the whitening's kept
+    ``B`` is the ProMP basis (101 phase points x K), ``U`` and ``Lambda`` the normalization's kept
     eigenvectors and eigenvalues. No device clipping: the metric is that of the family's own
     linear curves. Only a :class:`~prompref.designs.promp.PrompS0` (behind a device or not) has
     one; its weights are its parameters, so its curve is linear in z.
@@ -69,7 +69,7 @@ def curve_metric(space: LearnerSpace) -> np.ndarray:
     if type(design) is not PrompS0:
         raise ValueError(f"the curve metric needs a PrompS0 design (linear in its weights); got "
                          f"{type(design).__name__}")
-    wh = space.whitening
+    wh = space.normalization
     j = wh.eigenvectors[:, : wh.d] * np.sqrt(wh.eigenvalues[: wh.d])[None, :]   # U Lambda^1/2
     metric = j.T @ design.basis.gram @ j
     return 0.5 * (metric + metric.T)
@@ -151,7 +151,7 @@ def target_width_duel(x: np.ndarray, w: np.ndarray, c_own: np.ndarray, u: np.nda
     region leaves no width at all (as the ladder drops a zero-width candidate).
 
     The ends at a requested half-width ``h`` are :func:`~prompref.learning.candidates.truncate_duel`'s,
-    so they stay inside the trust ball (and a step ball, if one is given). ``f(h)`` is
+    so they stay inside the trust search region (and a step search region, if one is given). ``f(h)`` is
     :func:`predicted_decisiveness` of that pair; ``f(0) = 0.5`` exactly. With ``h_lo`` and
     ``h_hi`` the smaller and larger exit distances along ``+u`` and ``-u``:
 
@@ -167,11 +167,11 @@ def target_width_duel(x: np.ndarray, w: np.ndarray, c_own: np.ndarray, u: np.nda
     region = dict(z_worn=z_worn, r_step=r_step)
     c_duel = own.transfer(c_own, duel)
     v = own.transfer(u, duel) - own.transfer(np.zeros(own.d), duel)
-    balls = [(np.zeros(duel.d), duel.radius)]
+    search_regions = [(np.zeros(duel.d), duel.radius)]
     if r_step is not None:
-        balls.append((np.asarray(z_worn, dtype=float), float(r_step)))
-    plus = min(_exit(c_duel, v, ball) for ball in balls)
-    minus = min(_exit(c_duel, -v, ball) for ball in balls)
+        search_regions.append((np.asarray(z_worn, dtype=float), float(r_step)))
+    plus = min(_exit(c_duel, v, search_region) for search_region in search_regions)
+    minus = min(_exit(c_duel, -v, search_region) for search_region in search_regions)
     h_lo, h_hi = min(plus, minus), max(plus, minus)
     if h_hi < 1e-9:
         return None

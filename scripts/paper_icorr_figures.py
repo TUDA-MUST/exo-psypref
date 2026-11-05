@@ -13,7 +13,7 @@ own_generic.md or grounding value it reproduces:
 
   fig_session.pdf     (a) one simulated user of the main condition: ideal, generic assistance
                       and A's identified assistance after 12 and 24 comparisons; (b) the
-                      psychometric function of the simulated wearer.
+                      psychometric function of the simulated simulated user.
   fig_learning.pdf    the main condition, k = 1..40: (a) median error of the identified
                       assistance with its IQR, (b) the share of users perceptibly better than
                       generic assistance.
@@ -28,17 +28,17 @@ own_generic.md or grounding value it reproduces:
   fig_axes.pdf        results along the simulation's axes, one measure in every panel: the
                       preference over generic assistance (the reports' "win rate") after 24
                       comparisons, PsyPref and the strongest comparator run in each condition,
-                      with the attainable ceiling and 50 %, in one row of three panels: (a)
+                      with the attainable best-profile level and 50 %, in one row of three panels: (a)
                       sensitivity and (b) lapse rate and device noise at the median-matched
-                      room (ceiling.md), (c) the user models as simulated (gpeubo_report,
-                      robust_report, wph_report; ceiling from ceiling.md). Every number is
+                      room (best-profile level.md), (c) the user models as simulated (gpeubo_report,
+                      robust_report, wph_report; best-profile level from best-profile level.md). Every number is
                       read from the reports in out/icorr; nothing is recomputed. The basis
                       count K, panel (d) until 2026-10-22, moved to fig_families
                       (icorr_proj_report.py), which plots every family by parameter count.
   fig_headline.pdf    the main condition at the median-matched room (post hoc), one panel: the
                       preference over generic assistance, k = 1..40, for PsyPref, GP-BALD and
                       the other comparators, with the comparisons PsyPref needs to reach
-                      GP-BALD's preference after 24 and 40, and the attainable ceiling. Rooms,
+                      GP-BALD's preference after 24 and 40, and the attainable best-profile level. Rooms,
                       draws and first k exactly as icorr_gpeubo_report.py's section 7
                       (jnd_free's room_setup, 10,000 draws). The basis-count numbers are still
                       computed and recorded in figure_numbers.md (Fig. 2 (d) draws them).
@@ -98,7 +98,7 @@ from prompref.experiment.phase5 import Phase5Point, run_phase5_point  # noqa: E4
 from prompref.experiment.phase5c_stats import paired_bootstrap  # noqa: E402
 from prompref.population.curves import TORQUE_LIMIT_NM  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import rms_distance  # noqa: E402
+from prompref.user.simulated_user import rms_distance  # noqa: E402
 
 K = r5.K_MAIN            # 24, the main budget
 KMAX = 40                # the e-main sessions' length
@@ -111,7 +111,7 @@ TOL = 1e-12              # benchmark_report.TOL
 
 # ---------------------------------------------------------------- memory-lean rows
 #: The blocks the figures read. Every other block of 5c/5d/5e loads as missing (None), so its
-#: rows never enter memory: e-tune, e-tuned and e-oracle (no figure reads them), 5c's noise,
+#: rows never enter memory: e-tune, e-tuned and e-simulated user (no figure reads them), 5c's noise,
 #: region, attribution, baseline and main-dual blocks and 5d's other blocks (the s = 0.5
 #: reference cell reads 5c main-promp, 5d cmaes and 5d lens-franks only).
 LEAN_BLOCKS = {"e-main", "e-s", "e-observer", "e-noise", "e-drift", "e-lapse",
@@ -418,7 +418,7 @@ def fig_session(ex: dict, figdir: Path, preview) -> tuple[Path, dict]:
               handlelength=1.3, handletextpad=0.35, labelspacing=0.08, borderaxespad=0.0,
               fontsize=8)
 
-    # (b) the psychometric function of the simulated wearer
+    # (b) the psychometric function of the simulated simulated user
     xmax = 2.5
     delta = np.linspace(0.0, xmax, 251)
     bx.axhline(0.5, color=RULE, lw=0.5, zorder=0)
@@ -548,8 +548,8 @@ ROWS = (("main", "main, s = 1.0"), ("s05", "s = 0.5"), ("s2", "s = 2.0"),
         ("lapse2", "lapse 0.2"), ("lapse3", "lapse 0.3"), ("landmark", "landmark, static"),
         ("landmark25", "landmark, walking"), ("drift1", "magn. drift 1 JND"),
         ("drift2", "magn. drift 2 JND"))
-#: Cells scored in the wearer's own metric (REPORT.md section 8, own_generic.md). The Weber
-#: wearer's own distance is the RMS distance, so its two readings coincide; it stays in RMS.
+#: Cells scored in the simulated user's own metric (REPORT.md section 8, own_generic.md). The Weber
+#: simulated user's own distance is the RMS distance, so its two readings coincide; it stays in RMS.
 OWN_CELLS = ("asym", "famil", "landmark", "landmark25")
 OWN_NAMES = {"landmark": "landmark observer, static JND (10 %)",
              "landmark25": "landmark observer, walking JND (25 %)",
@@ -578,7 +578,7 @@ def best_rms(ctx, cid: str) -> dict:
 
 
 def best_own(ctx, cid: str) -> dict:
-    """The same contrast in the wearer's own distance, as section 8 takes it."""
+    """The same contrast in the simulated user's own distance, as section 8 takes it."""
     best = r5._best_own_comparator(ctx, cid)
     c = ctx.cell_contrast(cid, "promp_s0", "a", best, field=r5.OWN)
     return dict(best=best, diff=c["diff"], n=c["n"], dropped=c["dropped"], med_a=c["med_a"],
@@ -887,10 +887,10 @@ def fig_room(rd: dict, gr: dict, sim_median: float, figdir: Path, preview) -> Pa
 
 #: One measure in every panel: the preference over generic assistance after AXES_K comparisons
 #: (the reports' "win rate"), PsyPref and the strongest comparator run in that condition, with
-#: the attainable ceiling (the preference the best profile within the parameterization would
+#: the attainable best-profile level (the preference the best profile within the parameterization would
 #: reach) and 50 % (generic assistance).
 AXES_K = 24
-#: The realistic room of panels (a) and (b), read from ceiling.md (jnd_free's room_setup);
+#: The realistic room of panels (a) and (b), read from best-profile level.md (jnd_free's room_setup);
 #: panel (c) is as simulated, because the other user models exist only there.
 AXES_ROOM = "median"
 AXES_ROOM_TITLE = {"median": "median-matched (1.47 Nm)", "central": "central (1.74 Nm)",
@@ -903,14 +903,14 @@ AXES_REPORT_NAME = {"A": "a", "A (PsyPref)": "a", "G": "g", "G (Arens' GP)": "g"
 AXES_SHAPE = {"gp_bald": "D", "gp_eubo": "P", "g": "v", "d_z": "^", "cmaes": "s"}
 AXES_GREY = "#7A7A7A"
 AXES_YLIM = (0.38, 0.97)
-#: Panels (a) and (b): ceiling.md section and row label per point (x label, row label).
+#: Panels (a) and (b): best-profile level.md section and row label per point (x label, row label).
 AXES_POP = {
     "a": ("2", [("0.5", "s = 0.5 (reference rows)"), ("1.0", "main (s = 1.0, λ = 0.1)"),
                 ("2.0", "s = 2.0"), ("indiv.", "individual s")]),
     "b": ("2", [("0.1", "main (s = 1.0, λ = 0.1)"), ("0.2", "λ = 0.2"), ("0.3", "λ = 0.3"),
                 ("noise", "device noise 0.6 Nm")]),
 }
-#: jnd_free.md section 2 heading of each ceiling.md condition (the cross-check).
+#: jnd_free.md section 2 heading of each best-profile level.md condition (the cross-check).
 AXES_JF_HEAD = {"s = 0.5 (reference rows)": "s = 0.5 reference",
                 "main (s = 1.0, λ = 0.1)": "main (s = 1.0)", "s = 2.0": "s = 2.0",
                 "individual s": "heterogeneous s (population s = 1.0)", "λ = 0.2": "lapse 0.2",
@@ -968,7 +968,7 @@ def _rate(cell: str) -> dict:
 
 
 def _named_rate(cell: str) -> tuple[str, dict]:
-    """'GP-BALD 0.650 [0.560, 0.706]' (ceiling.md's best-comparator cell): key and value."""
+    """'GP-BALD 0.650 [0.560, 0.706]' (best-profile level.md's best-comparator cell): key and value."""
     for name in sorted(AXES_REPORT_NAME, key=len, reverse=True):
         if cell.startswith(name + " "):
             return AXES_REPORT_NAME[name], _rate(cell[len(name):].strip())
@@ -993,9 +993,9 @@ def _first_table(tables: list[dict], heading_start: str, first: str,
 
 def axes_data(out_dir: Path) -> dict:
     """The numbers of fig_axes, read from the ICORR reports (no row is loaded): (a) and (b)
-    from ceiling.md at AXES_ROOM, each cross-checked against jnd_free.md section 2 at the rooms
+    from best-profile level.md at AXES_ROOM, each cross-checked against jnd_free.md section 2 at the rooms
     both give; (c) as simulated from the planned reports (gpeubo_report, robust_report,
-    wph_report) with the ceiling from ceiling.md section 4. The basis count K (panel (d) until
+    wph_report) with the best-profile level from best-profile level.md section 4. The basis count K (panel (d) until
     2026-10-22) is fig_families' now."""
     icorr = out_dir / "icorr"
     paths = dict(ceil=icorr / "ceiling.md", jnd=icorr / "jnd_free.md",
@@ -1019,7 +1019,7 @@ def axes_data(out_dir: Path) -> dict:
         raise SystemExit(f"fig_axes: ceiling.md has no row '{first}' at {room}")
 
     def jf_check(cond: str, room: str, key: str, value: float) -> str:
-        """ceiling.md's value against jnd_free.md section 2 at two decimals."""
+        """best-profile level.md's value against jnd_free.md section 2 at two decimals."""
         col = {"simulated": "simulated (as stored)",
                "central": "central literature room, 1.74 Nm"}[room]
         t = _first_table(tabs["jnd"], AXES_JF_HEAD[cond], "family")
@@ -1027,7 +1027,7 @@ def axes_data(out_dir: Path) -> dict:
         row = next(r for r in t["rows"] if r[0] == "ProMP" and r[1] == name
                    and r[2] == str(AXES_K))
         want = nums(row[t["header"].index(col)])[0]
-        # ceiling.md prints three decimals, jnd_free.md two: agree within half the last digit
+        # best-profile level.md prints three decimals, jnd_free.md two: agree within half the last digit
         return "ok" if abs(value - want) <= 0.0051 else f"DIFFERS (jnd_free {want:.2f})"
 
     panels: dict = {}
@@ -1052,7 +1052,7 @@ def axes_data(out_dir: Path) -> dict:
                 problems.append(f"fig_axes ({key}) {xlab}: {p['checks']}")
             out.append(p)
         panels[key] = out
-    # (c) user models, as simulated: the planned reports, the ceiling from ceiling.md 4
+    # (c) user models, as simulated: the planned reports, the best-profile level from best-profile level.md 4
     ceil4 = {r[0]: r for r in t4["rows"]}
     ceil_main = ceil_row(t2, "main (s = 1.0, λ = 0.1)", "simulated")
 
@@ -1096,7 +1096,7 @@ def axes_data(out_dir: Path) -> dict:
                        ceiling=ceil_of(prefix), src=f"wph_report.md §{head[:3]}, k = 24; "
                        "ceiling.md §4", checks=[]))
     # GP-qEUBO also ran under R, O and W (rows completed after gpeubo_report.md was written);
-    # ceiling.md section 4 gives it: check that it is never the strongest there
+    # best-profile level.md section 4 gives it: check that it is never the strongest there
     t4c = [t for t in tabs["ceil"] if (t["heading"] or "").startswith("4. Other")
            and t["header"][0] == "user model" and t["header"][1] != "ceiling C"][0]
     for r in t4c["rows"]:
@@ -1135,7 +1135,7 @@ def _pct_axis(ax, ylabel: str | None):
 
 def _axes_points(ax, pts: list[dict], dx: float = 0.17, half: float = 0.40):
     """PsyPref (blue) and the strongest comparator (grey, its own marker) at each category,
-    estimate and 95 % interval; the attainable ceiling as a short dashed line over both."""
+    estimate and 95 % interval; the attainable best-profile level as a short dashed line over both."""
     for x, p in enumerate(pts):
         if p.get("ceiling") is not None:
             ax.plot([x - half, x + half], [p["ceiling"]["est"]] * 2, color=INK, lw=0.9,
@@ -1155,7 +1155,7 @@ def _axes_points(ax, pts: list[dict], dx: float = 0.17, half: float = 0.40):
 def fig_axes(ad: dict, figdir: Path, preview) -> Path:
     """One measure everywhere: the preference over generic assistance after AXES_K
     comparisons; PsyPref against the strongest comparator run in each condition, with the
-    attainable ceiling and 50 %. One row of three panels (flatter than the 2 x 2 layout of
+    attainable best-profile level and 50 %. One row of three panels (flatter than the 2 x 2 layout of
     2026-10-21): (a) sensitivity, (b) lapse rate and device noise, (c) user models; the
     width of each panel follows its number of categories."""
     W, H = FIG_W, 1.86
@@ -1183,7 +1183,7 @@ def fig_axes(ad: dict, figdir: Path, preview) -> Path:
             ax.set_xlabel(xlabel, labelpad=1.5)
         _panel(ax, key, x=-0.03)
         x += w + gap
-    # legend: PsyPref, the strongest comparators that appear, the ceiling
+    # legend: PsyPref, the strongest comparators that appear, the best-profile level
     used = []
     for key in "abc":
         for p in P[key]:
@@ -1225,7 +1225,7 @@ def axes_md(ad: dict) -> list[str]:
          "and conventions, 2000 draws); each point's simulated and central values in ceiling.md "
          "are checked against jnd_free.md §2 (A and every comparator) at the two decimals that "
          "report prints. (c): as simulated (the "
-         "other user models exist only there), from the registered reports (10,000 "
+         "other user models exist only there), from the planned reports (10,000 "
          "fold-stratified joint draws), the ceiling from ceiling.md §4; feature-judging users "
          "have no floor in their own metric and so no ceiling; the random-utility ceiling is a "
          "lower bound (best-found u_max). Strongest comparator: the highest preference at "
@@ -1252,7 +1252,7 @@ def room_md(rd: dict, gr: dict, sim_median: float, ctx, problems: list[str]) -> 
     rooms = gr["rooms"]
     L = ["## fig_room.pdf", "",
          "Post hoc (grounding spec 2026-10-08 sections 6-7; the predictions G1b and P7c were "
-         "registered, this figure was not). Main condition (s = 1.0, lapse 0.1), e-main rows, "
+         "planned, this figure was not). Main condition (s = 1.0, lapse 0.1), e-main rows, "
          f"{n} population users, k = {K}. x: each simulated user's room for personalization "
          "on ProMP, d_prior − d_floor of A's row; the lens (Franks) is placed at the same "
          "user's ProMP room, as the grounding's reweighting places it. y: share with "
@@ -1610,7 +1610,7 @@ def _head_k_cell(df, learner: str, n_basis: int, keys) -> tuple[str, object]:
 def _head_k_cells(out: Path, keys, cells8: dict, state8: dict, notes: list,
                   problems: list, kdir: Path | None = None) -> dict:
     """Per basis count: the complete cells, why the others are missing, and why a K is left
-    out (PsyPref's cell incomplete, or its floors not those of the K's user sidecars).
+    out (PsyPref's cell incomplete, or its best-profile distances not those of the K's user sidecars).
     ``kdir`` (default out/icorr) holds the K != 8 blocks; only a test points it elsewhere."""
     kdir = kdir or out / "icorr"
     res = {8: dict(cells=dict(cells8), blocks=["e-main.jsonl"]
@@ -1676,7 +1676,7 @@ def _head_k_cells(out: Path, keys, cells8: dict, state8: dict, notes: list,
 
 
 def _head_win(df: pd.DataFrame) -> np.ndarray:
-    """(users, 40) probability that the plain RMS wearer prefers the identified assistance over
+    """(users, 40) probability that the plain RMS simulated user prefers the identified assistance over
     generic assistance in one duel (gpeubo_report R2)."""
     return jf.win_probability(rrep.col(df, "d_prior")[:, None], rrep.lst(df, "distances"),
                               rrep.col(df, "s")[:, None], rrep.col(df, "lapse")[:, None])
@@ -1753,7 +1753,7 @@ def headline_data(out: Path, data: Path, n_boot: int) -> dict:
     if setup["sim"]["keys"] != keys:
         raise SystemExit("fig_headline: user order differs between load_sim and the rows")
     rooms = setup["rooms"]
-    # the attainable ceiling: the preference the best profile within the parameterization
+    # the attainable best-profile level: the preference the best profile within the parameterization
     # (d_floor) would reach, per user, then averaged as the curves are (icorr_ceiling.py)
     c_user = jf.win_probability(rrep.col(a, "d_prior"), rrep.col(a, "d_floor"),
                                 rrep.col(a, "s"), rrep.col(a, "lapse"))
@@ -1803,7 +1803,7 @@ def headline_data(out: Path, data: Path, n_boot: int) -> dict:
 def headline_ksweep(out: Path, keys, cells8: dict, state8: dict, rooms, notes: list,
                     problems: list, kdir: Path | None = None) -> tuple[dict, dict]:
     """Panel (b): per K and room, every complete cell's win rate after 24 comparisons, the best
-    comparator, and the floor (PsyPref's d_floor, the same for every cell of that K)."""
+    comparator, and the best-profile distance (PsyPref's d_floor, the same for every cell of that K)."""
     folds = np.asarray([f for f, _ in keys])
     kcells = _head_k_cells(out, keys, cells8, state8, notes, problems, kdir)
     ksweep = {}
@@ -1909,7 +1909,7 @@ def headline_md(hd: dict, out: Path, problems: list[str]) -> list[str]:
     room, lv = HEAD_ROOM, hd["level"]
     bases = sorted(hd["ksweep"])
     L = ["## fig_headline.pdf", "",
-         "Post hoc (gpeubo_report.md §7: asked for after the registered PF3 and PF3b were read; "
+         "Post hoc (gpeubo_report.md §7: asked for after the planned PF3 and PF3b were read; "
          f"no verdicts). Main condition (s = 1.0, λ = 0.1), the {hd['n']} population users of "
          "the five LOSO folds, the same users, ideals and answer seeds in every cell. PsyPref = "
          "A, Arens' GP = G and CMA-ES = SortCMA (with LineCoSpar) are e-main's stored rows; "
@@ -1938,7 +1938,7 @@ def headline_md(hd: dict, out: Path, problems: list[str]) -> list[str]:
     if hd["notes"]:
         L += ["Block files: " + " ".join(hd["notes"]), ""]
 
-    # ---- the ceiling, against ceiling.md section 1
+    # ---- the best-profile level, against best-profile level.md section 1
     ceil_md = out / "icorr" / "ceiling.md"
     want = {}
     if ceil_md.exists():
@@ -2135,7 +2135,7 @@ def headline_md(hd: dict, out: Path, problems: list[str]) -> list[str]:
 
 def fig_headline(hd: dict, figdir: Path, preview) -> Path:
     """One panel: the preference over generic assistance against the comparisons, every
-    optimizer at the median-matched room, with the attainable ceiling and 50 % dashed. (The
+    optimizer at the median-matched room, with the attainable best-profile level and 50 % dashed. (The
     basis-count panel moved to Fig. 2 (d) on 2026-10-21; its numbers stay in
     figure_numbers.md.)"""
     W, H = FIG_W, 2.30
@@ -2147,7 +2147,7 @@ def fig_headline(hd: dict, figdir: Path, preview) -> Path:
     ks = np.arange(1, KMAX + 1)
     opts = hd["opts"]
 
-    # the preference over generic assistance, k = 1..40; 50 % and the ceiling dashed
+    # the preference over generic assistance, k = 1..40; 50 % and the best-profile level dashed
     ceil = hd["ceiling"][room]["est"]
     ax.axhline(0.5, color=MUTED, lw=0.7, ls=(0, (3, 2)), zorder=0)
     ax.axhline(ceil, color=INK, lw=0.9, ls=(0, (2.4, 1.3)), zorder=0)
@@ -2160,7 +2160,7 @@ def fig_headline(hd: dict, figdir: Path, preview) -> Path:
                 zorder=3 if key in ("a", "gp_bald") else 2, solid_capstyle="butt")
     # the comparison saving: GP-BALD's preference after 24 and 40 comparisons (dashed level),
     # where PsyPref first reaches it (blue) and where GP-BALD has it (red); each label sits
-    # above PsyPref's band with a leader to PsyPref's marker, below the ceiling line
+    # above PsyPref's band with a leader to PsyPref's marker, below the best-profile level line
     a_hi = C["a"]["hi"]
     text_h = 0.082
     top = ceil + 0.035
@@ -2226,14 +2226,14 @@ def numbers_md(ex: dict, psy: dict, learn: dict, rob: list[dict], report: dict, 
          "`out/schaefer_grounding/literature_room.md` and `optimizers_real_room.md` instead "
          "(its own section). The rows were streamed and cut to the first 40 comparisons "
          "(`lean_load`); every check below ran on those rows.", "",
-         "Registered and post hoc. The predictions QE1-QE6 were recorded before the runs. The "
+         "Planned and post hoc. The predictions QE1-QE6 were recorded before the runs. The "
          "RMS contrasts of fig_robustness (a) are the contrasts QE1 (main condition) and QE2 "
          "(the other RMS cells) were judged on, read here against the best comparator as REPORT "
          "section 3 reads them; the s = 0.5 reference and the own-metric readings of the † "
-         "cells (REPORT section 8, spec amendment E4a) are not registered predictions. Post "
+         "cells (REPORT section 8, spec change E4a) are not planned predictions. Post "
          "hoc: the quality levels (Q≥1 in fig_learning, the lower decile of gain in "
          "fig_robustness (b)) are post hoc on the stored sessions (REPORT section 12), and the "
-         "own-metric gains over generic assistance were added after the registered predictions "
+         "own-metric gains over generic assistance were added after the planned predictions "
          "were read (own_generic). Optimizer A was developed on this simulator and was not "
          "retuned for 24 comparisons.", ""]
 

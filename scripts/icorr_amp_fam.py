@@ -1,12 +1,12 @@
-"""Test FAM: interpretable families' floors, ceilings and PsyPref with projection.
+"""Test FAM: interpretable families' best-profile distances, best-profile levels and PsyPref with projection.
 
 Usage:
-  python scripts/icorr_amp_fam.py floors [--workers 8]
+  python scripts/icorr_amp_fam.py best-profile distances [--workers 8]
   python scripts/icorr_amp_fam.py run [--workers 8]
   python scripts/icorr_amp_fam.py report
 
 FULL's 200 users, preferred profiles and answer seeds;
-the wide range 3-35 Nm and the fixed 12 Nm level. ``floors`` writes every user's floor per family
+the wide range 3-35 Nm and the fixed 12 Nm level. ``best-profile distances`` writes every user's best-profile distance per family
 (fam_floors.jsonl), ``run`` the projection sessions (fam_sessions.jsonl; both resumable),
 ``report`` fam_report.md and fam_numbers.json (the figure's numbers). FULL's rows
 (full_sessions.jsonl) and ROB R5's (robust_sessions.jsonl) are read, never rerun.
@@ -42,7 +42,7 @@ from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.experiment.run import run_session  # noqa: E402
 from prompref.population.folds import loso_folds  # noqa: E402
 from prompref.user.jnd import true_jnd  # noqa: E402
-from prompref.user.oracle import Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import Observer, rms_distance  # noqa: E402
 
 SETTINGS = ("wide", "fixed 12")
 LABEL = {"schaefer_i": "Schäfer (i)", "pchip_i": "PCHIP (i)", "schaefer_ii": "Schäfer (ii)",
@@ -72,7 +72,7 @@ def _user(job: dict):
     ideal = AF.compose(job["amps"][0], job["amps"][1], z["user_minus"][u], z["user_plus"][u])
     centre = math.sqrt(F.RANGES[job["setting"]][0] * F.RANGES[job["setting"]][1]) \
         if job["setting"] in F.RANGES else F.LEVEL
-    generic = AF.compose(centre, centre, *AF.unit_bouts(d["generic"]))
+    generic = AF.compose(centre, centre, *AF.unit_parts(d["generic"]))
     return ideal, generic, d
 
 
@@ -81,14 +81,14 @@ def _base_jobs(out: Path) -> list[dict]:
     return [dict(j) for j in F.jobs(out) if j["candidate"] == "psypref" and j["setting"] in SETTINGS]
 
 
-# ----------------------------------------------------------------------------- floors
+# ----------------------------------------------------------------------------- best-profile distances
 
 def _floor_key(r):
     return r["user"], r["setting"], r["family"]
 
 
 def floor_one(job: dict, out: str) -> list[dict]:
-    """Every family's floor for one user and setting."""
+    """Every family's best-profile distance for one user and setting."""
     rows = []
     try:
         ideal, generic, _ = _user(job)
@@ -160,7 +160,7 @@ def run_one(job: dict, out: str) -> dict:
             lo, hi = F.RANGES[setting]
             mu, sigma = R._a_moments(ppath, job["fold_index"], setting)
             space = AF.promp_space(mu, sigma, limit=hi)
-            inner = AF.TwoBoutGuard(AF.metric_psypref(space, seed), space, 0.5 * lo, seed=seed)
+            inner = AF.TwoPartGuard(AF.metric_psypref(space, seed), space, 0.5 * lo, seed=seed)
             lens = AF.family_lens(inner, space, family)
         else:
             space = AF.fixed_level_space(d["w_minus"], d["w_plus"], F.LEVEL)
@@ -246,8 +246,8 @@ def report(out: Path) -> None:
     rob = _load(d / "robust_sessions.jsonl", lambda r: (r["user"], r.get("condition"), r["setting"], r["candidate"]))
     rng = np.random.default_rng(AF.SEED_FULL + 19)
     boot = R._boot
-    L = ["# Registration FAM: interpretable families in the amplitude-free design", "",
-         f"Spec section 19 (c8ef8e8). {len(fl)} floors, {len(ses)} projection sessions. FULL's 200 "
+    L = ["# Test plan FAM: interpretable families in the amplitude-free design", "",
+         f"Design note 19 (c8ef8e8). {len(fl)} floors, {len(ses)} projection sessions. FULL's 200 "
          f"users; s = {AF.S} Nm, λ = {AF.LAPSE}. Ceiling: preference over generic assistance at "
          f"the user's floor. Floors in Nm and in JND ({JND:.3f} Nm). 95 % intervals from "
          f"{R.N_BOOT} draws, users resampled within folds.", ""]

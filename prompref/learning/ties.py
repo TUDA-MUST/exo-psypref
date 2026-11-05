@@ -45,7 +45,7 @@ from prompref.learning.smc import SMCPosterior, log_likelihood, log_prior, per_d
 TIE_SALT = 0x71E5
 #: Band half-width prior, in units of the choice noise (D units): median 0.5, 95 % in [0.10, 2.4].
 LOG_TAU0, TAU_SD = float(np.log(0.5)), 0.8
-#: Softness of the band edge (D units) and the floor on P(tie) for an attentive answer.
+#: Softness of the band edge (D units) and the best-profile distance on P(tie) for an attentive answer.
 R_SOFT = 0.3
 EPS_TIE = 0.02
 #: MCMC moves at activation: two resample-move passes of the posterior's n_moves each.
@@ -319,10 +319,10 @@ def factories(mode: str = "band"):
 
     def psypref(space, seed, arm="tight"):
         return fixed_cls(space.design, seed=seed, duels="eig", space=space,
-                         prior=ARMS[arm].bowl_prior())
+                         prior=ARMS[arm].ideal_point_prior())
 
     def metric_psypref(space, seed, arm="tight"):
-        return range_cls(space.design, seed, space=space, prior=ARMS[arm].bowl_prior(),
+        return range_cls(space.design, seed, space=space, prior=ARMS[arm].ideal_point_prior(),
                          metric=FixedCurveMetric(curve_metric_at_centre(space)), free_metric=False)
 
     return psypref, metric_psypref

@@ -1,5 +1,5 @@
 """W-bio's weight curve from the Molinaro trials (our design notes,
-"Phase-weighted wearers", cell W-bio; decision of 2026-10-19: W-bio runs as soon as the hip-angle
+"Phase-weighted simulated users", cell W-bio; decision of 2026-10-19: W-bio runs as soon as the hip-angle
 data can be read, with the weighting exactly as planned and no substitute).
 
 Usage (the data root is the loader's: ``PREFTUNE_DATA`` if set, else the S: share):
@@ -58,7 +58,7 @@ SUBJECTS = ("AB30", "AB31", "AB32", "AB33", "AB34")
 SIDES = ("l", "r")
 SPEED_MPS = 1.1
 ANGLE_PATTERN = re.compile(r"^hip_flexion_(rad|deg)$|hip.*angle", re.IGNORECASE)
-#: Channels that are not the wearer's own hip angle: the exoskeleton's encoder, the other leg,
+#: Channels that are not the simulated user's own hip angle: the exoskeleton's encoder, the other leg,
 #: derivatives and kinetics.
 NOT_ANGLE = re.compile(r"exo|contra|moment|torque|vel|acc", re.IGNORECASE)
 #: The file's own hip angular velocity, used only as a cross-check of the derivative.
@@ -76,7 +76,7 @@ def detect_column(names, requested: str | None = None) -> str:
     ``hip_flexion_rad`` (or ``_deg``) or matches ``hip...angle``, and is not the exoskeleton's
     encoder, the other leg, a derivative or a kinetic channel. Refuses with the candidates listed
     when there is none or more than one. In the Molinaro trials this is ``hip_flexion_rad``, the
-    wearer's own hip flexion angle beside the hip flexion moment the population was generated
+    simulated user's own hip flexion angle beside the hip flexion moment the population was generated
     from (``exo_hip_angle_rad`` is the device's encoder)."""
     names = list(names)
     if requested is not None:

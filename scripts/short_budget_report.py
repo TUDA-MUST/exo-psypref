@@ -10,8 +10,8 @@ moves with the session length; its short sessions come from the ``drift-short`` 
 
 Outcomes (B2), population users, JND_ref = 0.674 * 0.5 Nm in every cell:
   JNDs gained = (d_prior - delivered_k) / JND_ref; perceptibly better = gain >= 1;
-  perceptibly worse = delivered_k - d_prior >= 1 JND_ref; near the best possible = delivered_k - floor <= 2 JND_ref;
-  within tau = delivered_k - floor <= 0.5 Nm (the secondary threshold, not sustained).
+  perceptibly worse = delivered_k - d_prior >= 1 JND_ref; near the best possible = delivered_k - best-profile distance <= 2 JND_ref;
+  within tau = delivered_k - best-profile distance <= 0.5 Nm (the secondary threshold, not sustained).
 """
 
 from __future__ import annotations
@@ -274,7 +274,7 @@ def _claim1(r: Rows, ks) -> list[str]:
     for label, df in present:
         out += [stats_row(label, df, k) for k in ks]
     if c1 is not None:
-        # C1 runs in its own family (the semi-trapezoid box): its start and floor are the
+        # C1 runs in its own family (the semi-trapezoid box): its start and best-profile distance are the
         # box's, so only the absolute delivered distance is comparable.
         out += [f"| C1 | {k} | {len(c1)} | {float(delivered_at(c1, k).median()):.3f} | — | — | — "
                 f"| — | — |" for k in ks]

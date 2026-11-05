@@ -39,7 +39,7 @@ import icorr_amp_range as R  # noqa: E402
 from prompref.experiment import amp_free as AF  # noqa: E402
 from prompref.experiment.run import run_session  # noqa: E402
 from prompref.population.folds import loso_folds  # noqa: E402
-from prompref.user.oracle import Observer, rms_distance  # noqa: E402
+from prompref.user.simulated_user import Observer, rms_distance  # noqa: E402
 
 N_COMP = 40
 RANGES = {"medium": (3.0, 12.0), "wide": (3.0, 35.0)}
@@ -109,7 +109,7 @@ def run_one(job: dict, out: str) -> dict:
         run_dir = Path(out) / "phase5-schaefer"
         shape = (z["user_minus"][u], z["user_plus"][u])
         ideal = AF.compose(job["amps"][0], job["amps"][1], *shape)
-        g_minus, g_plus = AF.unit_bouts(d["generic"])
+        g_minus, g_plus = AF.unit_parts(d["generic"])
         seed = int(job["answer_seed"]) % 2**32
         arm = job.get("arm", "tight")   # test ABL: PsyPref with the wide arm
         if arm != "tight" and cand != "psypref":
@@ -136,7 +136,7 @@ def run_one(job: dict, out: str) -> dict:
             else:
                 space = _k_space(ppath, job["fold_index"], setting, n_basis, arm=arm)
             if cand == "psypref":
-                learner = AF.TwoBoutGuard(AF.metric_psypref(space, seed, arm=arm, **tkw), space,
+                learner = AF.TwoPartGuard(AF.metric_psypref(space, seed, arm=arm, **tkw), space,
                                           0.5 * lo, seed=seed)
             elif cand.startswith("cmaes_sch"):
                 space = AF.schaefer_range_space(run_dir, job["fold"], lo, hi)
@@ -172,10 +172,10 @@ def run_one(job: dict, out: str) -> dict:
         delivered = space.design.curve(np.asarray(rec["best"], dtype=float))
         ident = AF.peaks(delivered)
         try:
-            shape_error = rms_distance(AF.compose(1, 1, *AF.unit_bouts(delivered)), AF.compose(1, 1, *shape))
+            shape_error = rms_distance(AF.compose(1, 1, *AF.unit_parts(delivered)), AF.compose(1, 1, *shape))
         except AF.OrderViolation:
             shape_error = None
-        extra = ({} if not isinstance(learner, AF.TwoBoutGuard)
+        extra = ({} if not isinstance(learner, AF.TwoPartGuard)
                  else dict(guard_fired=int(learner.fired), guard_final=bool(learner.fired_last)))
         if "n_basis" in job:   # test KS: the search dimension, only when K is named
             extra["d"] = int(space.d)
@@ -237,8 +237,8 @@ def report(out: Path) -> None:
     rows = {_key(r): r for r in raw if r.get("error") is None}
     errors = [r for r in raw if r.get("error") and _key(r) not in rows]
     rng = np.random.default_rng(AF.SEED_FULL)
-    L = ["# Registration FULL: PsyPref with the amplitude-free methods against the comparators", "",
-         f"Spec section 16 (699108c). {len(rows)} sessions, {len(errors)} errors. 200 new users per "
+    L = ["# Test plan FULL: PsyPref with the amplitude-free methods against the comparators", "",
+         f"Design note 16 (699108c). {len(rows)} sessions, {len(errors)} errors. 200 new users per "
          f"setting, s = {AF.S} Nm, λ = {AF.LAPSE}, {N_COMP} comparisons. Preference over generic "
          f"assistance, 95 % intervals from {R.N_BOOT} draws, users resampled within folds.", ""]
     diffs, reach = {}, {}

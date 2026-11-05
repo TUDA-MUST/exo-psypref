@@ -12,7 +12,7 @@ repair, and in which every coordinate moves the curve:
 
 - ``t_ext``, the extension peak time;
 - ``log_gap_end`` and ``log_zero_dur``, the logs of the two no-torque periods in %GC (from the
-  end of flexion to the next extension onset, and between the two bouts), each at least
+  end of flexion to the next extension onset, and between the two parts), each at least
   ``MIN_GAP`` = 0.5 %GC;
 - ``lr_gap_ext``, ``lr_gap_flex``, ``lr_flex_fall``: the four torque-bearing durations (rise,
   extension peak to zero start, zero end to flexion peak, fall) are their minimums
@@ -46,7 +46,7 @@ FRANKS_NAMES = ("ext_rise", "ext_peak_time", "ext_peak", "zero_mid", "zero_dur",
 MIN_GAP = 0.5
 MIN_GAP_END = MIN_GAP
 #: Minimums of rise, extension-to-zero gap, zero-to-flexion gap and fall, %GC (the old fit box's
-#: lower bounds), so a torque bout always spans at least 1.5 %GC and covers a grid point.
+#: lower bounds), so a torque part always spans at least 1.5 %GC and covers a grid point.
 MIN_TORQUE = np.array([1.0, 0.5, 0.5, 1.0])
 #: Fit-box tops of the two no-torque periods. Together they leave at least
 #: 100 - 60 - 30 - sum(MIN_TORQUE) = 7 %GC for the torque-bearing durations' excess.

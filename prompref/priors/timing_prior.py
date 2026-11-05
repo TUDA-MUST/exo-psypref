@@ -8,7 +8,7 @@ shrinkage (see ``t_cov_note`` in the file). nu = 10 is the recommended tail, a j
 recorded in the same file: 11 people cannot identify a tail.
 
 It offers the part of ``DataPrior``'s interface the Phase 5 harness uses -- ``design``,
-``whitening`` and ``space(radius)`` -- so ``arm_space`` treats it like any other prior.
+``normalization`` and ``space(radius)`` -- so ``arm_space`` treats it like any other prior.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 from ..designs.schaefer import SchaeferDesign
-from ..prior import Whitening
+from ..prior import Normalization
 
 #: The recommended Student-t tail for the timing prior (prior_inputs.json, student_t_nu).
 TIMING_PRIOR_NU = 10.0
@@ -37,7 +37,7 @@ class TimingPrior:
     #: The recommended tail, loaded and round-tripped -- but **nothing in the harness reads
     #: it**. A Phase 5 learner's tail comes from its arm
     #: (``ARMS[...].bowl_prior``, whose ``nu`` sets the Student-t), and this class
-    #: contributes only ``mu`` and ``sigma`` through ``whitening``. So do not read the
+    #: contributes only ``mu`` and ``sigma`` through ``normalization``. So do not read the
     #: Schaefer prior as heavy-tailed in any cell: it is the arm that decides, and the
     #: ``tight`` arm is Gaussian. The field is kept because it is part of
     #: ``prior_inputs.json``'s recorded judgement and a reader of the file should find it
@@ -69,11 +69,11 @@ class TimingPrior:
         # corrected at this same line for promp_s0/dual_gauss.
         return SchaeferDesign(prior=(self.mu, self.sigma))
 
-    def whitening(self) -> Whitening:
-        return Whitening(self.mu, self.sigma, self.mu.size)
+    def normalization(self) -> Normalization:
+        return Normalization(self.mu, self.sigma, self.mu.size)
 
     def space(self, radius: float):
-        """The learner space of this prior: its design, this whitening, and ``radius``."""
+        """The learner space of this prior: its design, this normalization, and ``radius``."""
         from ..learning.space import LearnerSpace
 
-        return LearnerSpace(self.design(), self.whitening(), float(radius))
+        return LearnerSpace(self.design(), self.normalization(), float(radius))
