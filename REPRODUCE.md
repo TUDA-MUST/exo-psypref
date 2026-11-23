@@ -6,6 +6,8 @@ human data, and everything in it was run in simulation. For using PsyPref, see t
 
 - [CONDITIONS.md](CONDITIONS.md): how each simulated user and robustness condition is modeled, the size we chose, and
   where that size comes from.
+- [figures/figS1_robustness.pdf](figures/figS1_robustness.pdf): the paper's Supplementary Fig. S1, PsyPref against the best
+  published optimizer under each violated assumption. Built from `figures/figS1_robustness.tex` with `fig4m.tex`.
 - `prompref/`: the Python package, whose name comes from ProMP preference tuning. It holds PsyPref, the comparators, the
   simulated users and the profile families.
 - `preftune/`: the gait-phase grid, the loader for the walking data and an earlier learner core that `prompref` builds on.
