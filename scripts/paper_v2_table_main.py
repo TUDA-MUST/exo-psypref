@@ -116,7 +116,7 @@ def table(d: Path, dest: Path) -> None:
 
     def fk(st, key) -> str:
         e = t1[st]["first_k_reaching_k40_level"][key]
-        return f"{e['est']:.0f} [{e['lo']:.0f}, {e['hi']:.0f}]"
+        return f"{e['est']:.0f} ({e['lo']:.0f}, {e['hi']:.0f})"
 
     def value(st, c) -> str:
         return f"{pref[st, c]:.1f} ({dist[st, c, K24]:.1f})"
@@ -125,7 +125,7 @@ def table(d: Path, dest: Path) -> None:
     floor = {st: t1[st]["median_floor_nm"] for st in SETTINGS}
     hw = [100 * max(e["est"] - e["lo"], e["hi"] - e["est"]) for st in SETTINGS
           for e in (t1[st]["rows"][k]["k"]["24"] for k in ("psypref", "gp_bald", "best", "cmaes_sch4"))]
-    ranges = ", ".join(f"{min(others[st]):.1f}--{max(others[st]):.1f}" for st in SETTINGS[:2]) + f" and {min(others[SETTINGS[2]]):.1f}--{max(others[SETTINGS[2]]):.1f}"
+    ranges = ", ".join(f"{min(others[st]):.1f}--{max(others[st]):.1f}" for st in SETTINGS[:2]) + f", and {min(others[SETTINGS[2]]):.1f}--{max(others[SETTINGS[2]]):.1f}"
     L = ["% table_main.tex: Table I of the ICORR paper. Written by the repository's",
          "% scripts/paper_v2_table_main.py from out/icorr/amp_free; do not edit by hand. Post hoc tabulation.",
          "% Markers: Fig. 2's hollow orange square (CMA-ES) and triangle (Arens' GP), defined inside the float.",
@@ -150,12 +150,14 @@ def table(d: Path, dest: Path) -> None:
     L += [r"Prior 3$\times$ wider & " + " & ".join(T.pts(parts[st]["abl"][0]) for st in SETTINGS) + r" \\",
           "Random pairs & " + " & ".join(T.pts(parts[st]["rnd"][0]) for st in SETTINGS) + r" \\",
           r"\bottomrule", r"\end{tabular*}", r"\\[2pt]",
-          rf"\parbox{{\columnwidth}}{{\scriptsize Means ($P_\mathrm{{g}}$) over $n = 200$ simulated users per setting "
-          rf"($\sigma = 1$\,Nm, $\lambda = 0.1$); 95\,\% intervals of $P_\mathrm{{g}}$ $\pm${min(hw):.0f}--{max(hw):.0f} points; 1~JND: 0.67\,Nm. "
-          r"Post hoc: the comparator's choice, the distances, direct choices, first $k$. Changes are not additive. "
-          + T.sup("a") + r"Prior and informative pairs without the psychometric answer model; not a published configuration. "
-          + T.sup("b") + rf"Highest of eight configurations of five published optimizers, with PsyPref's prior; the others reached {ranges}\,\%. "
-          + T.sup("c") + r"On Sch\"afer et al.'s family.}", r"\end{table}"]
+          rf"\parbox{{\columnwidth}}{{\scriptsize $P_\mathrm{{g}}$: probability of choosing the profile over generic "
+          rf"assistance, mean over $n = 200$ simulated users per setting "
+          rf"($\sigma = 1$\,Nm, $\lambda = 0.1$); 95\,\% CIs: $P_\mathrm{{g}}$ $\pm${min(hw):.0f}--{max(hw):.0f} points, "
+          r"first $k$ in parentheses; 1~JND: 0.67\,Nm. "
+          r"Post hoc: the comparator's choice, the distances, head-to-head tests, first $k$. Changes are not additive. "
+          + T.sup("a") + r"PsyPref's prior with a GP answer model and BALD pairs; not a published method. "
+          + T.sup("b") + rf"Highest of eight configurations of five published optimizers; the others {ranges}\,\%. "
+          + T.sup("c") + r"On Sch\"afer et al.'s profile family.}", r"\end{table}"]
     (dest / "table_main.tex").write_text("\n".join(L) + "\n", encoding="utf-8")
 
     print("Text values, median distance (Nm) at k = 12 / 24 / 40:")

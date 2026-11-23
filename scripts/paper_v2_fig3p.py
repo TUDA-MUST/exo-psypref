@@ -203,7 +203,7 @@ def tex_num(txt: str) -> str:
 
 
 def tex_ci(lo: str, hi: str) -> str:
-    return f"[{tex_num(lo)}, {tex_num(hi)}]"
+    return f"({tex_num(lo)}, {tex_num(hi)})"
 
 
 # ---------------------------------------------------------------- the planned report, rerun
@@ -642,7 +642,7 @@ def main(argv=None) -> int:
               + [["verdicts", vtxt, "", "nan", "", "", ""]])
     # ---- fig3p_text.tex: every number of the caption and the draft Results paragraph
     def ci(e):          # an estimate's interval, %, one decimal
-        return f"[{one(e['lo'])}, {one(e['hi'])}]"
+        return f"({one(e['lo'])}, {one(e['hi'])})"
 
     def fixed_cost(fam):
         return dtext["fixed 12", fam, "psypref"][0]

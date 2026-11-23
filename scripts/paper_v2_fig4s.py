@@ -124,8 +124,8 @@ def sgn(v: float) -> str:
 
 
 def tri(t) -> str:
-    """A triple in points as LaTeX: $-3.1$ [$-4.7$, $-1.4$]."""
-    return f"{sgn(t[0])} [{sgn(t[1])}, {sgn(t[2])}]"
+    """A triple in points as LaTeX: $-3.1$ ($-4.7$, $-1.4$)."""
+    return f"{sgn(t[0])} ({sgn(t[1])}, {sgn(t[2])})"
 
 
 def olist(xs: list[str]) -> str:

@@ -88,10 +88,10 @@
   xticklabels={\textminus10, 0, +10, +20, +30},
   xticklabel style={inner sep=1pt},
 ]
-% no lead (0): the strongest other optimizer
+% no lead (0): the strongest published optimizer
 \draw[icMuted, line width=0.5pt] (axis cs:0,\fmlinetop) -- (axis cs:0,\fmymax);
 \node[anchor=base west, inner sep=0pt, font=\scriptsize, text=icInk, xshift=-2.5pt]
-  at (axis cs:0,\fmylab) {PsyPref ahead of strongest other\,$\rightarrow$};
+  at (axis cs:0,\fmylab) {Favors PsyPref\,$\rightarrow$};
 % thin bars, thick bars, then markers: light first, blue on top; circle 3-35, square fixed 12
 \foreach \c/\t/\s/\m in {\fmlight/in/w/-, \fmlight/in/f/+, icBlue/out/w/-, icBlue/out/f/+}{%
   \edef\fmplot{\noexpand\addplot[fm bar={\c}{0.5pt}, forget plot] table[col sep=comma, x=\t_\s,

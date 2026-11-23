@@ -93,7 +93,7 @@
 \def\mdmini#1#2#3#4#5{%
   \begin{axis}[md mini, at={({(#1)*\mdu},{(#2)*\mdu})}, width=(#3)*\mdu, height=(#4)*\mdu,
                md extra]
-    \draw[icRule, line width=\mds*0.5pt]
+    \draw[icRule, densely dotted, line width=\mds*0.5pt]
       (axis cs:\icv{fm}{0}{xmin},0) -- (axis cs:\icv{fm}{0}{xmax},0);
     #5
     \draw[icContext, line width=\mds*0.6pt]
@@ -174,18 +174,18 @@
 \draw[md box, fill=icTintBlue] (\MXa,\TYa) rectangle (\MXb,1.40);
 \pgfmathsetmacro\qx{\MXa+0.06+0.44+0.08}
 \node[md block, font=\fontsize{7}{8}\selectfont\bfseries] at (\qx,1.27)
-  {Profile A, B or\\no preference?};
+  {Profile A\\or B?};
 % ---- the loop's two edges
 \pgfmathsetmacro\xl{\MXa+0.10}\pgfmathsetmacro\xr{\MXb-0.10}
-\draw[md arrow=icInk] (\xr,1.695) -- (\xr,1.405);
-\node[md block, anchor=east, align=right] at (\xr-0.05,1.55) {Most informative\\pair};
-\draw[md arrow=icInk] (\xl,1.405) -- (\xl,1.695);
-\node[md block] at (\xl+0.05,1.55) {Belief\\update};
+\draw[md arrow=icInk] (\xr-0.04,1.695) to[out=-50,in=50] (\xr-0.04,1.405);
+\node[md block, anchor=east, align=right] at (\xr-0.07,1.55) {Most informative\\pair};
+\draw[md arrow=icInk] (\xl+0.04,1.405) to[out=130,in=230] (\xl+0.04,1.695);
+\node[md block] at (\xl+0.07,1.55) {Belief\\update};
 % ---- right: identified assistance -> validation
 \draw[md arrow] (\MXb+0.005,2.01) -- (\RXa-0.005,2.01);
 \draw[md box] (\RXa,1.70) rectangle (\RXb,\TYb);
 \node[md block] at (\RXa+0.06,2.2024)
-  {\textcolor{icBlue}{Identified}\\\textcolor{icBlue}{assistance}\\after $k$\\comparisons};
+  {\textcolor{icBlue}{Identified}\\\textcolor{icBlue}{profile}\\after $k$\\comparisons};
 \draw[md arrow] (\rc,1.695) -- (\rc,1.615);
 \draw[md box] (\RXa,\TYa) rectangle (\RXb,1.61);
 \node[md text, font=\scriptsize\bfseries] at (\RXa+0.06,1.515) {Validation:};

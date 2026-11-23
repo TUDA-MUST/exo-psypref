@@ -148,6 +148,8 @@ The paper's Methods are short because of its page limit. These details complete 
 - **GP-qEUBO.** On GP-BALD's model, it asks the pair whose better option has the highest expected utility.
 - **Ramella et al.'s learner.** Fits a linear reward and asks by mutual information among 40 candidates drawn from the prior.
 - **CMA-ES on Schäfer et al.'s family.** Population 4, initial step 0.5, and a prior of the population's timings and uniform peaks.
+  Post hoc, it also starts at generic assistance's fit in the family, with everything else unchanged
+  (`scripts/icorr_amp_cmastart.py`, 3–35 and fixed 12 Nm).
 
 ### Answer rules and statistics
 

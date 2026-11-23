@@ -45,8 +45,9 @@ example, assistance proportional to the natural joint moment would give the weak
 ## How many weights
 
 `n_weights` is the ProMP's number of weights: 8 by default, and walking priors exist for 8, 12, 16 and 24. In one session, more weights
-make no measurable difference to PsyPref (after 24 comparisons with 24 instead of 8 weights: −0.4 [−1.8, 0.6] and
-+1.5 [−0.6, 3.5] points). They pay off only in longer tuning: users would choose a 16-weight profile over an 8-weight profile in
+change PsyPref's preference over generic assistance little: after 24 comparisons, 12 to 24 weights change it by −0.4 to
++2.4 points against 8 weights (3–35 Nm and fixed 12 Nm), with 24 weights by −0.4 [−1.6, 0.6] and +1.5 [−0.6, 3.5]
+points. Only 16 weights at fixed 12 Nm lift the interval above zero, +2.4 [0.4, 4.4]. They pay off mainly in longer tuning: users would choose a 16-weight profile over an 8-weight profile in
 50–53 % of cases after 24 and 40 comparisons, 55–57 % after 80, and 57–61 % after 150. This is not a test of larger problems, because
 the prior's curves still vary in about the same few directions.
 
