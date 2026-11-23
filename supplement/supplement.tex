@@ -1,0 +1,379 @@
+% supplement.tex: Supplementary material of the ICORR 2027 paper. ICORR takes no supplementary upload, so it lives
+% here, and the paper points to this repository. Fig. S1 is ../figures/fig4m.tex with the data in ../figures/data/.
+% Tables S1-S3 condense CONDITIONS.md; keep both in step. Build: latexmk -pdf supplement.tex
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{booktabs,tabularx,xltabular}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{arrows.meta}
+\usepackage[labelsep=period,font=small,labelfont=bf]{caption}
+\captionsetup[figure]{name=Fig.}
+\usepackage{placeins}
+\usepackage[hidelinks]{hyperref}
+% float pages fill from the top instead of spreading their floats over the page
+\makeatletter
+\setlength{\@fptop}{0pt}\setlength{\@fpsep}{18pt}\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
+\input{../figures/icorr_style.tex}
+\newcommand{\icorrtikzdata}{../figures/data/}
+\input{../figures/data/fig3p_text.tex}
+\input{../figures/data/fig4m_text.tex}
+
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thealgorithm}{S\arabic{algorithm}}
+\algrenewcommand\algorithmiccomment[1]{\hfill{\footnotesize\color{icMuted}#1}}
+
+\newcommand{\Nm}{\,Nm}
+\newcommand{\z}{\mathbf z}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{Supplementary Material\\[4pt]\large Psychometric Preference Optimization of Hip Exoskeleton Assistance:\\
+A Simulation Study}
+\author{Julian Seiler, Omid Mohseni, Niklas Sch\"afer, Mark Suppelt, Bastian Latsch, Mario Kupnik,\\
+and Philipp Beckerle\\[2pt]\small julian.seiler@tu-darmstadt.de}
+\date{}
+
+\begin{document}
+\maketitle
+
+This supplement accompanies the paper above, submitted to ICORR 2027. It lists PsyPref step by step (Alg.~\ref{alg:psypref}),
+one session with a simulated user (Alg.~\ref{alg:session}), the simulated users and every robustness condition with its
+size and source (Tables~\ref{tab:user}--\ref{tab:conditions}), and the robustness results (Fig.~\ref{fig:robustness}).
+Numbers without the prefix S refer to the paper. All results come from simulated users, and no person has used PsyPref.
+The code, the simulation logs, and the instructions to reproduce every figure are in the repository
+\url{https://github.com/TUDA-MUST/exo-psypref}, and each step below names the code that implements it.
+
+\section{PsyPref Step by Step}
+\label{sec:psypref}
+
+PsyPref tunes the $d = 8$ weights of a probabilistic movement primitive (ProMP)~\cite{paraschos}, a weighted sum of
+basis functions over the gait cycle. It works in normalized coordinates $\z$, in which the prior over the weights is
+standard normal. Every pair and the identified profile lie in the search region $\mathcal B = \{\z : \lVert\z\rVert \le
+r\}$, where $r$ is the 99\,\% quantile of the norm of a standard normal draw in $d$ dimensions. The answer model reads a
+choice of profile A over profile B as
+\begin{equation}
+P(\z_\mathrm{A}\succ\z_\mathrm{B}\mid\z^\ast,\ell,\lambda)=\frac{\lambda}{2}+(1-\lambda)\,\Phi\!\left(\frac{\Delta}{\ell^2}\right),
+\qquad
+\Delta=\tfrac12\bigl(\lVert\z_\mathrm{B}-\z^\ast\rVert_M^2-\lVert\z_\mathrm{A}-\z^\ast\rVert_M^2\bigr),
+\label{eq:model}
+\end{equation}
+which is Eq.~(1) of the paper. Here $\z^\ast$ is the user's preferred profile, $\ell$ the discrimination scale, and
+$\lambda$ the lapse rate~\cite{wichmann}. With a peak range, the metric is $M = J^\top J/101$, where $J$ is the Jacobian
+of the 101-point torque curve with respect to $\z$ at $\z = \mathbf 0$, scaled so that its trace equals $d$. With fixed
+peaks, $M = I$.
+
+PsyPref holds its belief over $\mathbf x = (\z^\ast, \log\ell, \operatorname{logit}\lambda)$ as $N = 4000$ weighted
+samples, called particles. Their priors are $\z^\ast\sim\mathcal N(\mathbf 0,I)$, $\log\ell\sim\mathcal N(0,0.5^2)$, and
+$\lambda\sim\mathrm{Beta}(1,9)$. After each answer, every particle's weight is multiplied by the particle's likelihood of
+that answer under Eq.~\eqref{eq:model}. When the effective sample size $1/\sum_i w_i^2$ falls below $N/2$, the particles
+are resampled systematically and then moved by five random-walk Metropolis steps, which target the posterior given all
+answers so far. The proposal covariance of these steps is $2.38^2/(d+2)$ times the particles' covariance.
+
+Alg.~\ref{alg:psypref} lists one session. Most pairs come from a set of 220 candidates around the posterior mean
+$\hat\z$, scored by how much the answer is expected to reduce the uncertainty about $\z^\ast$. The score is a Gaussian
+proxy of the expected information gain~\cite{houlsby},
+\begin{equation}
+G = H - p\,H_\mathrm{A} - (1-p)\,H_\mathrm{B},\qquad H = \tfrac12\log\det\operatorname{Cov}(\z^\ast),
+\label{eq:score}
+\end{equation}
+where $H$ is computed with the current weights, $H_\mathrm{A}$ and $H_\mathrm{B}$ with the weights after answer A or B,
+and $p$ is the predicted probability of answer A, held within $[10^{-6}, 1-10^{-6}]$. The proxy ranks pairs and is not a
+mutual information in nats. With probability 0.15, PsyPref instead asks a probe pair, one discrimination scale wide and
+0.5, 1, or 2 scales from $\hat\z$, which mainly informs $\ell$ and $\lambda$.
+
+Two operations keep pairs inside $\mathcal B$. $\mathrm{clip}(\mathbf c)$ moves a point outside $\mathcal B$ radially onto
+its boundary. $\mathrm{trunc}(\mathbf c,\mathbf u,h)$ returns the ends $\mathbf c + t_+\mathbf u$ and $\mathbf c -
+t_-\mathbf u$, each $t_\pm \le h$ as large as keeps that end inside $\mathcal B$. A pair therefore keeps its line and
+direction and is never wider than $2h$. Candidates whose ends lie closer than $10^{-9}$ are dropped.
+
+PsyPref delivers the posterior mean, clipped into $\mathcal B$. With a peak range, each delivered profile must assist both
+extension and flexion. If one of its peaks falls below half of the range's lower limit, PsyPref delivers instead the
+posterior draw closest to $\hat\z$, among 500 draws, that meets this limit. In the two peak ranges this replacement
+occurred in 4 and 18\,\% of the sessions, never at a session's end. PsyPref needs about 0.15\,s per pair on one core.
+
+In the main condition, simulated users always choose A or B. For the two conditions marked \textdaggerdbl{} in
+Table~\ref{tab:conditions}, PsyPref treats ``no preference'' as an answer of its own, with a band of indecision around
+$\Delta = 0$ whose half-width it learns from the first such answer on (\code{prompref/learning/ties.py}). Before that
+answer, its session equals PsyPref's.
+
+\begin{algorithm}[t]
+\caption{One PsyPref session.}
+\label{alg:psypref}
+\begin{algorithmic}[1]
+\Require prior over the weights, peak range or fixed peaks, number of comparisons $K$, seed
+\State draw $N=4000$ particles $\mathbf x_i=(\z^\ast_i,\log\ell_i,\operatorname{logit}\lambda_i)$ from the prior;
+  $w_i\gets 1/N$ \Comment{\code{smc.py}}
+\For{$k=1,\dots,K$}
+  \State $\hat\z\gets\sum_i w_i\z^\ast_i$;\quad $\hat\ell\gets\sum_i w_i\ell_i$
+  \If{$U(0,1)<0.15$} \Comment{probe pair, \code{psychometric.py}}
+    \State $\mathbf u\gets$ random unit vector;\quad $s\gets\pm1$;\quad $m\gets$ one of $\{0.5,1,2\}$
+    \State $(\z_\mathrm{A},\z_\mathrm{B})\gets\mathrm{trunc}\bigl(\mathrm{clip}(\hat\z-s\,m\,\hat\ell\,\mathbf u),\,
+      \mathbf u,\,\hat\ell/2\bigr)$
+  \EndIf
+  \If{no probe pair, or its ends coincide} \Comment{\code{candidates.py}}
+    \State centers $\mathcal C\gets\{\hat\z\}\cup\{$3 particles drawn by weight$\}$, each clipped into $\mathcal B$
+    \State directions $\mathcal U\gets\{d$ principal axes of the weighted covariance of $\z^\ast\}\cup\{$3 random unit
+      vectors$\}$
+    \State candidates $\gets\{\mathrm{trunc}(\mathbf c,\mathbf u,m\hat\ell/2):\mathbf c\in\mathcal C,\,
+      \mathbf u\in\mathcal U,\,m\in\{4,2,1,0.5,0.25\}\}$ \Comment{$4\times11\times5=220$}
+    \State $(\z_\mathrm{A},\z_\mathrm{B})\gets$ the candidate with the largest $G$, Eq.~\eqref{eq:score}
+      \Comment{\code{acquisition.py}}
+  \EndIf
+  \State show the profiles of $\z_\mathrm{A}$ and $\z_\mathrm{B}$; receive the answer $y\in\{\mathrm{A},\mathrm{B}\}$
+  \State $w_i\gets w_i\,P(y\mid\z_\mathrm{A},\z_\mathrm{B},\mathbf x_i)$, Eq.~\eqref{eq:model}; normalize
+    \Comment{\code{smc.py}}
+  \If{$1/\sum_i w_i^2<N/2$}
+    \State resample systematically; five random-walk Metropolis steps on the posterior; $w_i\gets 1/N$
+  \EndIf
+\EndFor
+\State $\z_\mathrm{out}\gets\mathrm{clip}(\hat\z)$ \Comment{\code{psychometric.py}}
+\If{peak range and a peak of the profile of $\z_\mathrm{out}$ lies below half of the lower limit}
+  \Comment{\code{amp\_free.py}}
+  \State $\z_\mathrm{out}\gets$ the draw closest to $\hat\z$, among 500 drawn by weight, whose peaks both meet that limit
+\EndIf
+\State \Return the profile of $\z_\mathrm{out}$
+\end{algorithmic}
+\end{algorithm}
+
+Alg.~\ref{alg:psypref} is implemented in \code{prompref/learning/} (\code{smc.py}, \code{acquisition.py},
+\code{candidates.py}, \code{psychometric.py}) and \code{prompref/experiment/} (\code{stress.py} for the metric $M$,
+\code{amp\_free.py} for $M$'s construction and the peak check). The library \code{psypref/tuner.py} wraps this code,
+and with the data bundle its test reruns the paper's sessions to within $10^{-12}$\Nm.
+
+\section{Simulated Users and Sessions}
+\label{sec:users}
+
+Each of five walking participants~\cite{molinaro,molinarodata} provides 40 simulated users per peak-torque setting, and
+the prior for these users comes from the other four participants (Table~\ref{tab:user}). A user's preferred profile is
+$\tau^\ast = a\,u^- + b\,u^+$, where $u^-$ and $u^+$ are the extension and flexion parts of the user's shape, each scaled
+to a unit peak, and $a$ and $b$ are the preferred extension and flexion peaks. With a peak range, $a$ and $b$ are drawn
+independently and log-uniformly within it. With fixed peaks, both equal 12\Nm.
+
+A simulated user chooses between two profiles by their root-mean-square (RMS) distances $d$ to $\tau^\ast$, with noise:
+\begin{equation}
+P(\tau_\mathrm{A}\succ\tau_\mathrm{B})=\frac{\lambda}{2}+(1-\lambda)\,\Phi\!\left(\frac{d_\mathrm{B}-d_\mathrm{A}}{\sigma}\right),
+\label{eq:user}
+\end{equation}
+which is Eq.~(2) of the paper, with $\sigma = 1$\Nm{} and $\lambda = 0.1$ in the main condition. Alg.~\ref{alg:session}
+lists one session of such a user with any optimizer. One random stream per user, set by the user's answer seed, draws the
+order in which the two profiles are shown and the answers. Every optimizer meets the same users with the same answer
+seeds, so comparisons between optimizers are paired by user. The answers still differ between optimizers, because each
+asks other pairs.
+
+\begin{algorithm}[t]
+\caption{One session of a simulated user with an optimizer, and its outcome.}
+\label{alg:session}
+\begin{algorithmic}[1]
+\Require optimizer, preferred profile $\tau^\ast$, noise level $\sigma$, lapse rate $\lambda$, generic assistance
+  $\tau_\mathrm g$, number of comparisons $K$, answer seed
+\State random stream $\gets$ answer seed;\quad $d_0\gets\mathrm{RMS}(\tau_\mathrm g-\tau^\ast)$
+  \Comment{\code{prompref/experiment/run.py}}
+\For{$k=1,\dots,K$}
+  \State $(\tau_\mathrm{A},\tau_\mathrm{B})\gets$ the optimizer's next pair
+  \State draw which profile is shown first \Comment{matters only with a bias toward the first profile}
+  \State $d_\mathrm{A}\gets\mathrm{RMS}(\tau_\mathrm{A}-\tau^\ast)$;\quad $d_\mathrm{B}\gets\mathrm{RMS}(\tau_\mathrm{B}-\tau^\ast)$
+  \State answer A with probability $\lambda/2+(1-\lambda)\,\Phi\bigl((d_\mathrm{B}-d_\mathrm{A})/\sigma\bigr)$, else B
+    \Comment{Eq.~\eqref{eq:user}, \code{simulated\_user.py}}
+  \State give the answer to the optimizer
+  \State $d_k\gets\mathrm{RMS}(\tau_k-\tau^\ast)$ for the profile $\tau_k$ the optimizer would deliver now
+\EndFor
+\State \Return $d_1,\dots,d_K$ and $P_\mathrm g(k)=\lambda/2+(1-\lambda)\,\Phi\bigl((d_0-d_k)/\sigma\bigr)$
+\end{algorithmic}
+\end{algorithm}
+
+The outcome $P_\mathrm g(k)$ is the probability that the user chooses the profile identified after $k$ comparisons over
+generic assistance, by the same rule~\eqref{eq:user}, and the paper averages it over users. Generic assistance is the
+population's mean shape with both peaks at the geometric center of the peak range or at the fixed level.
+$P_\mathrm g$ is 50\,\% for a profile as far from the preferred one as generic assistance, and at most 95\,\% at
+$\lambda = 0.1$.
+
+The user's just-noticeable difference (JND), the distance difference answered correctly in 75\,\% of attentive answers,
+is $0.674\,\sigma$. No JND is published for hip assistance in walking. Table~\ref{tab:anchors} therefore converts JNDs of
+other joints and tasks into $\sigma$ on our users (median RMS 7.36 and 7.03\Nm{} at 3--35 and fixed 12\Nm). The main
+condition lies near the static end, and the conditions reach $\sigma = 3$\Nm. Peng et al.\ report that their JND is
+biased upward~\cite{peng}, so $\sigma = 3$\Nm{} is closer to an upper end than to an expected value.
+
+\begin{table}[t]
+\centering
+\caption{The main simulated user.}
+\label{tab:user}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{3.4cm}@{}}
+\toprule
+Part & Model & Value & Source \\
+\midrule
+Users & Each fold holds out one of five walking participants. The prior comes from the other four, the users from the
+  held-out one & 5 folds $\times$ 40 users $=$ 200 users per setting & \cite{molinaro,molinarodata}, AB30--AB34 \\
+Preferred profile & $\tau^\ast = a\,u^- + b\,u^+$, with $u^-$ and $u^+$ the unit extension and flexion parts of the
+  user's shape & Peaks log-uniform in 3--12 or 3--35\Nm, or both at 12\Nm & Our choice \\
+Personal shape & The held-out participant's hip moment, filtered at 10\,Hz, with a personal lag and personal shifts of
+  its peaks and sign changes & Centre and spreads from the summary statistics of 11 participants, Student-t with
+  $\nu = 10$ & \cite{schafer}, summary only \\
+Distance & $d(c) = \mathrm{RMS}(c - \tau^\ast)$ over the gait cycle & -- & -- \\
+Answer & Eq.~\eqref{eq:user} & $\sigma = 1$\Nm, $\lambda = 0.1$ & $\sigma$: Table~\ref{tab:anchors}. $\lambda$: our
+  choice \\
+JND & The distance difference answered correctly in 75\,\% of attentive answers & $0.674\,\sigma$ & Follows from the
+  model \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Anchors of the noise level $\sigma$, converted on our users.}
+\label{tab:anchors}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}Xp{4.6cm}cc@{}}
+\toprule
+Anchor & Source & Curve change (Nm RMS) & Implied $\sigma$ (Nm) \\
+\midrule
+Static force, 7\,\% & \cite{jones}\textdagger, \cite{pang}\textdagger & 0.49--0.52 & 0.73--0.77 \\
+Static force, 10\,\% (our round-up) & None states 10\,\% & 0.71--0.74 & 1.05--1.09 \\
+Walking stiffness, 25\,\% (a multiplier of about 3 from ankle stiffness) & \cite{maberry}\textdagger
+  & 1.76--1.84 & 2.6--2.7 \\
+Ankle timing, 2.8\,\%GC & \cite{peng} & 1.88--2.01 & 2.8--3.0 \\
+\bottomrule
+\multicolumn{4}{@{}l}{\textdagger\ Read as abstract only.}
+\end{tabularx}
+\end{table}
+
+\FloatBarrier
+\section{Robustness Conditions}
+\label{sec:conditions}
+
+Table~\ref{tab:conditions} lists every condition of Fig.~\ref{fig:robustness}. Each condition changes only what it names,
+relative to the main user, and PsyPref keeps its model and prior throughout, apart from the ``no preference'' answers in
+the two rows marked \textdaggerdbl. Hip data bear only on device noise and the spread of peak torques, so the other sizes
+rest on other joints and tasks, or on our choice. Of the 42 values in Tables~\ref{tab:user}--\ref{tab:conditions}, 4 are
+stated by a source, 1 lies inside a measured range, 14 are transferred from other joints or tasks, and 23 are our own
+choices. The rows of our choice are stress tests, not estimates of real users. \code{CONDITIONS.md} in the repository
+gives each condition's name in the code.
+
+{\footnotesize
+\begin{xltabular}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{3.6cm}@{}}
+\caption{Robustness conditions of Fig.~\ref{fig:robustness}, with model, size, class of the size, and source. Classes:
+\emph{Stated}, a source gives this value for this quantity; \emph{Range}, inside a measured range; \emph{Transferred},
+from another joint, task, or quantity; \emph{Ours}, no source gives the size.}
+\label{tab:conditions}\\
+\toprule
+Label in Fig.~\ref{fig:robustness} & Model & Size & Class & Source and limits \\
+\midrule
+\endfirsthead
+\toprule
+Label in Fig.~\ref{fig:robustness} & Model & Size & Class & Source and limits \\
+\midrule
+\endhead
+\bottomrule
+\multicolumn{5}{@{}p{\textwidth}@{}}{\textdaggerdbl\ PsyPref uses ``no preference'' answers as data. These two rows use
+users 8--39 of each fold, $n = 160$. \quad\textdagger\ Read as abstract only.}
+\endlastfoot
+\bottomrule
+\endfoot
+\multicolumn{5}{@{}l}{\textit{How they answer}} \\
+Noise level $\sigma = 0.5$\Nm & $\sigma$ replaced & 0.5\Nm & Ours & Below every anchor in Table~\ref{tab:anchors} \\
+Noise level $\sigma = 2$, 3\Nm & $\sigma$ replaced & 2, 3\Nm & Transferred & \cite{peng} (ankle timing),
+  \cite{maberry}\textdagger{} (ankle stiffness), converted to Nm RMS by us \\
+Lapse rate $\lambda = 0.2$, 0.3 & $\lambda$ replaced & 0.2, 0.3 & Transferred, ours & 0.2: indirect bound from validation
+  rates in~\cite{arens,lee,alili} (other joints). 0.3: stress case above that bound \\
+$\sigma$ differs per user (log SD 0.35) & $\sigma_u = \sigma\,e^{0.35 z}$, $z \sim \mathcal N(0,1)$ & Log SD 0.35 &
+  Transferred & \cite{shepherd2018} (prosthesis stiffness, $n = 8$), \cite{miller}\textdagger{} (ankle
+  timing): about fourfold range. \cite{shepherd2018} alone implies about 0.45 \\
+Other answer-curve shapes & $\Phi$ replaced by a logistic, Student-t, or Cauchy curve, scaled to match the decisiveness
+  of $\Phi$ on an earlier simulated population & Scales 0.5916, 0.8100, 0.4800; $\nu = 3$, $\nu = 1$ & Transferred
+  (logistic), ours & Logistic: fitting convention in \cite{shepherd2018}. Heavy tails: stress cases \\
+Device noise 0.6\Nm & Each presented curve gets its own Fourier series over harmonics 1--4, scaled to this RMS &
+  0.6\Nm{} RMS & Stated & \cite{franks}, p.~e16-5, at the hips of a tethered emulator. The spectrum is ours \\
+Bias toward first profile, 0.3\,$\sigma$ & $\beta\sigma$ added in favor of the profile shown first & $\beta = 0.3$ & Ours &
+  No published estimate found \\
+``No preference'' below 0.5\,JND\,\textdaggerdbl & The user answers ``no preference'' whenever $|d(A) - d(B)| <
+  0.5$\,JND. A lapse is a coin flip between A and B & 0.5\,JND & Ours & \cite{arens} and~\cite{tucker} allow such
+  answers, and neither gives a frequency \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{How they change} (linear over the 40 comparisons of a session; familiarity holds from the
+  first comparison)} \\
+Fatigue: $\lambda$ from 0.05 to 0.3 & $\lambda$ rises & 0.05 to 0.30 & Ours & \cite{ingraham} rules out fatigue for their
+  drift \\
+$\sigma$ 1.5 to 0.75\Nm, and reverse & $\sigma$ falls or rises & 1.5 to 0.75\Nm, and reverse & Ours & Direction only:
+  \cite{ingraham,elhusaini} \\
+Preferred profile drifts 1, 2\,JND & $\tau^\ast$ grows by a factor, so that it ends this far from its start & 1, 2\,JND &
+  Transferred & Direction and size: \cite{arens} (rise not significant, $P = 0.181$), \cite{ingraham}. 2\,JND exceeds the
+  derived 1.0--1.6\,JND \\
+Familiarity & The target becomes $(\tau^\ast + w\,\tau_h)/(1 + w)$, with $\tau_h = 0$, so it sits 20\,\% closer to zero
+  torque & $w = 0.25$ & Ours & Direction only: \cite{diaz} ($n = 3$, ``possibly'') \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{What they judge and prefer}} \\
+Weber's law & $\sigma_\mathrm{eff} = \sigma\,(\mathrm{RMS}_\mathrm{pair} + a)/(\mathrm{RMS}_\mathrm{typ} + a)$ & $a = 1$\Nm,
+  $\mathrm{RMS}_\mathrm{typ} = 4.83$\Nm & Transferred (form), ours (values) & \cite{hatzfeld} (fingertip vibration).
+  $\mathrm{RMS}_\mathrm{typ}$ stems from an earlier population, so the median user here is also 1.38--1.43 times noisier \\
+Over-assistance counts double & Squared error doubled where $|c| > |\tau^\ast|$, about 1.41 times in RMS & Factor 2 & Ours
+  & No source. \cite{clites} points the other way \\
+Judging single features & Distance over the two peak magnitudes and the two peak timings, $\sqrt{\sum_i
+  (\Delta_i/\mathrm{JND}_i)^2}$, with magnitude JND $\max(f\,|\text{peak}|,\,0.5\text{\Nm})$, timing JND 2.8\,\%GC, and
+  the scale matched to the main user's decisiveness & $f = 0.10$, 0.25 & Transferred & \cite{jones}\textdagger,
+  \cite{pang}\textdagger{} state 7\,\%, static. \cite{maberry}\textdagger: walking about 3 times
+  larger. \cite{peng} for timing. The 0.5\Nm{} floor is ours \\
+Gait phases weighted unequally & Weighted RMS, $w(\varphi)$ with mean 1, on a per-user scale matched to the main user's
+  decisiveness. Personal: $\log w$ a random Fourier series over harmonics 1--3, scaled to this SD over the cycle. Hip
+  speed: $w \propto |\dot\theta| + 0.2\,\overline{|\dot\theta|}$ & Log SD 0.5, 1 & Ours & Rationale for the hip-speed
+  form: power change $\Delta\tau\,\dot\theta$. No measurement of phase-dependent perception found \\
+No single preferred profile & A random smooth function of a curve's first six harmonics, from random Fourier features,
+  inside an envelope, on a matched per-user scale & Length scale 1.5, envelope 3 SD & Ours & Deliberately not in PsyPref's
+  coordinates \\
+Negative power disliked & $d(c) + \kappa\,\overline{\max(0, -c\,\dot\theta)}/\overline{|\dot\theta|}$ & $\kappa = 0$ with
+  probability $1/2$, else log-uniform in 0.5--2 & Ours & Direction only: \cite{ramella} \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{How they differ from the prior}} \\
+Users from other datasets & Shapes from other people, 40 users per group & Young and older adults on a treadmill at
+  comfortable speed; level and inclined walking at 1.0\,m/s & Stated & \cite{fukuchi,reznick}. These are biological
+  moments, and treating them as preferred shapes is our assumption \\
+Peaks unlike the prior & Peak laws: three narrow cohorts, flexion or extension larger, correlated & Medians at 0.2, 0.5,
+  0.8 of the log range with CV 0.2; ratio 1.5; correlation 0.8 & Range (CV), ours & CV: \cite{ramella} (0.13--0.15),
+  \cite{arens} (0.30--0.34), \cite{shepherd2018} (0.30). Rest is ours \\
+Flexion peak 6, 12\,\%GC later & Piecewise-linear phase warp that moves the flexion peak and keeps the extension peak &
+  6, 12\,\%GC & Transferred & \cite{kim2022} (soft flexion exosuit, metabolic optimum, $n = 8$) \\
+Other shapes unlike the prior & Surrogates: the preferred curve's magnitudes kept, its phases randomized, the result
+  clipped to the setting's top & Harmonics 1--50 & Transferred & \cite{theiler}, a method for testing time series. It
+  serves here as a source of curves without the prior's shape \\
+ & Heavy tails: personal lag and shifts with $\nu = 1.5$ instead of 10, same scales & $\nu = 1.5$ & Ours & Stress case:
+  infinite variance before invalid draws are rejected \\
+ & Family mixture: a share of users replaced, half from Sch\"afer et al.'s family, half from Franks et al.'s & 20\,\% &
+  Ours & -- \\
+Shapes from the 4--6-param.\ family & Four timings from a Student-t distribution in Sch\"afer et al.'s family. Draws
+  outside the device limits are rejected & Mean and diagonal covariance of 11 participants, $\nu = 10$ & Stated (family),
+  ours ($\nu$) & \cite{schafer}. CMA-ES, 4--6 param., searches this family \\
+\midrule
+Pessimistic user (six at once)\,\textdaggerdbl & Six of the above at once & $\sigma = 2$\Nm, fatigue, bias 0.3\,$\sigma$, no
+  preference at 0.5\,JND, phase weight log SD 1, Sch\"afer-family shapes & Ours & Combination of the rows above \\
+\end{xltabular}
+}
+
+\begin{figure}[t]
+\centering
+\scalebox{1.3}{\input{../figures/fig4m.tex}}
+\caption{Difference in $P_\mathrm{g}$ between PsyPref and the best published optimizer after \fmK\ comparisons, per
+violated assumption, in simulation. Positive values favor PsyPref. Markers: paired difference from the best of Arens'
+GP~\cite{arens} (also from the prior's mean, no gate), CMA-ES~\cite{sortcma} (also with population 4),
+LineCoSpar~\cite{linecospar}, and \mbox{CMA-ES, 4--6~param.}, picked per bootstrap draw. Thick bars: 95\,\% per row. Thin
+bars: 95\,\% across all \fmNall\ cases (condition $\times$ peak-torque setting)~\cite{besag}, dark blue where they reach
+0. Open circle: the measure's maximum. (2)--(6): smallest difference of that many conditions. \textdagger: with the
+indecision band. Table~\ref{tab:conditions} lists every condition with its model, size, and source.}
+\label{fig:robustness}
+\end{figure}
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

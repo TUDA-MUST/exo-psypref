@@ -102,8 +102,9 @@ How people judge assistance curves has not been measured, and that is what we co
 ## Reproducing the paper
 
 The code, the logs and every figure's data are here. [REPRODUCE.md](REPRODUCE.md) leads from each figure to its script and data,
-and [CONDITIONS.md](CONDITIONS.md) lists every simulated condition with its size and source. The paper's Supplementary
-Fig. S1, every robustness test against the best published optimizer, is [figures/figS1_robustness.pdf](figures/figS1_robustness.pdf).
+and [CONDITIONS.md](CONDITIONS.md) lists every simulated condition with its size and source. The paper's supplement,
+[supplement/supplement.pdf](supplement/supplement.pdf), gives PsyPref step by step, the simulated users, and every robustness
+test against the best published optimizer (Fig. S1).
 
 ```bash
 pytest tests/test_psypref_library.py   # with the data bundle: this library reruns the paper's sessions, to within 1e-12 Nm

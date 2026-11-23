@@ -6,8 +6,10 @@ human data, and everything in it was run in simulation. For using PsyPref, see t
 
 - [CONDITIONS.md](CONDITIONS.md): how each simulated user and robustness condition is modeled, the size we chose, and
   where that size comes from.
-- [figures/figS1_robustness.pdf](figures/figS1_robustness.pdf): the paper's Supplementary Fig. S1, PsyPref against the best
-  published optimizer under each violated assumption. Built from `figures/figS1_robustness.tex` with `fig4m.tex`.
+- [supplement/supplement.pdf](supplement/supplement.pdf): the paper's supplement. It holds PsyPref step by step (Alg. S1),
+  a session with a simulated user (Alg. S2), the simulated users and conditions (Tables S1–S3), and Fig. S1, PsyPref
+  against the best published optimizer under each violated assumption. Built from `supplement/supplement.tex` with
+  `figures/fig4m.tex`.
 - `prompref/`: the Python package, whose name comes from ProMP preference tuning. It holds PsyPref, the comparators, the
   simulated users and the profile families.
 - `preftune/`: the gait-phase grid, the loader for the walking data and an earlier learner core that `prompref` builds on.
@@ -21,7 +23,7 @@ human data, and everything in it was run in simulation. For using PsyPref, see t
 | Fig. 1 | `scripts/paper_v2_fig1.py`, `scripts/paper_v2_fig1j.py` | `full` |
 | Fig. 2 | `scripts/paper_v2_fig2.py --variant v1`, then `c` and `d` | `full`, `cmp`, `abl`, `rnd` |
 | Fig. 3 | `scripts/paper_v2_fig3p.py` | `fam_floors`, `fam`, `full`, `robust` |
-| Fig. 4 | `scripts/paper_v2_fig4l.py`, then `scripts/paper_v2_fig4m.py` | `full`, `robust`, `rob2`, `tie`, `s3`, `var`, `pri`, `cmp` |
+| Supplementary Fig. S1 | `scripts/paper_v2_fig4l.py`, then `scripts/paper_v2_fig4m.py` | `full`, `robust`, `rob2`, `tie`, `s3`, `var`, `pri`, `cmp` |
 | Table I | `scripts/paper_v2_table_main.py --dest figures/tables` | `full`, `cmp`, `abl`, `rnd`, `pw`, `ks`, `ks2` |
 | Absolute benefit by noise level | `scripts/provenance/s3_headline.py`, `scripts/provenance/noise_benefit_shares.py` | `full`, `cmp`, `robust`, `s3`, `var` |
 | Direct choices between profiles | `scripts/provenance/direct_choices.py` | `full`, `cmp`, `long` |

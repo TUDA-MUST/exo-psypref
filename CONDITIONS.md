@@ -1,7 +1,8 @@
 # Simulated users and robustness conditions
 
-This table is the supplement to the paper's robustness figure (Fig. 4). It states how each condition is modeled, the
-size we chose, and where that size comes from.
+This file belongs to the paper's robustness figure, Supplementary Fig. S1, and is the long form of Tables S1–S3 in
+[supplement/supplement.pdf](supplement/supplement.pdf). It states how each condition is modeled, the size we chose, and
+where that size comes from.
 
 Hip data bear only on device noise and the spread of peak torques, so the other sizes rest on other joints and tasks, or
 on our choice. Of the 42 values below, 4 are stated by a source, 1 lies inside a measured range, 14 are transferred from
@@ -34,7 +35,7 @@ biased upward, so $\sigma = 3$ Nm is closer to an upper end than to an expected 
 
 **Rating.** The measure $P_\mathrm{g}$ is the probability of choosing the identified profile over generic assistance,
 $100\,[\lambda/2 + (1-\lambda)\,\Phi((d_0 - d_k)/\sigma)]$ %, with $d_0$ the distance of generic assistance, $d_k$ the
-distance of the profile after $k$ comparisons, and $k = 24$ in Fig. 4. Each user is rated with their own $\sigma$ and
+distance of the profile after $k$ comparisons, and $k = 24$ in Fig. S1. Each user is rated with their own $\sigma$ and
 $\lambda$ at the session's end. The maximum is therefore 95 % at $\lambda = 0.1$ and 85 % at $\lambda = 0.3$. Where a
 condition changes what the user judges, $d$ is that user's own distance.
 
@@ -48,7 +49,7 @@ another joint, task or quantity. *Ours*: no source gives the size.
 
 ### How they answer
 
-| Fig. 4 label | Condition in the code | Model | Value | Class | Source and limits |
+| Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
 | Noise level σ = 0.5 Nm | `R1 s=0.5` | $\sigma$ replaced | 0.5 Nm | Ours | Below every anchor above |
 | Noise level σ = 2, 3 Nm | `R2 s=2.0`, `R2b s=3.0` | $\sigma$ replaced | 2, 3 Nm | Transferred | Peng 2022 (ankle timing), Maberry & Martin 2026† (ankle stiffness), converted to Nm RMS by us |
@@ -63,7 +64,7 @@ another joint, task or quantity. *Ours*: no source gives the size.
 
 Paths are linear over the 40 comparisons of a session. Familiarity is the exception: it holds from the first comparison.
 
-| Fig. 4 label | Condition in the code | Model | Value | Class | Source and limits |
+| Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
 | Fatigue | `A7 fatigue` | $\lambda$ rises | 0.05 to 0.30 | Ours | Ingraham 2022 rules out fatigue for their drift |
 | σ 1.5 to 0.75 Nm, and reverse | `A8a`, `A8b` | $\sigma$ falls or rises | 1.5 to 0.75 Nm, and reverse | Ours | Direction only: Ingraham 2022, El Husaini 2023 |
@@ -72,7 +73,7 @@ Paths are linear over the 40 comparisons of a session. Familiarity is the except
 
 ### What they judge and prefer
 
-| Fig. 4 label | Condition in the code | Model | Value | Class | Source and limits |
+| Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
 | Weber's law | `B1 Weber` | $\sigma_\text{eff} = \sigma\,(\mathrm{RMS}_\text{pair} + a)/(\mathrm{RMS}_\text{typ} + a)$ | $a = 1$ Nm, $\mathrm{RMS}_\text{typ} = 4.83$ Nm | Transferred (form), ours (values) | Hatzfeld 2016 (fingertip vibration). $\mathrm{RMS}_\text{typ}$ stems from an earlier population, so the median user here is also 1.38–1.43 times noisier |
 | Over-assistance counts double | `B2 asymmetry` | Squared error doubled where $|c| > |\tau^*|$, about 1.41 times in RMS | Factor 2 | Ours | No source. Clites 2021 points the other way |
@@ -83,7 +84,7 @@ Paths are linear over the 40 comparisons of a session. Familiarity is the except
 
 ### How they differ from the prior
 
-| Fig. 4 label | Condition in the code | Model | Value | Class | Source and limits |
+| Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
 | Users from other datasets | `R6 other datasets` | Shapes from other people, 40 users per group | Young and older adults on a treadmill at comfortable speed; level and inclined walking at 1.0 m/s | Stated | Fukuchi 2018, Reznick 2021. These are biological moments, and treating them as preferred shapes is our assumption |
 | Peaks unlike the prior | `M1`–`M6` | Peak laws: three narrow cohorts, flexion or extension larger, correlated | Medians at 0.2, 0.5, 0.8 of the log range with CV 0.2; ratio 1.5; correlation 0.8 | Range (CV), ours | CV: Ramella 2025 (0.13–0.15), Arens 2025 (0.30–0.34), Shepherd 2018 (0.30). Rest is ours |
@@ -95,7 +96,7 @@ Paths are linear over the 40 comparisons of a session. Familiarity is the except
 
 ### Pessimistic user
 
-| Fig. 4 label | Condition in the code | Model | Value | Class | Source and limits |
+| Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
 | Pessimistic user (six at once) ‡ | `C4 pessimistic` | Six of the above at once | $\sigma = 2$, fatigue, bias 0.3 σ, no preference at 0.5 JND, phase weight log SD 1, Schäfer-family shapes | Ours | Combination of the rows above |
 
@@ -106,7 +107,7 @@ each fold, n = 160 (`scripts/icorr_amp_tie.py`).
 
 ## Optimizers
 
-Fig. 4 measures PsyPref against the strongest of the first six, in every row and for every bootstrap draw.
+Fig. S1 measures PsyPref against the strongest of the first six, in every row and for every bootstrap draw.
 
 | Name in the paper | Name in the code | Searches | Where |
 |---|---|---|---|
@@ -117,7 +118,7 @@ Fig. 4 measures PsyPref against the strongest of the first six, in every row and
 | CMA-ES | `cmaes` | 8 ProMP weights, in the prior's search region. pycma's default population, initial step 1.0 of the prior's scale | `prompref/learning/sortcma.py` |
 | CMA-ES, population 4 | `cmaes4` | The same, with population 4 and initial step 0.5. Fig. 2's comparator at fixed 12 Nm | `prompref/learning/sortcma.py` |
 | CMA-ES, 4–6 param. | `cmaes_sch4` | Schäfer et al.'s family: four timings, plus both peaks in 3–35 Nm. At fixed 12 Nm, the four timings only. Population 4, initial step 0.5 of the prior's scale | `prompref/learning/sortcma.py`, `prompref/experiment/amp_free.py` |
-| GP-BALD | `gp_bald` | 8 ProMP weights. Main condition, $\sigma = 2$ Nm and users from other datasets. Not part of Fig. 4's leads | `prompref/learning/gp_eubo.py` |
+| GP-BALD | `gp_bald` | 8 ProMP weights. Main condition, $\sigma = 2$ Nm and users from other datasets. Not part of Fig. S1's leads | `prompref/learning/gp_eubo.py` |
 
 ## Method details left out of the paper
 
@@ -156,7 +157,7 @@ The paper's Methods are short because of its page limit. These details complete 
 - Users who judge single features, users with phase weighting and users without a single preferred profile answer as decisively as the main users.
 - Other shapes are phase-randomized surrogates (Theiler et al., 1992), heavy-tailed timing, or a mixture with 20 % from other families.
 - Bootstrap intervals use 2000 draws, with users resampled within their walking subject.
-- Fig. 4 shows 75 cases (condition x peak-torque setting). With a 95 % interval per case, about four would miss the true value by chance. Its thin bars therefore contain all cases at once in 95 % of 20,000 bootstrap draws, as a rank envelope (Besag et al., 1995). Each draw takes the strongest other optimizer in that draw and, in a row that merges conditions, the smallest lead.
+- Fig. S1 shows 75 cases (condition x peak-torque setting). With a 95 % interval per case, about four would miss the true value by chance. Its thin bars therefore contain all cases at once in 95 % of 20,000 bootstrap draws, as a rank envelope (Besag et al., 1995). Each draw takes the strongest other optimizer in that draw and, in a row that merges conditions, the smallest lead.
 
 ### Further settings
 
@@ -167,7 +168,7 @@ The paper's Methods are short because of its page limit. These details complete 
 - The entropy proxy is H = log det Cov(z*) / 2.
 - CMA-ES with population 4: about four generations fit into 24 comparisons.
 - Speed is the first k at which PsyPref reaches the P_g that another optimizer reaches after 40 comparisons.
-- Fig. 4's leads are computed with each user's sigma and lambda at the session's end. With fixed sigma and lambda, no lead changes sign, and leads move by at most 8.6 points.
+- Fig. S1's leads are computed with each user's sigma and lambda at the session's end. With fixed sigma and lambda, no lead changes sign, and leads move by at most 8.6 points.
 
 ### Numbers left out of the paper
 

@@ -7,4 +7,9 @@ __pycache__/
 *.log
 *.out
 *.pdf
-!/figures/figS1_robustness.pdf
+!/supplement/supplement.pdf
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
