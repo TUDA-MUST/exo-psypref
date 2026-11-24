@@ -1,0 +1,2 @@
+xmin,xmax,ymin,ymax,ylabels,linetop,lab_w,ax_r,pitch,bottom,width,scale,off,mark_r,mark_s,val_gapx,height,n_rows,s_r1,s_r2,s_r3,lapse_a2,lapse_r3,ndev_word,a1_logsd,a3_noise,a4_bias,a5_nopref,a7_from,a7_to,a8_from,a8_to,b4_a,b4_b
+-13,30,-3.15,11.67,-1.15,-0.7,111,246,7.2,17.4,252,3.139534884,0.25,1.45,1.25,1.5,124.104,9,0.5,2,3,0.2,0.3,six,0.35,0.6,0.3,0.5,0.05,0.3,1.5,0.75,1,2
