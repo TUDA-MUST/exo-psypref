@@ -1,0 +1,38 @@
+% readme_fig1.tex: the paper's Fig. 1 for the README, on a transparent page, in a light and a dark version.
+% Built by scripts/make_readme_fig1.py, which runs from figures/:
+%   light: pdflatex -jobname=readme_fig1_light readme_fig1.tex
+%   dark:  pdflatex -jobname=readme_fig1_dark "\def\readmedark{}\input{readme_fig1.tex}"
+% The dark colors follow the README's other figures (THEMES["dark"] in scripts/make_readme_assets.py).
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{arrows.meta}
+\input{icorr_style.tex}
+\ifdefined\readmedark
+  \definecolor{icInk}{HTML}{E6EDF3}
+  \definecolor{icMuted}{HTML}{9DA7B3}
+  \definecolor{icRule}{HTML}{30363D}
+  \definecolor{icBlue}{HTML}{8FA4FD}
+  \definecolor{icBlueLight}{HTML}{3F57C8}
+  \definecolor{icBlueDark}{HTML}{C3CEFF}
+  \definecolor{icGeneric}{HTML}{8B949E}
+  \definecolor{icContext}{HTML}{4B535D}
+  \definecolor{icGrey}{HTML}{9DA7B3}
+  \definecolor{icDark}{HTML}{C9D1D9}
+  \definecolor{icPairA}{HTML}{E58A9A}
+  \definecolor{icPairB}{HTML}{33BBEE}
+  \definecolor{icOrangeText}{HTML}{F8B860}
+  \definecolor{icTintBlue}{HTML}{161D33}% PsyPref's and the user's box
+  \definecolor{white}{HTML}{161B22}% the other boxes, slightly raised from GitHub's dark background
+\fi
+\newcommand{\icorrtikzdata}{data/}
+\input{data/fig3p_text.tex}
+\input{data/fig4m_text.tex}
+\pagestyle{empty}
+\begin{document}
+\thispagestyle{empty}
+\noindent{\color{icInk}\input{fig1.tex}}
+\end{document}

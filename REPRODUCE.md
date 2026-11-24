@@ -20,7 +20,7 @@ human data, and everything in it was run in simulation. For using PsyPref, see t
 
 | In the paper | Script | Logs it reads |
 |---|---|---|
-| Fig. 1 | `scripts/paper_v2_fig1.py`, `scripts/paper_v2_fig1j.py` | `full` |
+| Fig. 1 | `scripts/paper_v2_fig1.py`, `scripts/paper_v2_fig1j.py`; README version: `scripts/make_readme_fig1.py` (needs pdflatex) | `full` |
 | Fig. 2 | `scripts/paper_v2_fig2.py --variant v1`, then `c` and `d` | `full`, `cmp`, `abl`, `rnd` |
 | Fig. 3 | `scripts/paper_v2_fig3p.py` | `fam_floors`, `fam`, `full`, `robust` |
 | Fig. 4 (compact Fig. S1) | `scripts/paper_v2_fig4c.py`, after `paper_v2_fig4m.py` | Fig. S1's data (`figures/data/fig4m_*.csv`) |
@@ -108,7 +108,7 @@ Names that stand in the logs or enter the seeds keep their original spelling:
 | CMA-ES, 4--6 param. | `cmaes_sch4` |
 | GP-qEUBO | `gp_eubo` |
 | Noise level $\sigma$ | `s` |
-| The strongest other optimizer, or the comparator | `best`, `best_published` |
+| The best published optimizer, or the comparator | `best`, `best_published` |
 | Distance of the best profile, its preference | `floor`, `ceiling` and names with them |
 | Projection onto a family | `lens` and names with it |
 | A profile on offer | `arm` |

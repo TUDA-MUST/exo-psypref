@@ -70,7 +70,7 @@ P(\z_\mathrm{A}\succ\z_\mathrm{B}\mid\z^\ast,\ell,\lambda)=\frac{\lambda}{2}+(1-
 \label{eq:model}
 \end{equation}
 which is Eq.~(1) of the paper. Here $\z^\ast$ is the user's preferred profile, $\ell$ the discrimination scale, and
-$\lambda$ the lapse rate~\cite{wichmann}. With a peak range, the metric is $M = J^\top J/101$, where $J$ is the Jacobian
+$\lambda$ the lapse rate~\cite{wichmann}, the probability that a user picks either profile at random. With a peak range, the metric is $M = J^\top J/101$, where $J$ is the Jacobian
 of the 101-point torque curve with respect to $\z$ at $\z = \mathbf 0$, scaled so that its trace equals $d$. With fixed
 peaks, $M = I$.
 
@@ -149,14 +149,14 @@ answer, its session equals PsyPref's.
 
 Alg.~\ref{alg:psypref} is implemented in \code{prompref/learning/} (\code{smc.py}, \code{acquisition.py},
 \code{candidates.py}, \code{psychometric.py}) and \code{prompref/experiment/} (\code{stress.py} for the metric $M$,
-\code{amp\_free.py} for $M$'s construction and the peak check). The library \code{psypref/tuner.py} wraps this code,
+\code{amp\_free.py} for $M$'s construction and the peak check). The library \code{psypref/session.py} wraps this code,
 and with the data bundle its test reruns the paper's sessions to within $10^{-12}$\Nm.
 
 \section{Simulated Users and Sessions}
 \label{sec:users}
 
-Each of five walking participants~\cite{molinaro,molinarodata} provides 40 simulated users per peak-torque setting, and
-the prior for these users comes from the other four participants (Table~\ref{tab:user}). A user's preferred profile is
+Each of the five individuals in the gait dataset~\cite{molinaro,molinarodata} provides 40 simulated users per peak-torque
+setting, and the prior for these users comes from the other four individuals (Table~\ref{tab:user}). A user's preferred profile is
 $\tau^\ast = a\,u^- + b\,u^+$, where $u^-$ and $u^+$ are the extension and flexion parts of the user's shape, each scaled
 to a unit peak, and $a$ and $b$ are the preferred extension and flexion peaks. With a peak range, $a$ and $b$ are drawn
 independently and log-uniformly within it. With fixed peaks, both equal 12\Nm.
@@ -200,8 +200,9 @@ $P_\mathrm g$ is 50\,\% for a profile as far from the preferred one as generic a
 $\lambda = 0.1$.
 
 The user's just-noticeable difference (JND), the distance difference answered correctly in 75\,\% of attentive answers,
-is $0.674\,\sigma$. No JND is published for hip assistance in walking. Table~\ref{tab:anchors} therefore converts JNDs of
-other joints and tasks into $\sigma$ on our users (median RMS 7.36 and 7.03\Nm{} at 3--35 and fixed 12\Nm). The main
+is $0.674\,\sigma$. No JND is published for hip assistance in walking. We therefore assume JNDs of
+other joints and tasks and apply them to our users' preferred profiles to obtain $\sigma$ (Table~\ref{tab:anchors};
+median RMS of these profiles 7.36 and 7.03\Nm{} at 3--35 and fixed 12\Nm). The main
 condition lies near the static end, and the conditions reach $\sigma = 3$\Nm. Peng et al.\ report that their JND is
 biased upward~\cite{peng}, so $\sigma = 3$\Nm{} is closer to an upper end than to an expected value.
 
@@ -214,11 +215,11 @@ biased upward~\cite{peng}, so $\sigma = 3$\Nm{} is closer to an upper end than t
 \toprule
 Part & Model & Value & Source \\
 \midrule
-Users & Each fold holds out one of five walking participants. The prior comes from the other four, the users from the
+Users & Each fold holds out one of the five dataset individuals. The prior comes from the other four, the users from the
   held-out one & 5 folds $\times$ 40 users $=$ 200 users per setting & \cite{molinaro,molinarodata}, AB30--AB34 \\
 Preferred profile & $\tau^\ast = a\,u^- + b\,u^+$, with $u^-$ and $u^+$ the unit extension and flexion parts of the
   user's shape & Peaks log-uniform in 3--12 or 3--35\Nm, or both at 12\Nm & Our choice \\
-Personal shape & The held-out participant's hip moment, filtered at 10\,Hz, with a personal lag and personal shifts of
+Personal shape & The held-out individual's hip moment, filtered at 10\,Hz, with a personal lag and personal shifts of
   its peaks and sign changes & Centre and spreads from the summary statistics of 11 participants, Student-t with
   $\nu = 10$ & \cite{schafer}, summary only \\
 Distance & $d(c) = \mathrm{RMS}(c - \tau^\ast)$ over the gait cycle & -- & -- \\
@@ -232,7 +233,7 @@ JND & The distance difference answered correctly in 75\,\% of attentive answers 
 
 \begin{table}[t]
 \centering
-\caption{Anchors of the noise level $\sigma$, converted on our users.}
+\caption{Anchors of the noise level $\sigma$: assumed JNDs applied to our users' preferred profiles.}
 \label{tab:anchors}
 \footnotesize
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}Xp{4.6cm}cc@{}}

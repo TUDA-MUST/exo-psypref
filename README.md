@@ -73,11 +73,19 @@ just-noticeable difference (JND) first.
 ## What we found in simulation
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/speed_dark.png">
-  <img alt="Preference over generic assistance against comparisons, in three peak settings: PsyPref reaches the strongest other optimizer's 40-comparison level after 3, 5 and 8 comparisons" src="assets/speed_light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/concept_dark.png">
+  <img alt="PsyPref's loop: a prior from walking data, a belief over the preferred profile that narrows over 24 comparisons, the most informative pair A or B, and the identified profile validated against generic assistance. Below, the simulated users: each prefers the hip moment of an individual not in the prior and answers by the distances of A and B to it" src="assets/concept_light.png" width="640">
 </picture>
 
-Means of 200 simulated users per setting, from 5 walking subjects, with 95 % intervals.
+The paper's Fig. 1: PsyPref's concept (solid boxes) and its evaluation with simulated users (dashed box). No person took part.
+Each simulated user prefers the hip moment of one individual in a gait dataset who is not in the prior.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/speed_dark.png">
+  <img alt="Preference over generic assistance against comparisons, in three peak settings: PsyPref reaches the best published optimizer's 40-comparison level after 3, 5 and 8 comparisons" src="assets/speed_light.png">
+</picture>
+
+Means of 200 simulated users per setting, built from 5 individuals in a gait dataset, with 95 % intervals.
 
 - **Fewer comparisons.** After 3–8 comparisons, simulated users choose PsyPref's profile over generic assistance as often as the
   profile that the best published optimizer reaches after 40 comparisons. All optimizers share the prior here, except CMA-ES on a family.

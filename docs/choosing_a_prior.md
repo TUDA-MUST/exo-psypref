@@ -5,7 +5,7 @@ also the largest assumption. All numbers below come from simulated users (the pa
 
 | What you have | Call | Note |
 |---|---|---|
-| A hip exoskeleton, able-bodied users | `Prior.from_walking(peak_range=(3, 12))` | Hip moments of five subjects at 1.1 m/s, delayed and shifted like self-tuned profiles |
+| A hip exoskeleton, able-bodied users | `Prior.from_walking(peak_range=(3, 12))` | Hip moments of five individuals at 1.1 m/s, delayed and shifted like self-tuned profiles |
 | Peaks that must stay fixed | `Prior.from_walking(level=12.0)` | Only the shape is optimized |
 | Curves of your own, with both directions | `Prior.from_curves(curves, peak_range=(3, 12))` | Only their shapes count, the peaks come from the range |
 | Curves of your own, one direction, or torques you trust | `Prior.from_curves(curves, limit=40.0)` | The curves count as they are |
