@@ -27,13 +27,13 @@ python examples/quickstart.py
 from psypref import Prior, PsyPref
 
 prior = Prior.from_walking(peak_range=(3, 12))   # hip torque peaks your device and protocol allow, in Nm
-tuner = PsyPref(prior)
+session = PsyPref(prior)
 
 for k in range(24):
-    a, b = tuner.ask()                  # two torque curves, 101 points over the gait cycle
-    tuner.tell(show_to_user(a, b))      # your code: "A", "B", or None for no preference
+    a, b = session.ask()                  # two torque curves, 101 points over the gait cycle
+    session.tell(show_to_user(a, b))      # your code: "A", "B", or None for no preference
 
-curve = tuner.identified()              # the identified assistance
+curve = session.identified()              # the identified assistance
 ```
 
 Show each profile long enough to feel it. With 20 s per profile, as in Ramella et al.'s study, a comparison takes about 50 s, so 24
@@ -67,7 +67,7 @@ just-noticeable difference (JND) first.
 | One-sided assistance, or curves that count as they are | `Prior.from_curves(curves, limit=40.0)` |
 | Some doubt about the prior | `prior.widened(2.0)` |
 | Pairs shown in an interpretable family | `PsyPref(prior, family="schaefer")`, or your own `Family` |
-| A session continued after a break | `PsyPref.replay(prior, tuner.answers, seed=seed)` |
+| A session continued after a break | `PsyPref.replay(prior, session.answers, seed=seed)` |
 | A dry run before anyone walks | `SimulatedUser(preferred, noise=1.0)`, see [examples](examples/) |
 
 ## What we found in simulation

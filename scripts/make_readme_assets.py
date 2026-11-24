@@ -72,24 +72,24 @@ def grab(fig) -> Image.Image:
     return Image.fromarray(np.asarray(fig.canvas.buffer_rgba())[..., :3].copy())
 
 
-def belief(tuner: PsyPref, rng, n: int = 40) -> np.ndarray:
-    post = tuner.learner.posterior
+def belief(session: PsyPref, rng, n: int = 40) -> np.ndarray:
+    post = session.learner.posterior
     idx = rng.choice(len(post.x), size=n, p=post.weights())
-    return np.array([tuner.design.curve(tuner.space.to_theta(z)) for z in post.x[idx, :tuner.space.d]])
+    return np.array([session.design.curve(session.space.to_theta(z)) for z in post.x[idx, :session.space.d]])
 
 
 def run_session(n: int = 24) -> list[dict]:
     preferred = demo_profile(SUBJECT, PEAKS)
     prior = Prior.from_walking(peak_range=(3, 12), leave_out=SUBJECT)
     user = SimulatedUser(preferred, seed=SEED)
-    tuner = PsyPref(prior, seed=SEED)
+    session = PsyPref(prior, seed=SEED)
     rng = np.random.default_rng(SEED)
-    steps = [dict(k=0, a=None, b=None, answer=None, band=belief(tuner, rng), best=tuner.identified().copy())]
+    steps = [dict(k=0, a=None, b=None, answer=None, band=belief(session, rng), best=session.identified().copy())]
     for k in range(1, n + 1):
-        a, b = tuner.ask()
+        a, b = session.ask()
         answer = user.answer(a, b)
-        tuner.tell(answer)
-        steps.append(dict(k=k, a=a.copy(), b=b.copy(), answer=answer, band=belief(tuner, rng), best=tuner.identified().copy()))
+        session.tell(answer)
+        steps.append(dict(k=k, a=a.copy(), b=b.copy(), answer=answer, band=belief(session, rng), best=session.identified().copy()))
     return [dict(s, preferred=preferred, generic=prior.generic, p=user.would_choose(s["best"], prior.generic)) for s in steps]
 
 
@@ -206,14 +206,14 @@ def projection_frames(fig, axes, c) -> list[tuple[Image.Image, int]]:
     preferred = demo_profile(SUBJECT, PEAKS)
     prior = Prior.from_walking(peak_range=(3, 12), leave_out=SUBJECT)
     user = SimulatedUser(preferred, seed=SEED)
-    tuner = PsyPref(prior, family="schaefer", seed=SEED)
-    lens = tuner.learner
+    session = PsyPref(prior, family="schaefer", seed=SEED)
+    lens = session.learner
     frames = []
     for k in range(1, 5):
         wa, wb = lens.inner.propose()
         raw_a, raw_b = lens.inner_design.curve(wa), lens.inner_design.curve(wb)
         ta, tb = lens._fit(raw_a), lens._fit(raw_b)
-        a, b = tuner.design.curve(ta), tuner.design.curve(tb)
+        a, b = session.design.curve(ta), session.design.curve(tb)
         left.clear()
         right.clear()
         curve_axes(left, c)

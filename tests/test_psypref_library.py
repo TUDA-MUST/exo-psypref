@@ -51,11 +51,11 @@ def _replay(row: dict, prior: Prior, family=None) -> list[float]:
     ideal, _ = _user_and_fold(row)
     rng = np.random.default_rng([int(row["answer_seed"]), OBSERVER_SALT])
     user = SimulatedUser(ideal, noise=1.0, lapse=0.1, rng=rng)
-    tuner = PsyPref(prior, family, seed=int(row["answer_seed"]) % 2 ** 32)
+    session = PsyPref(prior, family, seed=int(row["answer_seed"]) % 2 ** 32)
     out = []
     for _ in row["distances"]:
-        tuner.tell(user.answer(*tuner.ask()))
-        out.append(user.distance(tuner.identified()))
+        session.tell(user.answer(*session.ask()))
+        out.append(user.distance(session.identified()))
     return out
 
 
@@ -125,32 +125,32 @@ def test_session_beats_generic_assistance():
     preferred = demo_profile("AB30")
     prior = Prior.from_walking(peak_range=(3, 12), leave_out="AB30")
     user = SimulatedUser(preferred, seed=3)
-    tuner = PsyPref(prior, seed=3)
+    session = PsyPref(prior, seed=3)
     for _ in range(24):
-        tuner.tell(user.answer(*tuner.ask()))
-    assert user.distance(tuner.identified()) < user.distance(prior.generic)
-    assert choice_probability(tuner.identified(), prior.generic, preferred) > 0.5
+        session.tell(user.answer(*session.ask()))
+    assert user.distance(session.identified()) < user.distance(prior.generic)
+    assert choice_probability(session.identified(), prior.generic, preferred) > 0.5
 
 
 def test_ask_is_stable_and_tell_needs_ask():
-    tuner = PsyPref(Prior.from_walking(level=12.0), seed=1)
+    session = PsyPref(Prior.from_walking(level=12.0), seed=1)
     with pytest.raises(RuntimeError):
-        tuner.tell("A")
-    a1, b1 = tuner.ask()
-    a2, b2 = tuner.ask()
+        session.tell("A")
+    a1, b1 = session.ask()
+    a2, b2 = session.ask()
     assert np.array_equal(a1, a2) and np.array_equal(b1, b2)
     assert a1.shape == (101,)
     with pytest.raises(ValueError):
-        tuner.tell("left")
+        session.tell("left")
 
 
 def test_no_preference_is_an_answer():
-    tuner = PsyPref(Prior.from_walking(peak_range=(3, 12)), seed=2)
+    session = PsyPref(Prior.from_walking(peak_range=(3, 12)), seed=2)
     for answer in ("A", None, "B", None):
-        tuner.ask()
-        tuner.tell(answer)
-    assert tuner.n_comparisons == 4
-    assert tuner.identified().shape == (101,)
+        session.ask()
+        session.tell(answer)
+    assert session.n_comparisons == 4
+    assert session.identified().shape == (101,)
 
 
 def test_replay_continues_a_session():
@@ -174,10 +174,10 @@ def test_wider_prior_has_a_larger_search_region():
 
 @pytest.mark.parametrize("n_weights", [8, 12, 16, 24])
 def test_more_weights(n_weights):
-    tuner = PsyPref(Prior.from_walking(peak_range=(3, 12), n_weights=n_weights), seed=1)
-    a, b = tuner.ask()
-    tuner.tell("A")
-    assert a.shape == b.shape == tuner.identified().shape == (101,)
+    session = PsyPref(Prior.from_walking(peak_range=(3, 12), n_weights=n_weights), seed=1)
+    a, b = session.ask()
+    session.tell("A")
+    assert a.shape == b.shape == session.identified().shape == (101,)
 
 
 def test_prior_from_own_curves():
@@ -187,21 +187,21 @@ def test_prior_from_own_curves():
     shaped = Prior.from_curves(curves, peak_range=(3, 12))
     assert shaped.peak_range == (3.0, 12.0) and shaped.generic.shape == (101,)
     as_is = Prior.from_curves(np.maximum(curves, 0.0), limit=12.0)
-    tuner = PsyPref(as_is, seed=0)
-    a, _ = tuner.ask()
-    tuner.tell("B")
-    assert a.max() <= 12.0 and tuner.identified().shape == (101,)
+    session = PsyPref(as_is, seed=0)
+    a, _ = session.ask()
+    session.tell("B")
+    assert a.max() <= 12.0 and session.identified().shape == (101,)
     with pytest.raises(ValueError):
         Prior.from_curves(curves[:5], limit=12.0)
 
 
 @pytest.mark.parametrize("family", ["schaefer", "franks", "pchip"])
 def test_projection_shows_family_curves(family):
-    tuner = PsyPref(Prior.from_walking(peak_range=(3, 35)), family, seed=1)
-    a, b = tuner.ask()
+    session = PsyPref(Prior.from_walking(peak_range=(3, 35)), family, seed=1)
+    a, b = session.ask()
     assert a.shape == (101,)
-    tuner.tell("A")
-    assert tuner.identified().shape == (101,) and tuner.parameters().size == tuner.design.n_params
+    session.tell("A")
+    assert session.identified().shape == (101,) and session.parameters().size == session.design.n_params
 
 
 def test_own_family():
@@ -211,10 +211,10 @@ def test_own_family():
         peak, width, height = theta
         return height * np.exp(-0.5 * ((x - peak) / width) ** 2) - height * np.exp(-0.5 * ((x - peak - 0.5) / width) ** 2)
 
-    tuner = PsyPref(Prior.from_walking(peak_range=(3, 12)), Family(curve, [0.0, 0.03, 3.0], [0.5, 0.2, 12.0]), seed=1)
-    a, _ = tuner.ask()
-    tuner.tell("B")
-    assert np.max(np.abs(a)) <= 12.0 + 1e-6 and tuner.parameters().size == 3
+    session = PsyPref(Prior.from_walking(peak_range=(3, 12)), Family(curve, [0.0, 0.03, 3.0], [0.5, 0.2, 12.0]), seed=1)
+    a, _ = session.ask()
+    session.tell("B")
+    assert np.max(np.abs(a)) <= 12.0 + 1e-6 and session.parameters().size == 3
 
 
 def test_projection_needs_a_range_or_level():

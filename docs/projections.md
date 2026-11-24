@@ -5,9 +5,9 @@ need named parameters, such as a peak's timing, to constrain or compare them. A 
 over the ProMP, the user feels each profile of a pair as its least-squares fit in the family, and the result comes in the family's parameters.
 
 ```python
-tuner = PsyPref(prior, family="schaefer")
+session = PsyPref(prior, family="schaefer")
 ...
-tuner.parameters()      # the family's parameters
+session.parameters()      # the family's parameters
 ```
 
 ## Which to use
@@ -39,7 +39,7 @@ profiles: a family's best profile is known only in the simulation.
 from psypref import Family
 
 family = Family(curve, low=[...], high=[...], names=[...])   # curve(theta) gives 101 points
-tuner = PsyPref(prior, family=family)
+session = PsyPref(prior, family=family)
 ```
 
 See [examples/projection.py](../examples/projection.py). Each pair needs a least-squares fit, so the family's `curve` should be fast. A good `initial_guess(target)` makes the fits more reliable. We tested only the three families above.

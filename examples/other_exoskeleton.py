@@ -23,10 +23,10 @@ print(prior)
 
 preferred = plantarflexion(54, 6, 24)   # an assumption: only a simulation knows it
 user = SimulatedUser(preferred, noise=2.0, seed=4)
-tuner = PsyPref(prior, seed=4)
+session = PsyPref(prior, seed=4)
 for k in range(24):
-    a, b = tuner.ask()
-    tuner.tell(user.answer(a, b))
+    a, b = session.ask()
+    session.tell(user.answer(a, b))
 print(f"distance to the assumed preferred profile: {user.distance(prior.generic):.1f} Nm before, "
-      f"{user.distance(tuner.identified()):.1f} Nm after {tuner.n_comparisons} comparisons")
-print(f"identified peak: {tuner.identified().max():.1f} Nm at {PHASE[tuner.identified().argmax()]:.0f} % of the gait cycle")
+      f"{user.distance(session.identified()):.1f} Nm after {session.n_comparisons} comparisons")
+print(f"identified peak: {session.identified().max():.1f} Nm at {PHASE[session.identified().argmax()]:.0f} % of the gait cycle")

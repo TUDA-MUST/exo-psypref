@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "exo-psypref"
 version = "0.1.0"
-description = "User preference tuning of exoskeleton assistance with Bayesian adaptive methods from psychophysics"
+description = "Preference-based optimization of exoskeleton assistance with Bayesian adaptive methods from psychophysics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

@@ -1,4 +1,4 @@
-"""The tuning session: ask for a pair, tell the answer, read the identified curve."""
+"""An optimization session: ask for a pair, tell the answer, read the identified curve."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class Family(BoxDesign):
 
 
 class PsyPref:
-    """A tuning session.
+    """An optimization session.
 
     ``family`` shows every pair in an interpretable family: a name (``"schaefer"``, ``"franks"``, ``"pchip"``), a
     :class:`Family`, or None for the whole curve. ``seed`` fixes the session, so the same answers give the same curves.
@@ -111,9 +111,9 @@ class PsyPref:
     @classmethod
     def replay(cls, prior: Prior, answers, family=None, *, seed: int = 0) -> "PsyPref":
         """A session rebuilt from its answers, for example to continue one after a break."""
-        tuner = cls(prior, family, seed=seed)
+        session = cls(prior, family, seed=seed)
         for answer in answers:
-            tuner.ask()
-            tuner.tell(answer)
-            tuner.identified()
-        return tuner
+            session.ask()
+            session.tell(answer)
+            session.identified()
+        return session

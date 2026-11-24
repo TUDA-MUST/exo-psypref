@@ -15,10 +15,10 @@ def score(make_prior, n_comparisons=24):
         for j, peaks in enumerate(PEAKS):
             prior = make_prior(subject)
             user = SimulatedUser(demo_profile(subject, peaks), seed=100 * i + j)
-            tuner = PsyPref(prior, seed=100 * i + j)
+            session = PsyPref(prior, seed=100 * i + j)
             for _ in range(n_comparisons):
-                tuner.tell(user.answer(*tuner.ask()))
-            out.append(user.would_choose(tuner.identified(), prior.generic))
+                session.tell(user.answer(*session.ask()))
+            out.append(user.would_choose(session.identified(), prior.generic))
     return 100 * float(np.mean(out))
 
 
