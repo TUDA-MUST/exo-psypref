@@ -56,7 +56,7 @@ just-noticeable difference (JND) first.
 | Your question | Where to look |
 |---|---|
 | Which prior? How wide? Which peak range? How many weights? | [Choosing a prior](docs/choosing_a_prior.md) |
-| My study needs named parameters, or my device only produces certain shapes | [Projection onto a family](docs/projections.md) |
+| My study needs interpretable parameters, or my device only produces certain shapes | [Projection onto a family](docs/projections.md) |
 | Another joint, device or population | [Using PsyPref on another exoskeleton](docs/other_exoskeletons.md) |
 
 | You want | Call |
