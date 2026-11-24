@@ -39,8 +39,8 @@
 \newcommand{\z}{\mathbf z}
 \newcommand{\code}[1]{\texttt{\small #1}}
 
-\title{Supplementary Material\\[4pt]\large Psychometric Preference Optimization of Hip Exoskeleton Assistance:\\
-A Simulation Study}
+\title{Supplementary Material\\[4pt]\large Accelerating Hip Exoskeleton Preference Optimization:\\
+A Study with Simulated Users}
 \author{Julian Seiler, Omid Mohseni, Niklas Sch\"afer, Mark Suppelt, Bastian Latsch, Mario Kupnik,\\
 and Philipp Beckerle\\[2pt]\small julian.seiler@tu-darmstadt.de}
 \date{}
@@ -58,7 +58,7 @@ The code, the simulation logs, and the instructions to reproduce every figure ar
 \section{PsyPref Step by Step}
 \label{sec:psypref}
 
-PsyPref tunes the $d = 8$ weights of a probabilistic movement primitive (ProMP)~\cite{paraschos}, a weighted sum of
+PsyPref optimizes the $d = 8$ weights of a probabilistic movement primitive (ProMP)~\cite{paraschos}, a weighted sum of
 basis functions over the gait cycle. It works in normalized coordinates $\z$, in which the prior over the weights is
 standard normal. Every pair and the identified profile lie in the search region $\mathcal B = \{\z : \lVert\z\rVert \le
 r\}$, where $r$ is the 99\,\% quantile of the norm of a standard normal draw in $d$ dimensions. The answer model reads a
@@ -336,7 +336,7 @@ Negative power disliked & $d(c) + \kappa\,\overline{\max(0, -c\,\dot\theta)}/\ov
   probability $1/2$, else log-uniform in 0.5--2 & Ours & Direction only: \cite{ramella} \\
 \midrule
 \multicolumn{5}{@{}l}{\textit{How they differ from the prior}} \\
-Users from other datasets & Shapes from other people, 40 users per group & Young and older adults on a treadmill at
+Users from other datasets & Shapes from other individuals, 40 users per group & Young and older adults on a treadmill at
   comfortable speed; level and inclined walking at 1.0\,m/s & Stated & \cite{fukuchi,reznick}. These are biological
   moments, and treating them as preferred shapes is our assumption \\
 Peaks unlike the prior & Peak laws: three narrow cohorts, flexion or extension larger, correlated & Medians at 0.2, 0.5,
@@ -368,8 +368,9 @@ violated assumption, in simulation. Positive values favor PsyPref. Markers: pair
 GP~\cite{arens} (also from the prior's mean, no gate), CMA-ES~\cite{sortcma} (also with population 4),
 LineCoSpar~\cite{linecospar}, and \mbox{CMA-ES, 4--6~param.}, picked per bootstrap draw. Thick bars: 95\,\% per row. Thin
 bars: 95\,\% across all \fmNall\ cases (condition $\times$ peak-torque setting)~\cite{besag}, dark blue where they reach
-0. Open circle: the measure's maximum. (2)--(6): smallest difference of that many conditions. \textdagger: with the
-indecision band. Table~\ref{tab:conditions} lists every condition with its model, size, and source.}
+0. Open circle: both at $P_\mathrm{g}$'s ceiling of 95\,\%. (2)--(6): smallest difference of that many conditions. \textdagger: with the
+indecision band. Table~\ref{tab:conditions} lists every condition with its model, size, and source. The paper's Fig.~4
+summarizes this figure.}
 \label{fig:robustness}
 \end{figure}
 

@@ -6,7 +6,7 @@ also the largest assumption. All numbers below come from simulated users (the pa
 | What you have | Call | Note |
 |---|---|---|
 | A hip exoskeleton, able-bodied users | `Prior.from_walking(peak_range=(3, 12))` | Hip moments of five subjects at 1.1 m/s, delayed and shifted like self-tuned profiles |
-| Peaks that must stay fixed | `Prior.from_walking(level=12.0)` | Only the shape is tuned |
+| Peaks that must stay fixed | `Prior.from_walking(level=12.0)` | Only the shape is optimized |
 | Curves of your own, with both directions | `Prior.from_curves(curves, peak_range=(3, 12))` | Only their shapes count, the peaks come from the range |
 | Curves of your own, one direction, or torques you trust | `Prior.from_curves(curves, limit=40.0)` | The curves count as they are |
 | A mean and covariance of the weights | `Prior.from_moments(mu, sigma, peak_range=(3, 12))` | |
@@ -47,12 +47,12 @@ example, assistance proportional to the natural joint moment would give the weak
 `n_weights` is the ProMP's number of weights: 8 by default, and walking priors exist for 8, 12, 16 and 24. In one session, more weights
 change PsyPref's preference over generic assistance little: after 24 comparisons, 12 to 24 weights change it by −0.4 to
 +2.4 points against 8 weights (3–35 Nm and fixed 12 Nm), with 24 weights by −0.4 [−1.6, 0.6] and +1.5 [−0.6, 3.5]
-points. Only 16 weights at fixed 12 Nm lift the interval above zero, +2.4 [0.4, 4.4]. They pay off mainly in longer tuning: users would choose a 16-weight profile over an 8-weight profile in
+points. Only 16 weights at fixed 12 Nm lift the interval above zero, +2.4 [0.4, 4.4]. They pay off mainly in longer sessions: users would choose a 16-weight profile over an 8-weight profile in
 50–53 % of cases after 24 and 40 comparisons, 55–57 % after 80, and 57–61 % after 150. This is not a test of larger problems, because
 the prior's curves still vary in about the same few directions.
 
 ## Try it first
 
 [examples/choose_a_prior.py](../examples/choose_a_prior.py) runs simulated users through your prior. Change the simulated users'
-assumptions too, for example `noise`: at 3 Nm, the end that walking JNDs imply, PsyPref kept its lead, but at fixed 12 Nm only 28 % of the
-users would benefit.
+assumptions too, for example `noise`: at 3 Nm, the end that walking JNDs imply, PsyPref's difference to the best published optimizer stayed positive, but at fixed 12 Nm 28 % of the
+users would benefit by at least 1 JND.

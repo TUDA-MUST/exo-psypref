@@ -1,8 +1,8 @@
 # Projection onto a profile family
 
-By default, PsyPref tunes the whole curve through the weights of a ProMP. Those weights are hard to report, and a study may
+By default, PsyPref optimizes the whole curve through the weights of a ProMP. Those weights are hard to report, and a study may
 need named parameters, such as a peak's timing, to constrain or compare them. A projection keeps both: PsyPref holds its belief
-over the ProMP, the user feels each A/B profile as its least-squares fit in the family, and the result comes in the family's parameters.
+over the ProMP, the user feels each profile of a pair as its least-squares fit in the family, and the result comes in the family's parameters.
 
 ```python
 tuner = PsyPref(prior, family="schaefer")

@@ -86,7 +86,7 @@ Paths are linear over the 40 comparisons of a session. Familiarity is the except
 
 | Fig. S1 label | Condition in the code | Model | Value | Class | Source and limits |
 |---|---|---|---|---|---|
-| Users from other datasets | `R6 other datasets` | Shapes from other people, 40 users per group | Young and older adults on a treadmill at comfortable speed; level and inclined walking at 1.0 m/s | Stated | Fukuchi 2018, Reznick 2021. These are biological moments, and treating them as preferred shapes is our assumption |
+| Users from other datasets | `R6 other datasets` | Shapes from other individuals, 40 users per group | Young and older adults on a treadmill at comfortable speed; level and inclined walking at 1.0 m/s | Stated | Fukuchi 2018, Reznick 2021. These are biological moments, and treating them as preferred shapes is our assumption |
 | Peaks unlike the prior | `M1`–`M6` | Peak laws: three narrow cohorts, flexion or extension larger, correlated | Medians at 0.2, 0.5, 0.8 of the log range with CV 0.2; ratio 1.5; correlation 0.8 | Range (CV), ours | CV: Ramella 2025 (0.13–0.15), Arens 2025 (0.30–0.34), Shepherd 2018 (0.30). Rest is ours |
 | Flexion peak later | `S1`, `S2` | Piecewise-linear phase warp that moves the flexion peak and keeps the extension peak | 6, 12 %GC | Transferred | Kim 2022 (soft flexion exosuit, metabolic optimum, n = 8) |
 | Other shapes unlike the prior | `R7 surrogates` | The preferred curve's magnitudes kept, its phases randomized, the result clipped to the setting's top | Harmonics 1–50 | Transferred | Theiler 1992, a method for testing time series. It serves here as a source of curves without the prior's shape |
@@ -118,7 +118,7 @@ Fig. S1 measures PsyPref against the strongest of the first six, in every row an
 | CMA-ES | `cmaes` | 8 ProMP weights, in the prior's search region. pycma's default population, initial step 1.0 of the prior's scale | `prompref/learning/sortcma.py` |
 | CMA-ES, population 4 | `cmaes4` | The same, with population 4 and initial step 0.5. Fig. 2's comparator at fixed 12 Nm | `prompref/learning/sortcma.py` |
 | CMA-ES, 4–6 param. | `cmaes_sch4` | Schäfer et al.'s family: four timings, plus both peaks in 3–35 Nm. At fixed 12 Nm, the four timings only. Population 4, initial step 0.5 of the prior's scale | `prompref/learning/sortcma.py`, `prompref/experiment/amp_free.py` |
-| GP-BALD | `gp_bald` | 8 ProMP weights. Main condition, $\sigma = 2$ Nm and users from other datasets. Not part of Fig. S1's leads | `prompref/learning/gp_eubo.py` |
+| GP-BALD | `gp_bald` | 8 ProMP weights. Main condition, $\sigma = 2$ Nm and users from other datasets. Not part of Fig. S1's differences | `prompref/learning/gp_eubo.py` |
 
 ## Method details left out of the paper
 
@@ -168,7 +168,7 @@ The paper's Methods are short because of its page limit. These details complete 
 - The entropy proxy is H = log det Cov(z*) / 2.
 - CMA-ES with population 4: about four generations fit into 24 comparisons.
 - Speed is the first k at which PsyPref reaches the P_g that another optimizer reaches after 40 comparisons.
-- Fig. S1's leads are computed with each user's sigma and lambda at the session's end. With fixed sigma and lambda, no lead changes sign, and leads move by at most 8.6 points.
+- Fig. S1's differences are computed with each user's sigma and lambda at the session's end. With fixed sigma and lambda, no difference changes sign, and differences move by at most 8.6 points.
 
 ### Numbers left out of the paper
 
@@ -181,9 +181,9 @@ All at k = 24 unless stated, in the order 3–12 Nm, 3–35 Nm, fixed 12 Nm wher
 - Users who would prefer generic assistance to the same degree, pooled: PsyPref 0, GP-BALD 1, the strongest other optimizer 4, CMA-ES on Schäfer et al.'s family 12 %.
 - PsyPref's profile chosen over that of CMA-ES on Schäfer et al.'s family: 75.8, 83.4, 71.6 %.
 - 24 instead of 8 weights (3–35, fixed 12 Nm): GP-BALD −3.1 [−6.2, 0.0], −1.4 [−4.5, 1.4]; CMA-ES with population 4 −6.9 [−12.2, −1.7], +1.6 [−2.3, 5.5].
-- At 8, 12, 16 and 24 weights, PsyPref leads GP-BALD by 2.1–7.9 points and CMA-ES with population 4 by 9.0–17.4, with all intervals above zero.
+- At 8, 12, 16 and 24 weights, PsyPref's P_g exceeds GP-BALD's by 2.1–7.9 points and that of CMA-ES with population 4 by 9.0–17.4, with all intervals above zero.
 - After 150 comparisons, the 16-weight profile lies 0.35 [0.20, 0.51] and 0.55 [0.41, 0.71] JND closer to the preferred profile than the 8-weight profile (3–35, fixed 12 Nm), and 24 weights are not closer than 16.
 - A different law of preferred peaks costs PsyPref at most 1.3 points at 3–35 Nm and 2.0 at 3–12 Nm.
-- With 30 curves of Schäfer et al.'s family added to the prior, PsyPref leads CMA-ES on that family by 1.9 [0.5, 3.3] points on its shapes at fixed 12 Nm, where it trailed before.
-- PsyPref's lead over the strongest other optimizer is positive for each of the five walking subjects, from 5.4 to 20.6 points.
+- With 30 curves of Schäfer et al.'s family added to the prior, PsyPref's P_g exceeds that of CMA-ES on that family by 1.9 [0.5, 3.3] points on its shapes at fixed 12 Nm, where it was lower before.
+- The difference to the strongest other optimizer is positive for each of the five walking subjects, from 5.4 to 20.6 points.
 - A prior from a population other than the users' costs PsyPref at most 2.1 and 5.6 points (users with Schäfer-family shapes, 3–35 and fixed 12 Nm).

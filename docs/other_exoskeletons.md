@@ -27,7 +27,7 @@ Whether this holds for your joint and users is your assumption to check.
 
 ## What may break
 
-The paper's robustness tests point to what matters most. PsyPref's lead survived other answer rules, changes over time and users from other datasets, but not users who judge single features instead of whole curves, or users with no single preferred profile. Nobody has measured these for assistance curves. In particular:
+The paper's robustness tests point to what matters most. PsyPref's advantage held under other answer rules, changes over time and users from other datasets, but not users who judge single features instead of whole curves, or users with no single preferred profile. Nobody has measured these for assistance curves. In particular:
 
 - **JNDs of assistance curves are largely unknown.** PsyPref learns its discrimination scale during the session, so it needs none, but how fast real users get there is open.
 - **Patients.** We did not test them, and a prior from able-bodied walking cannot be assumed to fit them.

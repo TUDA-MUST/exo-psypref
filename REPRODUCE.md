@@ -1,7 +1,7 @@
 # Reproducing the paper
 
-Supplement to our ICORR 2027 paper on speeding up user preference tuning of exoskeleton assistance with Bayesian adaptive
-methods from psychophysics. This part of the repository holds the simulation that produced the paper's results. It contains no new
+Supplement to our ICORR 2027 paper *Accelerating Hip Exoskeleton Preference Optimization: A Study with Simulated Users*, which speeds up preference-based optimization of exoskeleton
+assistance with Bayesian adaptive methods from psychophysics. This part of the repository holds the simulation that produced the paper's results. It contains no new
 human data, and everything in it was run in simulation. For using PsyPref, see the [README](README.md).
 
 - [CONDITIONS.md](CONDITIONS.md): how each simulated user and robustness condition is modeled, the size we chose, and
@@ -23,6 +23,7 @@ human data, and everything in it was run in simulation. For using PsyPref, see t
 | Fig. 1 | `scripts/paper_v2_fig1.py`, `scripts/paper_v2_fig1j.py` | `full` |
 | Fig. 2 | `scripts/paper_v2_fig2.py --variant v1`, then `c` and `d` | `full`, `cmp`, `abl`, `rnd` |
 | Fig. 3 | `scripts/paper_v2_fig3p.py` | `fam_floors`, `fam`, `full`, `robust` |
+| Fig. 4 (compact Fig. S1) | `scripts/paper_v2_fig4c.py`, after `paper_v2_fig4m.py` | Fig. S1's data (`figures/data/fig4m_*.csv`) |
 | Supplementary Fig. S1 | `scripts/paper_v2_fig4l.py`, then `scripts/paper_v2_fig4m.py` | `full`, `robust`, `rob2`, `tie`, `s3`, `var`, `pri`, `cmp` |
 | Table I | `scripts/paper_v2_table_main.py --dest figures/tables` | `full`, `cmp`, `abl`, `rnd`, `pw`, `ks`, `ks2` |
 | Absolute benefit by noise level | `scripts/provenance/s3_headline.py`, `scripts/provenance/noise_benefit_shares.py` | `full`, `cmp`, `robust`, `s3`, `var` |
@@ -51,6 +52,7 @@ into `out/` and holds the logs, the users and the priors.
    ```bash
    python scripts/paper_v2_fig4l.py
    python scripts/paper_v2_fig4m.py
+   python scripts/paper_v2_fig4c.py
    cd figures && pdflatex test_fig4m.tex
    ```
 2. **Sessions from the stored users.** Needs the bundle. This reruns one randomly drawn session per condition, setting and
