@@ -2,6 +2,8 @@
 
 **Optimize an exoskeleton's assistance curve from few pairwise comparisons.**
 
+The paper's supplement: [supplement/supplement.pdf](supplement/supplement.pdf)
+
 Assistance that fits the person often works best, and users can say which of two torque profiles feels better. PsyPref decides
 which two profiles to compare next and what to make of each answer, using Bayesian adaptive methods from psychophysics: prior
 knowledge, the most informative comparison, and a model of noisy answers. After 3–8 comparisons, simulated users choose its
